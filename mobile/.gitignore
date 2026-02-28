@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native (still tracked as requested)
+# /android
+# /ios
+
+# Env (still tracked as requested)
+# .env
+
+
+# FORCE TRACK EVERYTHING requested by user
+# !node_modules/
+# !.env
+# !.env.local
+# !.env.development.local
+# !.env.test.local
+# !.env.production.local

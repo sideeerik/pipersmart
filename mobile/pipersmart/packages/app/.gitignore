@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+THUMBS_DB
+
+# FORCE TRACK EVERYTHING requested by user
+!node_modules/
+!.env
+!.env.local
+!.env.development.local
+!.env.test.local
+!.env.production.local

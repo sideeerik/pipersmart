@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "mobile",
+    "slug": "mobile",
+    "scheme": "pipersmart",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sideeerik.mobile",
+      "buildNumber": "1",
+      "config": {
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "We need camera access to capture images of black pepper bunches for ripeness detection and disease analysis.",
+        "NSPhotoLibraryUsageDescription": "We need photo library access to select images of black pepper bunches for analysis.",
+        "NSPhotoLibraryAddUsageDescription": "We need permission to save analysis results to your photo library.",
+        "NSLocationWhenInUseUsageDescription": "Location is used for farm mapping features."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.sideeerik.mobile",
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBoKXxpyQGxiPdplqOjiALoU0lRhxuGhKA"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-google-signin/google-signin"
+    ],
+    "permissions": [
+      "android.permission.CAMERA",
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION"
+    ]
+  }
+}

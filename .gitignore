@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables (Still tracked as per your request, usually ignored)
+# .env
+
+# Expo
+.expo/
+web-build/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ML Training Artifacts & Datasets
+**/train_batch*.jpg
+**/val_batch*.jpg
+**/results.png
+**/results.csv
+**/confusion_matrix*.png
+**/Box*_curve.png
+**/labels.jpg
+**/args.yaml
+
+# ML Datasets (Keep code, ignore raw images)
+ml_models/leafdataset/
+ml_models/pepper_disease_detector/data/
+ml_models/finalbungatrain/
+ml_models/bunga_ripeness/
+backend/ml_models/bunga/train/
+backend/ml_models/leaf/train/
+backend/temp/
+

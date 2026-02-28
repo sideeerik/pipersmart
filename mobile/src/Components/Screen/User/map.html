@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    .leaflet-popup-content {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      font-size: 12px;
+    }
+    .popup-header {
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: #1B4D3E;
+    }
+    .popup-score {
+      display: flex;
+      justify-content: space-between;
+      margin: 4px 0;
+      padding: 4px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .popup-label {
+      font-weight: 600;
+      color: #666;
+    }
+    .popup-value {
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    let map = null;
+    let userMarker = null;
+    let zoneMarkers = [];
+
+    function initMap(userLat, userLng) {
+      if (map) {
+        map.remove();
+      }
+
+      map = L.map('map').setView([userLat, userLng], 13);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // User location marker
+      userMarker = L.circleMarker([userLat, userLng], {
+        radius: 10,
+        fillColor: '#1B4D3E',
+        color: '#FFFFFF',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.8,
+      }).addTo(map).bindPopup('Your Location');
+
+      // Add a circle around user location
+      L.circle([userLat, userLng], {
+        radius: 1000,
+        color: '#1B4D3E',
+        fill: false,
+        weight: 1,
+        opacity: 0.3,
+        dashArray: '5, 5'
+      }).addTo(map);
+
+      window.postMessage({ type: 'mapReady' }, '*');
+    }
+
+    function addZoneMarker(id, lat, lng, score, name, rating, color) {
+      const marker = L.circleMarker([lat, lng], {
+        radius: 15,
+        fillColor: color,
+        color: '#FFFFFF',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.9,
+      }).addTo(map);
+
+      const popupContent = `
+        <div class="popup-header">${name}</div>
+        <div class="popup-score">
+          <span class="popup-label">Score:</span>
+          <span class="popup-value">${score}%</span>
+        </div>
+        <div class="popup-score">
+          <span class="popup-label">Rating:</span>
+          <span class="popup-value">${rating}</span>
+        </div>
+      `;
+
+      marker.bindPopup(popupContent);
+
+      marker.on('click', function() {
+        window.postMessage({ type: 'zoneSelected', zoneId: id }, '*');
+      });
+
+      zoneMarkers.push(marker);
+    }
+
+    function fitBounds(minLat, maxLat, minLng, maxLng) {
+      if (map) {
+        const bounds = [[minLat, minLng], [maxLat, maxLng]];
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+
+    window.addEventListener('message', function(event) {
+      const data = event.data;
+      
+      if (data.type === 'initMap') {
+        initMap(data.userLat, data.userLng);
+      } else if (data.type === 'addZone') {
+        addZoneMarker(
+          data.zoneId,
+          data.lat,
+          data.lng,
+          data.score,
+          data.name,
+          data.rating,
+          data.color
+        );
+      } else if (data.type === 'fitBounds') {
+        fitBounds(data.minLat, data.maxLat, data.minLng, data.maxLng);
+      }
+    });
+  </script>
+</body>
+</html>

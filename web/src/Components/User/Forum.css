@@ -1,0 +1,874 @@
+/* ============ FORUM CONTAINER - 3 COLUMN LAYOUT ============ */
+.forum-container {
+  background: #f0f2f5;
+  min-height: calc(100vh - 80px);
+  padding: 20px 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.forum-container.fb-layout {
+  background: #f0f2f5;
+}
+
+.fb-main-wrapper {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ============ LEFT SIDEBAR - CATEGORIES ============ */
+.fb-sidebar-left {
+  position: sticky;
+  top: 100px;
+  height: fit-content;
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #050505;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  color: #65676b;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.category-item:hover {
+  background: #f0f2f5;
+  color: #22c55e;
+}
+
+.category-item.active {
+  background: #e8f5e9;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.cat-icon {
+  font-size: 18px;
+}
+
+.cat-name {
+  flex: 1;
+}
+
+/* Drafts Section */
+.drafts-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.drafts-link {
+  display: block;
+  padding: 10px 12px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.drafts-link:hover {
+  background: #ffe69c;
+}
+
+/* ============ CENTER FEED ============ */
+.fb-feed-center {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ============ COMPOSER BOX ============ */
+.composer-box {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.composer-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.user-avatar-composer {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.composer-input {
+  flex: 1;
+  padding: 10px 16px;
+  background: #f0f2f5;
+  border: none;
+  border-radius: 20px;
+  font-size: 15px;
+  font-family: inherit;
+  color: #050505;
+  outline: none;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.composer-input:focus {
+  background: #e4e6eb;
+}
+
+.composer-input::placeholder {
+  color: #65676b;
+}
+
+/* Composer Images Preview */
+.composer-images-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.composer-image-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 80px;
+  background: #f0f0f0;
+}
+
+.composer-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-composer-image {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.remove-composer-image:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+/* Composer Actions */
+.composer-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.composer-action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: #f0f2f5;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #65676b;
+  transition: all 0.2s ease;
+}
+
+.composer-action-btn:hover {
+  background: #e4e6eb;
+}
+
+.composer-post-btn {
+  padding: 8px 24px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.composer-post-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #16a34a 0%, #0d7e4a 100%);
+  transform: translateY(-1px);
+}
+
+.composer-post-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============ THREADS FEED ============ */
+.threads-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+  font-size: 15px;
+  color: #65676b;
+  background: white;
+  border-radius: 8px;
+}
+
+.no-threads-message {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  color: #65676b;
+}
+
+/* ============ THREAD CARD / FB POST ============ */
+.thread-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.thread-card:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.thread-card.fb-post {
+  padding: 16px;
+}
+
+/* Post Header */
+.post-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.author-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.author-avatar-fb {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.author-name-fb {
+  margin: 0;
+  font-weight: 600;
+  color: #050505;
+  font-size: 15px;
+}
+
+.post-meta {
+  margin: 0;
+  font-size: 13px;
+  color: #65676b;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.post-time {
+  margin: 0;
+}
+
+.category-badge-inline {
+  background: #e8f5e9;
+  color: #22c55e;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Post Content */
+.post-content-wrapper {
+  margin-bottom: 12px;
+}
+
+.post-title-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.post-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #050505;
+  margin: 0 0 8px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.post-title:hover {
+  color: #22c55e;
+}
+
+.post-body {
+  font-size: 15px;
+  color: #050505;
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+/* Post Images */
+.post-images-fb {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.post-image-wrapper {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  height: 200px;
+  background: #f0f0f0;
+}
+
+.post-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.post-image-wrapper:hover img {
+  transform: scale(1.02);
+}
+
+/* Post Stats */
+.post-stats-fb {
+  display: flex;
+  gap: 20px;
+  padding: 12px 0;
+  border-top: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 13px;
+  color: #65676b;
+}
+
+/* Post Actions */
+.post-actions-fb {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.post-action-link {
+  flex: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #65676b;
+  font-weight: 600;
+  padding: 8px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  font-size: 14px;
+  text-align: center;
+}
+
+.post-action-link:hover {
+  color: #22c55e;
+}
+
+/* ============ RIGHT SIDEBAR (OPTIONAL) ============ */
+.fb-sidebar-right {
+  position: sticky;
+  top: 100px;
+  height: fit-content;
+}
+
+/* ============ FLOATING COMPOSE BUTTON ============ */
+.compose-float-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.compose-float-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.6);
+}
+
+.compose-float-btn:active {
+  transform: scale(0.95);
+}
+
+/* ============ SCROLL TRIGGER ============ */
+.scroll-trigger {
+  padding: 20px 0;
+  text-align: center;
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 1200px) {
+  .fb-main-wrapper {
+    grid-template-columns: 260px 1fr;
+  }
+
+  .fb-sidebar-right {
+    display: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .fb-main-wrapper {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .fb-sidebar-left {
+    position: relative;
+    top: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .sidebar-title {
+    grid-column: 1 / -1;
+  }
+
+  .categories-list {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .category-item {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .drafts-section {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .fb-main-wrapper {
+    padding: 0;
+    gap: 12px;
+  }
+
+  .fb-sidebar-left {
+    display: none;
+  }
+
+  .fb-feed-center {
+    padding: 0 10px;
+    gap: 12px;
+  }
+
+  .composer-box {
+    padding: 12px;
+    border-radius: 0;
+  }
+
+  .post-title {
+    font-size: 16px;
+  }
+
+  .post-body {
+    font-size: 14px;
+  }
+
+  .post-images-fb {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-float-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .forum-container {
+    padding: 0;
+  }
+
+  .fb-feed-center {
+    padding: 0;
+    gap: 0;
+  }
+
+  .composer-box,
+  .thread-card {
+    border-radius: 0;
+    padding: 12px;
+  }
+
+  .composer-input {
+    font-size: 14px;
+  }
+
+  .post-title {
+    font-size: 15px;
+  }
+
+  .post-body {
+    font-size: 13px;
+  }
+
+  .compose-float-btn {
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+
+  .post-actions-fb {
+    gap: 0;
+  }
+
+  .post-action-link {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+
+  .post-stats-fb {
+    gap: 12px;
+    font-size: 12px;
+  }
+}
+
+/* ============ NEW FORUM FEATURES - TABS, FILTERS, REPORT ============ */
+
+/* Filter Section */
+.filter-section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.filter-section label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.filter-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-btn {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.filter-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.filter-btn.active {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+/* Forum Tabs */
+.forum-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tab-btn {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #333;
+  text-align: left;
+}
+
+.tab-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.tab-btn.active {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #0369a1;
+  font-weight: 600;
+}
+
+/* Report Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  z-index: 10;
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #050505;
+}
+
+.modal-body {
+  padding: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.modal-body p {
+  margin: 0 0 12px;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.report-textarea,
+.modal-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  color: #333;
+}
+
+.report-textarea:focus,
+.modal-textarea:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-cancel,
+.btn-confirm {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-cancel {
+  background: #f3f4f6;
+  color: #333;
+}
+
+.btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.btn-confirm {
+  background: #10b981;
+  color: white;
+}
+
+.btn-confirm:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal Safe Space Message (for ThreadView warning) */
+.safe-space-notice {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 12px 0;
+}
+
+.safe-space-notice p {
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.safe-space-notice p:first-child {
+  font-weight: 600;
+  color: #b45309;
+}
+
+.modal-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin: 12px 0 8px;
+}
+
+/* Placeholder for other page styles */
+
+

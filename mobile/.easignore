@@ -1,0 +1,22 @@
+# Ignore everything
+*
+
+# Include project files
+!package.json
+!app.json
+!eas.json
+!*.js
+!*.jsx
+!*.ts
+!*.tsx
+!src/
+!assets/
+!components/
+
+# Exclude unnecessary
+.expo/
+node_modules/
+.git/
+.vscode/
+*.log
+*.tmp

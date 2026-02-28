@@ -27,7 +27,7 @@ import { WebView } from 'react-native-webview';
 import MobileHeader from '../../shared/MobileHeader';
 import { getWeatherData, getFarmingRecommendations } from '../../../utils/weatherService';
 import { getElevation } from '../../../utils/elevationService';
-import { getToken, logout } from '../../utils/helper';
+import { getToken, logout } from '../../utils/helpers';
 import {
   calculateSuitabilityScore,
   getSuitabilityRating,

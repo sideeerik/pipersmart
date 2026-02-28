@@ -283,6 +283,13 @@ export default function LeafAnalysisScreen({ navigation }) {
     };
   };
 
+  const handleClearImage = () => {
+    setImage(null);
+    setImageUri(null);
+    setResult(null);
+    setError(null);
+  };
+
   const resultInfo = result ? getDiseaseInfo(result.disease) : null;
   console.log('🖼️ RENDERING RESULT:', result ? 'YES' : 'NO');
   console.log('ℹ️ RESULT INFO:', resultInfo ? 'YES' : 'NO', resultInfo?.title);
@@ -294,7 +301,7 @@ export default function LeafAnalysisScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <MobileHeader
         navigation={navigation}
         drawerOpen={drawerOpen}
@@ -353,94 +360,101 @@ export default function LeafAnalysisScreen({ navigation }) {
           <Text style={styles.subtitle}>Detect pepper diseases using AI</Text>
         </View>
 
-        {/* Image Picker Section */}
-        <View style={[styles.card, { backgroundColor: colors.secondary }]}>
-          <Text style={styles.sectionTitle}>📸 Select Image</Text>
-
-          {/* Image Preview */}
+        {/* Image Selection Section */}
+        <View style={[styles.imageSection, { borderColor: colors.border }]}>
           {imageUri ? (
-            <View style={styles.previewContainer}>
-              <Image
-                source={{ uri: imageUri }}
-                style={styles.preview}
-              />
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => {
-                  setImageUri(null);
-                  setImage(null);
-                  setResult(null);
-                }}
+            <>
+              <View style={styles.imageContainer}>
+                <Image 
+                  source={{ uri: imageUri }} 
+                  style={styles.selectedImage}
+                />
+              </View>
+              <TouchableOpacity 
+                style={[styles.clearButton, { backgroundColor: colors.danger }]}
+                onPress={handleClearImage}
               >
-                <Feather name="x" size={20} color="#FFFFFF" />
+                <Feather name="x" size={20} color={colors.secondary} />
+                <Text style={styles.clearButtonText}>Clear Image</Text>
               </TouchableOpacity>
-            </View>
+            </>
           ) : (
-            <View style={styles.placeholderContainer}>
-              <MaterialCommunityIcons
-                name="leaf"
-                size={48}
-                color={colors.primary}
+            <>
+              <MaterialCommunityIcons 
+                name="leaf" 
+                size={48} 
+                color={colors.textLight} 
               />
-              <Text style={styles.placeholderText}>No image selected</Text>
-            </View>
-          )}
-
-          {/* Buttons */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.primary }]}
-              onPress={pickImageFromGallery}
-              disabled={analyzing}
-            >
-              <Feather name="image" size={20} color="#FFFFFF" />
-              <Text style={styles.buttonText}>Gallery</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.primaryLight }]}
-              onPress={pickImageFromCamera}
-              disabled={analyzing}
-            >
-              <Feather name="camera" size={20} color="#FFFFFF" />
-              <Text style={styles.buttonText}>Camera</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Error Message */}
-          {error && (
-            <View style={[styles.errorBox, { borderColor: colors.danger }]}>
-              <Feather name="alert-circle" size={18} color={colors.danger} />
-              <Text style={[styles.errorText, { color: colors.danger }]}>
-                {error}
+              <Text style={[styles.placeholderText, { color: colors.textLight }]}>
+                No image selected
               </Text>
-            </View>
+              <Text style={[styles.placeholderSubtext, { color: colors.border }]}>
+                Select an image of your pepper leaf
+              </Text>
+            </>
           )}
+        </View>
 
-          {/* Analyze Button */}
-          <TouchableOpacity
-            style={[
-              styles.analyzeButton,
-              {
-                backgroundColor: imageUri ? colors.primary : `${colors.primary}55`,
-              },
-            ]}
-            onPress={handleAnalyze}
-            disabled={!imageUri || analyzing}
+        {/* Action Buttons */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={[styles.actionButton, { 
+              backgroundColor: colors.primary,
+              flex: 1,
+              marginRight: 8
+            }]}
+            onPress={pickImageFromCamera}
+            disabled={analyzing}
           >
-            {analyzing ? (
-              <>
-                <ActivityIndicator color="#FFFFFF" />
-                <Text style={styles.analyzeButtonText}>Analyzing...</Text>
-              </>
-            ) : (
-              <>
-                <MaterialCommunityIcons name="magnify" size={20} color="#FFFFFF" />
-                <Text style={styles.analyzeButtonText}>Analyze Leaf</Text>
-              </>
-            )}
+            <Feather name="camera" size={20} color={colors.secondary} />
+            <Text style={styles.buttonText}>Camera</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.actionButton, { 
+              backgroundColor: colors.primary,
+              flex: 1,
+              marginLeft: 8
+            }]}
+            onPress={pickImageFromGallery}
+            disabled={analyzing}
+          >
+            <Feather name="image" size={20} color={colors.secondary} />
+            <Text style={styles.buttonText}>Gallery</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Error Display */}
+        {error && (
+          <View style={[styles.errorBox, { backgroundColor: colors.danger + '15', borderColor: colors.danger }]}>
+            <Feather name="alert-circle" size={20} color={colors.danger} />
+            <Text style={[styles.errorText, { color: colors.danger }]}>
+              {error}
+            </Text>
+          </View>
+        )}
+
+        {/* Analyze Button */}
+        <TouchableOpacity 
+          style={[styles.analyzeButton, { 
+            backgroundColor: colors.primaryLight,
+            opacity: imageUri && !analyzing ? 1 : 0.6
+          }]}
+          onPress={handleAnalyze}
+          disabled={!imageUri || analyzing}
+        >
+          {analyzing ? (
+            <>
+              <ActivityIndicator size="small" color={colors.secondary} />
+              <Text style={styles.analyzeButtonText}>Analyzing...</Text>
+            </>
+          ) : (
+            <>
+              <Feather name="zap" size={20} color={colors.secondary} />
+              <Text style={styles.analyzeButtonText}>Analyze Leaf</Text>
+            </>
+          )}
+        </TouchableOpacity>
 
         {/* Result Section */}
         {result && (
@@ -565,62 +579,51 @@ const styles = StyleSheet.create({
     color: '#5A7A73',
     fontWeight: '500',
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  imageSection: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 12,
     padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    minHeight: 250,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1B4D3E',
-    marginBottom: 16,
+  selectedImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 12,
   },
-  previewContainer: {
+  imageContainer: {
     position: 'relative',
-    marginBottom: 16,
+    width: '100%',
+    height: 250,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  preview: {
-    width: '100%',
-    height: 240,
-    borderRadius: 12,
-    backgroundColor: '#F0F0F0',
-  },
-  removeButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#E74C3C',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
+  clearButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  placeholderContainer: {
-    height: 200,
-    backgroundColor: '#F8FAF7',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#D4E5DD',
-    borderStyle: 'dashed',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  clearButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   placeholderText: {
-    fontSize: 14,
-    color: '#5A7A73',
-    marginTop: 8,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  placeholderSubtext: {
+    fontSize: 13,
+    marginTop: 4,
   },
   buttonRow: {
     flexDirection: 'row',

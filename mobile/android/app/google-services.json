@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "729186836002",
+    "project_id": "piper-657b2",
+    "storage_bucket": "piper-657b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:729186836002:android:e3e9687849f7abe4eab47b",
+        "android_client_info": {
+          "package_name": "com.sideeerik.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA32pM7S4ZS_sjr0YK7z7SRfhRFYvBv3fc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

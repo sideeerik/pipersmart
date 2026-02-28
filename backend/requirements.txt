@@ -3,3 +3,12 @@ ultralytics
 opencv-python-headless
 numpy
 requests
+torch
+torchvision
+torchaudio
+pandas
+matplotlib
+seaborn
+tqdm
+pyyaml
+scipy

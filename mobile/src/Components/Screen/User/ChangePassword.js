@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import axios from 'axios';
-import { getToken } from '../../utils/helper';
+import { getToken } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 
 export default function ChangePassword({ navigation }) {

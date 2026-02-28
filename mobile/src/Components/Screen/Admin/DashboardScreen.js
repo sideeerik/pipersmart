@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button } from 'react-native';
-import { getUser, logout } from '../../utils/helper';
+import { getUser, logout } from '../../utils/helpers';
 
 export default function DashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);

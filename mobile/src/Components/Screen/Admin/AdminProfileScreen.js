@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, Image, ActivityIndicator, ScrollView } from 'react-native';
 import axios from 'axios';
-import { getToken } from '../../utils/helper';
+import { getToken, getUser, logout } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 
 export default function AdminProfileScreen({ navigation, route }) {

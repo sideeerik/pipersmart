@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import { getToken, getUser } from '../../utils/helper';
+import { getToken, getUser } from '../../utils/helpers';
 
 const { width } = Dimensions.get('window');
 

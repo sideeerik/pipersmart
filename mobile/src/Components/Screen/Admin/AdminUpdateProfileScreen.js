@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Alert, ScrollView, Text, Image, TouchableOpacity } from 'react-native';
 import axios from 'axios';
-import { getToken } from '../../utils/helper';
+import { getUser, saveUser, getToken } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 import * as ImagePicker from 'expo-image-picker';
 

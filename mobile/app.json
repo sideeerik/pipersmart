@@ -17,8 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.sideeerik.mobile",
       "buildNumber": "1",
-      "config": {
-      },
+      "config": {},
       "infoPlist": {
         "NSCameraUsageDescription": "We need camera access to capture images of black pepper bunches for ripeness detection and disease analysis.",
         "NSPhotoLibraryUsageDescription": "We need photo library access to select images of black pepper bunches for analysis.",
@@ -38,7 +37,10 @@
         "googleMaps": {
           "apiKey": "AIzaSyBoKXxpyQGxiPdplqOjiALoU0lRhxuGhKA"
         }
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -63,6 +65,11 @@
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.ACCESS_COARSE_LOCATION",
       "android.permission.ACCESS_FINE_LOCATION"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "03a6795d-10bc-4789-bace-8c8cf3e66a4e"
+      }
+    }
   }
 }

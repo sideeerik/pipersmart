@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import { getUser, getToken, onAuthChange } from '../utils/helper';
+import { getUser, getToken, onAuthChange } from '../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 
 export default function MobileHeader({ navigation, drawerOpen = false, openDrawer = () => {}, closeDrawer = () => {}, drawerSlideAnim, user, onLogout }) {

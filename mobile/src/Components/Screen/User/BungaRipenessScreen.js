@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileHeader from '../../shared/MobileHeader';
-import { getUser } from '../../utils/helper';
+import { getUser } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 import RealtimeBungaAnalyzer from './RealtimeBungaAnalyzer';
 import BoundingBoxOverlay from './BoundingBoxOverlay';

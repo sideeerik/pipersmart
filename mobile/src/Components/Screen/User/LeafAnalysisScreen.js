@@ -16,7 +16,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { logout } from '../../utils/helper';
+import { getUser, logout } from '../../utils/helpers';
 import MobileHeader from '../../shared/MobileHeader';
 import RealtimeLeafAnalyzer from './RealtimeLeafAnalyzer';
 import { BACKEND_URL } from 'react-native-dotenv';
@@ -116,7 +116,7 @@ export default function LeafAnalysisScreen({ navigation }) {
   const pickImageFromGallery = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -147,7 +147,7 @@ export default function LeafAnalysisScreen({ navigation }) {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -206,7 +206,7 @@ export default function LeafAnalysisScreen({ navigation }) {
             'Content-Type': 'multipart/form-data',
             'Authorization': token,
           },
-          timeout: 45000,
+          timeout: 120000,
         }
       );
 
@@ -226,11 +226,17 @@ export default function LeafAnalysisScreen({ navigation }) {
       }
     } catch (err) {
       console.error('❌ Prediction error:', err);
+      console.error('❌ Error code:', err?.code);
+      console.error('❌ Error message:', err?.message);
+      console.error('❌ Response status:', err?.response?.status);
+      console.error('❌ Response data:', err?.response?.data);
       
       let errorMsg = 'Failed to analyze image. Please try again.';
       
       if (err.response?.data?.error) {
         errorMsg = err.response.data.error;
+      } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+        errorMsg = 'Request timeout. First run may take 1-2 minutes while models initialize. Try again.';
       } else if (err.message === 'Network Error') {
         errorMsg = 'Network error. Make sure backend is running and IP is correct.';
       } else if (err.code === 'ECONNREFUSED') {

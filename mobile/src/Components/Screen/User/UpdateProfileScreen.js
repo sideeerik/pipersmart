@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, Alert, ScrollView, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, SafeAreaView, StatusBar } from 'react-native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { getToken, updateUser, notifyAuthChange } from '../../utils/helper';
+import { getToken, updateUser, notifyAuthChange } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 import MobileHeader from '../../shared/MobileHeader';
 

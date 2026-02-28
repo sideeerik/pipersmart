@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import MobileHeader from '../../shared/MobileHeader';
-import { getUser } from '../../utils/helper';
+import { getUser } from '../../utils/helpers';
 
 export default function ContactScreen({ navigation }) {
   const [user, setUser] = useState(null);

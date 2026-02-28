@@ -13,7 +13,7 @@ import {
   Animated,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { logout } from '../../utils/helper';
+import { getUser, logout } from '../../utils/helpers';
 import MobileHeader from '../../shared/MobileHeader';
 import { getWeatherData, getFarmingRecommendations } from '../../../utils/weatherService';
 import { BACKEND_URL } from 'react-native-dotenv';

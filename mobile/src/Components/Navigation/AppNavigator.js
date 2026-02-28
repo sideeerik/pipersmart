@@ -4,7 +4,7 @@ import axios from 'axios';
 import { BACKEND_URL } from 'react-native-dotenv';
 import UserStack from './UserStack';
 import AdminStack from './AdminStack';
-import { getUser, getToken, onAuthChange } from '../utils/helper';
+import { getUser, getToken, onAuthChange } from '../utils/helpers';
 
 export default function AppNavigator() {
   const [userRole, setUserRole] = useState(null);

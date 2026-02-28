@@ -16,8 +16,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import axios from 'axios';
+import { getToken } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
-import { getUser, getToken, onAuthChange } from '../utils/helper';
 
 const { width, height } = Dimensions.get('window');
 

@@ -18,7 +18,7 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import axios from 'axios';
 import MobileHeader from '../../shared/MobileHeader';
-import { getUser } from '../../utils/helper';
+import { getUser, logout } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 
 export default function KnowledgeScreen({ navigation }) {

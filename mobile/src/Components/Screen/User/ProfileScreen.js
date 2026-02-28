@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, Image, ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, Animated, SafeAreaView, StatusBar } from 'react-native';
-import { getUser, getToken } from '../../utils/helper';
+import { getUser, getToken } from '../../utils/helpers';
 import axios from 'axios';
 import { BACKEND_URL } from 'react-native-dotenv';
 import MobileHeader from '../../shared/MobileHeader';

@@ -9,11 +9,16 @@ import {
   StatusBar,
   Alert,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BACKEND_URL } from 'react-native-dotenv';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useFocusEffect } from '@react-navigation/native';
+import ObjectDetectionOverlay from './ObjectDetectionOverlay';
+import { getUser } from '../../utils/helpers';
 
 export default function RealtimeLeafAnalyzer({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();

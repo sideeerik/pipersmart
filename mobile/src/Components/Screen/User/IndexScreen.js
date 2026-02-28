@@ -16,7 +16,7 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileHeader from '../../shared/MobileHeader';
 import MobileFooter from '../../shared/MobileFooter';
-import { logout, getUser } from '../../utils/helper';
+import { logout, getUser } from '../../utils/helpers';
 
 const { width } = Dimensions.get('window');
 

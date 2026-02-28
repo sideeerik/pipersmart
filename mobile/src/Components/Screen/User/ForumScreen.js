@@ -21,7 +21,7 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
-import { logout, getUser } from '../../utils/helper';
+import { logout, getUser } from '../../utils/helpers';
 import MobileHeader from '../../shared/MobileHeader';
 
 const { width } = Dimensions.get('window');

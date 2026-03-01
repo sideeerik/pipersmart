@@ -653,37 +653,37 @@ export default function BungaRipenessScreen({ navigation }) {
               <>
                 <View style={styles.resultHeader}>
                   <Text style={styles.resultPrediction}>
-                    {ripenessRecommendations[result.ripeness]?.icon || '?'} 
-                    {result.ripeness || 'Unknown'}
+                    {ripenessRecommendations[result.ripeness]?.icon || '?'} {result.ripeness || 'Unknown'}
                   </Text>
                 </View>
                 
                 {result.class && !result.class.toLowerCase().includes('rotten') && (
                   <View>
                     {(() => {
-                      // Parse class like "Class A-a" to extract ripeness letter
-                      const classMatch = result.class.match(/Class\s*([A-D])-([a-d])/)
-                      const ripenessLetter = classMatch ? classMatch[1] : null;
-                      const healthLetter = classMatch ? classMatch[2] : null;
+                      const classMatch = result.class.match(/Class\s*([A-D])-([a-d])/);
+                      if (!classMatch) {
+                        return (
+                          <Text style={[styles.resultPrediction, { fontSize: 14, marginTop: 6, color: colors.textLight }]}>
+                            Ripeness: {result.ripeness || 'Unknown'}
+                          </Text>
+                        );
+                      }
                       
-                      // Map ripeness letter to percentage range
+                      const ripenessLetter = classMatch[1];
                       const ripenessRanges = {
                         'A': '76-100%',
                         'B': '51-75%',
                         'C': '26-50%',
                         'D': '0-25%'
                       };
-                      
-                      const ripenessRange = ripenessLetter ? ripenessRanges[ripenessLetter] : 'Unknown';
+                      const ripenessRange = ripenessRanges[ripenessLetter] || 'Unknown';
                       
                       return (
                         <>
                           <Text style={[styles.resultPrediction, { fontSize: 14, marginTop: 6, color: colors.textLight }]}>
-                            {result.ripeness_percentage 
-                              ? `Ripeness ${result.ripeness_percentage}%`
-                              : `Ripeness at ${ripenessRange}`}
+                            {result.ripeness_percentage ? `Ripeness ${result.ripeness_percentage}%` : `Ripeness at ${ripenessRange}`}
                           </Text>
-                          {result.health_percentage !== undefined && (
+                          {result.health_percentage > 0 && (
                             <Text style={[styles.resultPrediction, { fontSize: 14, marginTop: 4, color: colors.textLight }]}>
                               Health {result.health_percentage}%
                             </Text>

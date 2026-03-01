@@ -487,7 +487,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
                   <Text style={[styles.resultCardTitle, { color: colors.primaryLight }]}> ◉ RIPENESS</Text>
                 </View>
                 <Text style={[styles.resultCardValue, { color: colors.primaryLight }]}>
-                  {result.class || result.ripeness} {result.ripeness_percentage ? `(${result.ripeness_percentage}%)` : ''}
+                  {result.class || result.ripeness}{result.ripeness_percentage ? ` (${result.ripeness_percentage}%)` : ''}
                 </Text>
                 <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
                   Confidence: {Math.round(result.ripeness_confidence)}%
@@ -509,7 +509,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
                     Class {result.health_class}
                   </Text>
                   <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
-                    Health: {result.health_percentage}% ({result.health_range})
+                    Health: {result.health_percentage}% {result.health_range ? `(${result.health_range})` : ''}
                   </Text>
                 </>
               ) : (

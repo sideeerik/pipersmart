@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from ultralytics import YOLO
 import time
 from pathlib import Path
+import gc
 
 # Initialize Flask App
 app = Flask(__name__)
@@ -17,40 +18,51 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LEAF_MODEL_PATH = os.path.join(BASE_DIR, '../ml_models/leaf/train/weights/best.pt')
 BUNGA_MODEL_PATH = os.path.join(BASE_DIR, '../ml_models/bunga/train/weights/best.pt')
 
-# --- GLOBAL MODEL STORAGE ---
+# --- GLOBAL MODEL STORAGE (LAZY LOADING) ---
 models = {
     'leaf': None,
     'bunga': None
 }
 
-def load_models():
-    """Load YOLO models into memory once at startup"""
-    print("⏳ [SERVER] Loading models into memory... This may take a few seconds.")
+def get_model(model_name):
+    """
+    Lazy loads the requested model and unloads others to save memory.
+    """
+    global models
     
-    # Load Leaf Disease Model
-    if os.path.exists(LEAF_MODEL_PATH):
-        try:
-            print(f"🍃 [SERVER] Loading Leaf Model: {LEAF_MODEL_PATH}")
-            models['leaf'] = YOLO(LEAF_MODEL_PATH)
-            print("✅ [SERVER] Leaf Model Loaded Successfully!")
-        except Exception as e:
-            print(f"❌ [SERVER] Failed to load Leaf Model: {e}")
-    else:
-        print(f"⚠️ [SERVER] Leaf Model not found at {LEAF_MODEL_PATH}")
+    # 1. Check if requested model is already loaded
+    if models.get(model_name) is not None:
+        return models[model_name]
 
-    # Load Bunga Model (Optional/Future)
-    if os.path.exists(BUNGA_MODEL_PATH):
-        try:
-            print(f"🌸 [SERVER] Loading Bunga Model: {BUNGA_MODEL_PATH}")
-            models['bunga'] = YOLO(BUNGA_MODEL_PATH)
-            print("✅ [SERVER] Bunga Model Loaded Successfully!")
-        except Exception as e:
-            print(f"❌ [SERVER] Failed to load Bunga Model: {e}")
-    else:
-        print(f"⚠️ [SERVER] Bunga Model not found at {BUNGA_MODEL_PATH}")
+    print(f"🔄 [SERVER] Switching to '{model_name}' model. Unloading others...")
 
-# Load models immediately
-load_models()
+    # 2. Unload ALL other models to free memory
+    for name in list(models.keys()):
+        if name != model_name and models[name] is not None:
+            print(f"🗑️ [SERVER] Unloading '{name}' model...")
+            del models[name]
+            models[name] = None
+    
+    # Force garbage collection
+    gc.collect()
+
+    # 3. Load the requested model
+    model_path = LEAF_MODEL_PATH if model_name == 'leaf' else BUNGA_MODEL_PATH
+    
+    if not os.path.exists(model_path):
+        print(f"❌ [SERVER] Model file not found: {model_path}")
+        return None
+
+    try:
+        print(f"📥 [SERVER] Loading '{model_name}' model from disk...")
+        models[model_name] = YOLO(model_path)
+        print(f"✅ [SERVER] '{model_name}' Model Loaded Successfully!")
+        return models[model_name]
+    except Exception as e:
+        print(f"❌ [SERVER] Failed to load '{model_name}' model: {e}")
+        return None
+
+# NOTE: Removed load_models() call at startup to save memory!
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -59,7 +71,8 @@ def health_check():
         "models_loaded": {
             "leaf": models['leaf'] is not None,
             "bunga": models['bunga'] is not None
-        }
+        },
+        "memory_optimization": "lazy_loading_enabled"
     })
 
 @app.route('/predict/leaf', methods=['POST'])
@@ -106,13 +119,14 @@ def predict_leaf():
     img_height, img_width = img.shape[:2]
     
     try:
-        # 2. Check if model is loaded
-        if models['leaf'] is None:
-            return jsonify({"success": False, "error": "Leaf model not loaded on server"}), 503
+        # 2. Get Model (Lazy Load)
+        model = get_model('leaf')
+        if model is None:
+            return jsonify({"success": False, "error": "Failed to load leaf model"}), 500
 
         # 3. Run Inference (Fast!)
         # conf=0.10: Low threshold to catch diseases
-        results = models['leaf'].predict(
+        results = model.predict(
             img,
             conf=0.10,
             imgsz=640,
@@ -178,6 +192,6 @@ def predict_leaf():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("🚀 Starting Python Inference Server on port 5000...")
+    print("🚀 Starting Python Inference Server on port 5000 (Lazy Loading Enabled)...")
     print("⚠️  Ensure you have 'flask' installed: pip install flask")
     app.run(host='0.0.0.0', port=5000, debug=False)

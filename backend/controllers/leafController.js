@@ -41,75 +41,52 @@ exports.analyzeLeaf = async (req, res) => {
     console.log(`💾 [${requestId}] Temp file saved: ${tempImagePath}`);
 
     // 2. Run Python Prediction Script
-    let result = null;
-    
-    // ATTEMPT 1: Try Fast Python Service (localhost:5000)
-    try {
-        console.log(`⚡ [${requestId}] Attempting fast inference via Python Service...`);
-        const response = await axios.post('http://localhost:5000/predict/leaf', {
-            file_path: tempImagePath
-        }, { timeout: 10000 }); // 10s timeout
-        
-        if (response.data && response.data.success) {
-            result = response.data;
-            console.log(`✅ [${requestId}] Fast inference success! (${result.server_processing_time_ms}ms)`);
-        }
-    } catch (serviceError) {
-        console.log(`⚠️ [${requestId}] Fast inference failed/unavailable (${serviceError.message}). Falling back to CLI script...`);
-    }
+    let result = await new Promise((resolve, reject) => {
+      // Python script path
+      const pythonScriptPath = path.join(__dirname, '../utils/predict_disease_yolov8.py');
+      const modelPath = path.join(__dirname, '../ml_models/leaf/train/weights/best.pt');
+      const pythonExe = process.env.PYTHON_EXE || 'python';
+      
+      console.log(`🐍 [${requestId}] Spawning Python CLI (CPU-Optimized)...`);
+      
+      // Use spawn without shell: true - Node.js handles paths with spaces correctly
+      const python = spawn(pythonExe, [pythonScriptPath, tempImagePath, modelPath], {
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
 
-    // ATTEMPT 2: Fallback to slow CLI script if service failed
-    if (!result) {
-        result = await new Promise((resolve, reject) => {
-          // Python script path
-          const pythonScriptPath = path.join(__dirname, '../utils/predict_disease_yolov8.py');
-          const modelPath = path.join(__dirname, '../ml_models/leaf/train/weights/best.pt');
-          const pythonExe = process.env.PYTHON_EXE || 'python';
-          
-          console.log(`🐍 [${requestId}] Spawning Python CLI (CPU-Optimized)...`);
-          
-          // Use spawn without shell: true - Node.js handles paths with spaces correctly
-          const python = spawn(pythonExe, [pythonScriptPath, tempImagePath, modelPath], {
-            stdio: ['ignore', 'pipe', 'pipe']
-          });
-    
-          let output = '';
-          let errorOutput = '';
-    
-          python.stdout.on('data', (data) => {
-            output += data.toString();
-          });
-    
-          python.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-            console.error(`⚠️ [${requestId}] Python stderr: ${data}`);
-          });
-    
-          python.on('close', (code) => {
-            // Clean up temp file (local) - ONLY if fast service didn't handle it
-            // Actually we should keep it until end of request for Cloudinary upload
-            
-            if (code === 0) {
-              try {
-                const parsedOutput = JSON.parse(output.trim());
-                resolve(parsedOutput);
-              } catch (e) {
-                console.error(`[${requestId}] Error parsing Python output:`, e);
-                reject(new Error('Invalid prediction output'));
-              }
-            } else {
-              console.error(`[${requestId}] Python process exited with code ${code}`);
-              console.error(`[${requestId}] Error: ${errorOutput}`);
-              reject(new Error(`Prediction failed: ${errorOutput || 'Unknown error'}`));
-            }
-          });
-    
-          python.on('error', (err) => {
-            console.error(`[${requestId}] Failed to start Python process:`, err);
-            reject(new Error('Failed to start prediction service'));
-          });
-        });
-    }
+      let output = '';
+      let errorOutput = '';
+
+      python.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      python.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+        console.error(`⚠️ [${requestId}] Python stderr: ${data}`);
+      });
+
+      python.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const parsedOutput = JSON.parse(output.trim());
+            resolve(parsedOutput);
+          } catch (e) {
+            console.error(`[${requestId}] Error parsing Python output:`, e);
+            reject(new Error('Invalid prediction output'));
+          }
+        } else {
+          console.error(`[${requestId}] Python process exited with code ${code}`);
+          console.error(`[${requestId}] Error: ${errorOutput}`);
+          reject(new Error(`Prediction failed: ${errorOutput || 'Unknown error'}`));
+        }
+      });
+
+      python.on('error', (err) => {
+        console.error(`[${requestId}] Failed to start Python process:`, err);
+        reject(new Error('Failed to start prediction service'));
+      });
+    });
 
     // Clean up temp file (local)
     // We do this AFTER getting result (either way) but BEFORE uploading?

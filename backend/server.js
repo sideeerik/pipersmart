@@ -13,18 +13,61 @@ console.log('✅ Environment variables loaded:');
 console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? '✓ Set' : '✗ Missing');
 console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? '✓ Set' : '✗ Missing');
 console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? '✓ Set' : '✗ Missing');
+console.log('DB_URI:', process.env.DB_URI ? '✓ Set' : '✗ Missing - THIS WILL CAUSE STARTUP FAILURE');
 
 // Now import other modules AFTER environment variables are loaded
 const app = require('./app');
 const connectDatabase = require('./config/db');
 
-connectDatabase();
+// Start server with proper error handling
+const startServer = async () => {
+  try {
+    console.log('🚀 Starting server...');
+    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔌 Port: ${process.env.PORT || 4001}`);
+    
+    // Connect to database FIRST with timeout
+    console.log('⏱️  Connecting to database (max 30 seconds)...');
+    const dbTimeout = setTimeout(() => {
+      console.error('⏰ Database connection timeout - taking too long');
+    }, 30000);
 
-// Start server with increased timeout for long ML inference tasks
-const server = app.listen(process.env.PORT, () => {
-  console.log(`Server started on port: ${process.env.PORT} in ${process.env.NODE_ENV} mode`);
-});
+    await connectDatabase();
+    clearTimeout(dbTimeout);
+    console.log('✅ Database connected successfully');
+    
+    // Then start the Express server
+    const server = app.listen(process.env.PORT || 4001, () => {
+      console.log(`✅ Express server is listening on port: ${process.env.PORT || 4001}`);
+      console.log('🎉 Server fully started and ready for requests!');
+    });
 
-// Set server timeout to 2 minutes (120000ms) to allow time for Python ML model inference
-server.setTimeout(120000);
-server.keepAliveTimeout = 65000;
+    // Set server timeout to 2 minutes (120000ms) to allow time for Python ML model inference
+    server.setTimeout(120000);
+    server.keepAliveTimeout = 65000;
+
+    // Handle graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('🛑 SIGTERM received, closing server gracefully...');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      console.log('🛑 SIGINT received, closing server gracefully...');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();

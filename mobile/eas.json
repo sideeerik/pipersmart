@@ -8,6 +8,10 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "BACKEND_URL": "https://pipersmart.onrender.com",
+        "GOOGLE_WEB_CLIENT_ID": "279289326349-go9ksoacdu4ivp35kipicj2l6cgj1qtj.apps.googleusercontent.com"
       }
     },
     "production": {}

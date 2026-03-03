@@ -57,8 +57,9 @@ exports.getBungaAnalysisReports = async (req, res) => {
       const healthClass = analysis.results.health_class || 'null';
       healthClassStats[healthClass]++;
 
-      // Average confidence
-      confidenceSum += analysis.results.confidence;
+      // Average confidence - ensure it's converted to number
+      const confidence = parseFloat(analysis.results.confidence) || 0;
+      confidenceSum += confidence;
 
       // Total processing time
       totalProcessingTime += analysis.processingTime;
@@ -180,8 +181,9 @@ exports.getLeafAnalysisReports = async (req, res) => {
       const disease = analysis.results.disease;
       diseaseStats[disease] = (diseaseStats[disease] || 0) + 1;
 
-      // Average confidence
-      confidenceSum += analysis.results.confidence;
+      // Average confidence - ensure it's converted to number
+      const confidence = parseFloat(analysis.results.confidence) || 0;
+      confidenceSum += confidence;
 
       // Total processing time
       totalProcessingTime += analysis.processingTime;
@@ -302,10 +304,11 @@ exports.getDashboardStats = async (req, res) => {
       if (analysis.results.ripeness === 'Ripe') ripeCount++;
       else if (analysis.results.ripeness === 'Unripe') unripeCount++;
       else if (analysis.results.ripeness === 'Rotten') rottenCount++;
-      avgConfidence += analysis.results.confidence;
+      avgConfidence += parseFloat(analysis.results.confidence) || 0;
     });
 
-    avgConfidence = totalBungaAnalyses > 0 ? (avgConfidence / totalBungaAnalyses).toFixed(2) : 0;
+    const totalBungaCount = allBungaAnalyses.length;
+    avgConfidence = totalBungaCount > 0 ? (avgConfidence / totalBungaCount).toFixed(2) : 0;
 
     res.status(200).json({
       success: true,

@@ -75,6 +75,10 @@ app.use('/api/v1', notificationRoutes);
 const reportsRoutes = require('./routes/Reports');
 app.use('/api/v1/reports', reportsRoutes);
 
+// ========== DASHBOARD ROUTES ==========
+const dashboardRoutes = require('./routes/Dashboard');
+app.use('/api/v1/dashboard', dashboardRoutes);
+
 // ========== HEALTH CHECK ==========
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

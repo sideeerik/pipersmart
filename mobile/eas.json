@@ -10,8 +10,8 @@
         "buildType": "apk"
       },
       "env": {
-        "BACKEND_URL": "https://pipersmart.onrender.com",
-        "GOOGLE_WEB_CLIENT_ID": "279289326349-go9ksoacdu4ivp35kipicj2l6cgj1qtj.apps.googleusercontent.com"
+        "BACKEND_URL": "https://dessie-unrevetted-enragedly.ngrok-free.dev",
+        "GOOGLE_WEB_CLIENT_ID": "279289326349-dnepg8lgd1pe7gnf4hf4cnh9e6c23sel.apps.googleusercontent.com"
       }
     },
     "production": {}

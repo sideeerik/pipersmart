@@ -103,11 +103,11 @@ export default function BungaRipenessScreen({ navigation }) {
   };
 
   // Market grading logic
-  const getMarketGrade = (classStr) => {
-    if (!classStr) return null;
+  const getMarketGrade = (ripeness, healthClass) => {
+    if (!ripeness) return null;
     
-    // Check for Reject - Rotten, C-d, D-d
-    if (classStr.toLowerCase() === 'rotten') {
+    // Check for Reject - Rotten
+    if (ripeness.toLowerCase() === 'rotten') {
       return {
         grade: 'Reject',
         icon: '❌',
@@ -122,16 +122,15 @@ export default function BungaRipenessScreen({ navigation }) {
         ]
       };
     }
-    
-    const match = classStr.match(/Class\s*([A-D])-([a-d])/);
-    if (!match) return null;
-    
-    const ripenessLetter = match[1]; // A, B, C, or D
-    const healthLetter = match[2];   // a, b, c, or d
-    
+
+    // If no health class, can't determine grade
+    if (!healthClass) return null;
+
+    const ripenessLetter = ripeness === 'Ripe' ? 'A' : 'C';  // Simplified mapping for frontend
+    const healthLetter = healthClass.toLowerCase();
+
     // Reject: C-d, D-d
-    if ((ripenessLetter === 'C' && healthLetter === 'd') ||
-        (ripenessLetter === 'D' && healthLetter === 'd')) {
+    if ((ripenessLetter === 'C' && healthLetter === 'd')) {
       return {
         grade: 'Reject',
         icon: '❌',
@@ -146,9 +145,9 @@ export default function BungaRipenessScreen({ navigation }) {
         ]
       };
     }
-    
-    // Premium: A-a
-    if (ripenessLetter === 'A' && healthLetter === 'a') {
+
+    // Premium: Ripe with health a
+    if (ripeness === 'Ripe' && healthLetter === 'a') {
       return {
         grade: 'Premium',
         icon: '⭐',
@@ -163,10 +162,10 @@ export default function BungaRipenessScreen({ navigation }) {
         ]
       };
     }
-    
-    // Standard: A-b, B-a, B-b
-    if ((ripenessLetter === 'A' && healthLetter === 'b') ||
-        (ripenessLetter === 'B' && (healthLetter === 'a' || healthLetter === 'b'))) {
+
+    // Standard: Ripe with health b, or Unripe with health a/b
+    if ((ripeness === 'Ripe' && healthLetter === 'b') ||
+        (ripeness === 'Unripe' && (healthLetter === 'a' || healthLetter === 'b'))) {
       return {
         grade: 'Standard',
         icon: '✅',
@@ -181,37 +180,23 @@ export default function BungaRipenessScreen({ navigation }) {
         ]
       };
     }
-    
-    // Commercial: A-c, A-d, B-c, B-d, C-a, C-b, C-c, D-a, D-b, D-c
-    if ((ripenessLetter === 'A' && (healthLetter === 'c' || healthLetter === 'd')) ||
-        (ripenessLetter === 'B' && (healthLetter === 'c' || healthLetter === 'd')) ||
-        (ripenessLetter === 'C' && (healthLetter === 'a' || healthLetter === 'b' || healthLetter === 'c')) ||
-        (ripenessLetter === 'D' && (healthLetter === 'a' || healthLetter === 'b' || healthLetter === 'c'))) {
-      
-      // Customize description based on ripeness
-      let description = '';
-      if (ripenessLetter === 'A' || ripenessLetter === 'B') {
-        description = 'Ripe with maximum taste profile but lower health quality. Ready to dry but quality is reduced due to health issues.';
-      } else {
-        description = 'Ready to dry but taste and spice profile is lacking. Lower quality for commercial use. Consider additional ripening for better results.';
-      }
-      
-      return {
-        grade: 'Commercial',
-        icon: '📦',
-        color: '#F39C12',
-        title: 'Commercial Grade',
-        description: description,
-        actions: [
-          'Can be dried for commercial use',
-          'Acceptable for bulk markets',
-          'Lower quality than Premium or Standard',
-          'Suitable for industrial applications'
-        ]
-      };
-    }
-    
-    return null;
+
+    // Commercial: Everything else
+    return {
+      grade: 'Commercial',
+      icon: '📦',
+      color: '#F39C12',
+      title: 'Commercial Grade',
+      description: ripeness === 'Ripe' 
+        ? 'Ripe with maximum taste profile but lower health quality. Ready to dry but quality is reduced due to health issues.'
+        : 'Ready to dry but taste and spice profile is lacking. Lower quality for commercial use. Consider additional ripening for better results.',
+      actions: [
+        'Can be dried for commercial use',
+        'Acceptable for bulk markets',
+        'Lower quality than Premium or Standard',
+        'Suitable for industrial applications'
+      ]
+    };
   };
 
   // Get market grade for current result
@@ -389,24 +374,31 @@ export default function BungaRipenessScreen({ navigation }) {
 
       console.log('✅ Result:', response.data);
       
+      // Check if backend returned a failure response
+      if (response.data.error || response.data.success === false) {
+        setError(response.data.error || 'Analysis failed');
+        setAnalyzing(false);
+        return;
+      }
+      
       // Process confidence
       let processedResult = response.data;
-      if (processedResult.ripeness_confidence) {
-        let conf = Number(processedResult.ripeness_confidence);
+      if (processedResult.confidence) {
+        let conf = Number(processedResult.confidence);
         while (conf > 100) {
           conf = conf / 10;
         }
         if (conf < 1) {
           conf = conf * 100;
         }
-        processedResult.ripeness_confidence = Math.round(conf * 100) / 100;
+        processedResult.confidence = Math.round(conf * 100) / 100;
       }
       
-      console.log(`✅ ${processedResult.class || processedResult.ripeness} - Health Class ${processedResult.health_class} (${processedResult.health_percentage}%)`);
+      console.log(`✅ ${processedResult.ripeness} - Health Class ${processedResult.health_class} (${processedResult.health_percentage}%)`);
       
-      // Extract data
-      setBungaDetections(processedResult.bunga_detections || []);
-      setOtherObjects(processedResult.other_objects || []);
+      // Extract data (bunga_detections and other_objects no longer returned by backend, default to empty)
+      setBungaDetections([]);
+      setOtherObjects([]);
       setImageSize(processedResult.image_size || null);
       
       setResult(processedResult);
@@ -512,8 +504,11 @@ export default function BungaRipenessScreen({ navigation }) {
         contentContainerStyle={{ paddingBottom: 20 }}
       >
         <View style={[styles.headerSection, { backgroundColor: colors.primary }]}>
-          <Feather name="alert-circle" size={32} color={colors.accent} />
-          <Text style={styles.headerTitle}>Bunga Ripeness Detection</Text>
+          <Image 
+            source={require('../../../../picsbl/logowalangbg.png')} 
+            style={styles.logoImage}
+          />
+          <Text style={styles.headerTitle}>🔬 Bunga Analysis</Text>
           <Text style={styles.headerSubtitle}>
             Analyze the ripeness of your black pepper bunches for optimal harvest timing
           </Text>
@@ -521,12 +516,18 @@ export default function BungaRipenessScreen({ navigation }) {
 
         {/* Image Selection Section */}
         <View style={[styles.imageSection, { borderColor: colors.border }]}>
-          {imageUri ? (
-            <>
+          {imageUri && imageUri !== '' ? (
+            <View style={{ width: '100%' }}>
               <View style={styles.imageContainer}>
                 <Image 
                   source={{ uri: imageUri }} 
                   style={styles.selectedImage}
+                  onError={(e) => {
+                    console.error('❌ Image load error:', e.nativeEvent?.error);
+                    setError('Failed to load image. Try selecting again.');
+                  }}
+                  onLoadStart={() => console.log('📸 Image loading...')}
+                  onLoadEnd={() => console.log('✅ Image loaded successfully')}
                 />
                 {/* Bounding Box Overlay */}
                 {bungaDetections.length > 0 && (
@@ -545,12 +546,14 @@ export default function BungaRipenessScreen({ navigation }) {
                 style={[styles.clearButton, { backgroundColor: colors.danger }]}
                 onPress={handleClearImage}
               >
-                <Feather name="x" size={20} color={colors.secondary} />
-                <Text style={styles.clearButtonText}>Clear Image</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Feather name="x" size={20} color={colors.secondary} />
+                  <Text style={styles.clearButtonText}>Clear Image</Text>
+                </View>
               </TouchableOpacity>
-            </>
+            </View>
           ) : (
-            <>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               <MaterialCommunityIcons 
                 name="image-plus" 
                 size={48} 
@@ -562,7 +565,7 @@ export default function BungaRipenessScreen({ navigation }) {
               <Text style={[styles.placeholderSubtext, { color: colors.border }]}>
                 Select an image of your black pepper bunga
               </Text>
-            </>
+            </View>
           )}
         </View>
 
@@ -577,8 +580,10 @@ export default function BungaRipenessScreen({ navigation }) {
             onPress={pickImageFromCamera}
             disabled={analyzing}
           >
-            <Feather name="camera" size={20} color={colors.secondary} />
-            <Text style={styles.actionButtonText}>Camera</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <Feather name="camera" size={20} color={colors.secondary} />
+              <Text style={styles.actionButtonText}>Camera</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -590,8 +595,10 @@ export default function BungaRipenessScreen({ navigation }) {
             onPress={pickImageFromGallery}
             disabled={analyzing}
           >
-            <Feather name="image" size={20} color={colors.secondary} />
-            <Text style={styles.actionButtonText}>Gallery</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <Feather name="image" size={20} color={colors.secondary} />
+              <Text style={styles.actionButtonText}>Gallery</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -605,25 +612,27 @@ export default function BungaRipenessScreen({ navigation }) {
           disabled={!imageUri || analyzing}
         >
           {analyzing ? (
-            <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
               <ActivityIndicator size="small" color={colors.secondary} />
               <Text style={styles.analyzeButtonText}>Analyzing...</Text>
-            </>
+            </View>
           ) : (
-            <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
               <Feather name="zap" size={20} color={colors.secondary} />
               <Text style={styles.analyzeButtonText}>Analyze Ripeness</Text>
-            </>
+            </View>
           )}
         </TouchableOpacity>
 
         {/* Error Display */}
         {error && (
           <View style={[styles.errorBox, { backgroundColor: colors.danger + '15', borderColor: colors.danger }]}>
-            <Feather name="alert-circle" size={20} color={colors.danger} />
-            <Text style={[styles.errorText, { color: colors.danger }]}>
-              {error}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Feather name="alert-circle" size={20} color={colors.danger} />
+              <Text style={[styles.errorText, { color: colors.danger }]}>
+                {error}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -633,17 +642,19 @@ export default function BungaRipenessScreen({ navigation }) {
             {/* Not a Black Pepper Warning */}
             {result.is_black_pepper === false && (
               <View style={[styles.warningBox, { backgroundColor: colors.danger + '20', borderColor: colors.danger }]}>
-                <Feather name="alert-triangle" size={24} color={colors.danger} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.warningTitle, { color: colors.danger }]}>
-                    ❌ Invalid Image
-                  </Text>
-                  <Text style={[styles.warningText, { color: colors.text }]}>
-                    {result.error || 'This does not appear to be a black pepper bunga.'}
-                  </Text>
-                  <Text style={[styles.warningSubtext, { color: colors.textLight }]}>
-                    {result.message || 'Please take a clear photo of a black pepper bunch and try again.'}
-                  </Text>
+                <View style={{ flexDirection: 'row' }}>
+                  <Feather name="alert-triangle" size={24} color={colors.danger} />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.warningTitle, { color: colors.danger }]}>
+                      ❌ Invalid Image
+                    </Text>
+                    <Text style={[styles.warningText, { color: colors.text }]}>
+                      {result.error || 'This does not appear to be a black pepper bunga.'}
+                    </Text>
+                    <Text style={[styles.warningSubtext, { color: colors.textLight }]}>
+                      {result.message || 'Please take a clear photo of a black pepper bunch and try again.'}
+                    </Text>
+                  </View>
                 </View>
               </View>
             )}
@@ -653,49 +664,31 @@ export default function BungaRipenessScreen({ navigation }) {
               <>
                 <View style={styles.resultHeader}>
                   <Text style={styles.resultPrediction}>
-                    {ripenessRecommendations[result.ripeness]?.icon || '?'} {result.ripeness || 'Unknown'}
+                    {(ripenessRecommendations[result.ripeness]?.icon || '?')} {(result.ripeness || 'Unknown')}
                   </Text>
                 </View>
                 
-                {result.class && !result.class.toLowerCase().includes('rotten') && (
+                {result.ripeness && result.ripeness.toLowerCase() !== 'rotten' && (
                   <View>
                     {(() => {
-                      const classMatch = result.class.match(/Class\s*([A-D])-([a-d])/);
-                      if (!classMatch) {
-                        return (
-                          <Text style={[styles.resultPrediction, { fontSize: 14, marginTop: 6, color: colors.textLight }]}>
-                            Ripeness: {result.ripeness || 'Unknown'}
-                          </Text>
-                        );
-                      }
-                      
-                      const ripenessLetter = classMatch[1];
-                      const ripenessRanges = {
-                        'A': '76-100%',
-                        'B': '51-75%',
-                        'C': '26-50%',
-                        'D': '0-25%'
-                      };
-                      const ripenessRange = ripenessRanges[ripenessLetter] || 'Unknown';
-                      
                       return (
-                        <>
+                        <View>
                           <Text style={[styles.resultPrediction, { fontSize: 14, marginTop: 6, color: colors.textLight }]}>
-                            {result.ripeness_percentage ? `Ripeness ${result.ripeness_percentage}%` : `Ripeness at ${ripenessRange}`}
+                            {result.ripeness_percentage ? `Ripeness ${result.ripeness_percentage}%` : `Ripeness: ${result.ripeness}`}
                           </Text>
-                          {result.health_percentage > 0 && (
+                          {result.health_percentage && result.health_percentage > 0 && (
                             <Text style={[styles.resultPrediction, { fontSize: 14, marginTop: 4, color: colors.textLight }]}>
                               Health {result.health_percentage}%
                             </Text>
                           )}
-                        </>
+                        </View>
                       );
                     })()}
                   </View>
                 )}
 
                 {/* Confidence Score */}
-                {result.ripeness_confidence && !result.class?.toLowerCase().includes('rotten') && (
+                {result.confidence && !result.ripeness?.toLowerCase().includes('rotten') && (
                   <View style={[styles.confidenceBox, { backgroundColor: colors.background }]}>
                     <Text style={[styles.confidenceLabel, { color: colors.textLight }]}>
                       Detection Confidence
@@ -705,24 +698,24 @@ export default function BungaRipenessScreen({ navigation }) {
                         style={[
                           styles.confidenceBarFill,
                           { 
-                            width: `${result.ripeness_confidence}%`,
+                            width: `${result.confidence}%`,
                             backgroundColor: 
-                              result.ripeness_confidence > 80 ? colors.success : 
-                              result.ripeness_confidence > 60 ? colors.warning : 
+                              result.confidence > 80 ? colors.success : 
+                              result.confidence > 60 ? colors.warning : 
                               colors.danger
                           }
                         ]}
                       />
                     </View>
                     <Text style={[styles.confidenceValue, { color: colors.text }]}>
-                      {Math.round(result.ripeness_confidence)}%
+                      {Math.round(result.confidence)}%
                     </Text>
                   </View>
                 )}
 
                 {/* Market Grading Card */}
                 {(() => {
-                  const marketGrade = getMarketGrade(result.class);
+                  const marketGrade = getMarketGrade(result.ripeness, result.health_class);
                   if (!marketGrade) return null;
                   return (
                     <View style={[styles.gradeBox, { backgroundColor: marketGrade.color + '20', borderColor: marketGrade.color, borderWidth: 2 }]}>
@@ -900,11 +893,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignItems: 'center',
   },
+  logoImage: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+    marginBottom: 16,
+  },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginTop: 12,
+    marginTop: 0,
     textAlign: 'center',
   },
   headerSubtitle: {
@@ -917,29 +916,44 @@ const styles = StyleSheet.create({
   imageSection: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    borderColor: '#27AE60',
+    padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    minHeight: 250,
+    marginBottom: 24,
+    minHeight: 300,
+    backgroundColor: '#E8F5E9',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   selectedImage: {
     width: '100%',
-    height: 250,
-    borderRadius: 12,
+    height: 280,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#27AE60',
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 250,
-    borderRadius: 12,
+    height: 280,
+    borderRadius: 14,
     overflow: 'hidden',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   placeholderText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     marginTop: 12,
+    color: '#1B4D3E',
   },
   placeholderSubtext: {
     fontSize: 13,
@@ -949,15 +963,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 12,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   clearButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 8,
   },
   buttonRow: {
@@ -968,170 +987,240 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
   actionButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     marginLeft: 8,
   },
   analyzeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 8,
-    marginBottom: 20,
+    paddingVertical: 18,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: '#27AE60',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
   analyzeButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     marginLeft: 8,
   },
   errorBox: {
     flexDirection: 'row',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: 18,
     alignItems: 'center',
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   errorText: {
-    fontSize: 13,
+    fontSize: 14,
     marginLeft: 10,
     flex: 1,
+    fontWeight: '500',
   },
   warningBox: {
     flexDirection: 'row',
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 14,
     borderWidth: 2,
-    marginBottom: 20,
+    marginBottom: 24,
     alignItems: 'flex-start',
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   warningTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 6,
     marginLeft: 12,
   },
   warningText: {
-    fontSize: 14,
+    fontSize: 15,
     marginLeft: 12,
-    marginBottom: 4,
+    marginBottom: 6,
     flex: 1,
     fontWeight: '600',
   },
   warningSubtext: {
-    fontSize: 12,
+    fontSize: 13,
     marginLeft: 12,
     flex: 1,
+    lineHeight: 18,
   },
   resultSection: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
   resultHeader: {
+    paddingBottom: 16,
     marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   resultPrediction: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
     color: '#1B4D3E',
   },
   confidenceBox: {
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    backgroundColor: '#F8FAF7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F39C12',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   confidenceLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
   },
   confidenceBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#E0E0E0',
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   confidenceBarFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 8,
   },
   confidenceValue: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     textAlign: 'right',
+    color: '#1B4D3E',
   },
   gradeBox: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
   gradeTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 2,
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 4,
   },
   gradeSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   gradeDesc: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
   },
   recommendationBox: {
-    marginBottom: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#27AE60',
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingVertical: 16,
+    backgroundColor: '#F0F9F6',
+    borderRadius: 12,
+    shadowColor: '#27AE60',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   recommendationTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 10,
   },
   recommendationDesc: {
     fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 12,
+    lineHeight: 20,
+    marginBottom: 14,
   },
   actionsTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 10,
   },
   actionItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   actionDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 12,
     marginTop: 6,
   },
   actionText: {
-    fontSize: 12,
+    fontSize: 13,
     flex: 1,
-    lineHeight: 16,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   infoBox: {
     flexDirection: 'row',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     alignItems: 'flex-start',
+    marginBottom: 16,
+    backgroundColor: '#F8FAF7',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   infoText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
     marginLeft: 10,
     flex: 1,
   },

@@ -9,10 +9,18 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
+  Image,
 } from 'react-native';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import MobileHeader from '../../shared/MobileHeader';
 import { getUser } from '../../utils/helpers';
+
+const devTeamImages = [
+  require('../../../../picsbl/prof1.png'), // Even Lloyd S. Billoned
+  require('../../../../picsbl/prof2.png'), // Yhanskie Adriel D. Cipriano
+  require('../../../../picsbl/prof3.png'), // Jenard D. Inojales
+  require('../../../../picsbl/prof4.png'), // Lord Cedric O. Villa
+];
 
 export default function ContactScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -83,7 +91,7 @@ export default function ContactScreen({ navigation }) {
   };
 
   const handlePhone = () => {
-    Linking.openURL('tel:+639633769724');
+    Linking.openURL('tel:+639937994369');
   };
 
   const handleFacebook = (url) => {
@@ -109,6 +117,34 @@ export default function ContactScreen({ navigation }) {
           <Text style={styles.tagline}>
             Get in touch with the PiperSmart development team. We're here to support your black pepper farming journey.
           </Text>
+        </View>
+
+        {/* Team Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👥 Meet Our Team</Text>
+          <Text style={styles.sectionDesc}>
+            PiperSmart is developed by a dedicated team of professionals passionate about agricultural technology.
+          </Text>
+          
+          {teamMembers.map((member, idx) => (
+            <View key={idx} style={styles.teamMemberCard}>
+              <Image
+                source={devTeamImages[idx]}
+                style={styles.memberProfileImage}
+              />
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>{member.name}</Text>
+                <Text style={styles.memberRole}>{member.role}</Text>
+                <TouchableOpacity
+                  style={styles.facebookBtn}
+                  onPress={() => handleFacebook(member.facebookLink)}
+                >
+                  <FontAwesome name="facebook" size={14} color="white" />
+                  <Text style={styles.facebookBtnText}>Profile</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* Contact Information Section */}
@@ -138,7 +174,7 @@ export default function ContactScreen({ navigation }) {
             </View>
             <View style={styles.contactContent}>
               <Text style={styles.contactLabel}>Phone</Text>
-              <Text style={styles.contactValue}>+63 963 376 9724</Text>
+              <Text style={styles.contactValue}>0993 799 4369</Text>
               <Text style={styles.contactHint}>Tap to call</Text>
             </View>
           </TouchableOpacity>
@@ -155,33 +191,6 @@ export default function ContactScreen({ navigation }) {
               <Text style={styles.contactHint}>Message us for inquiries</Text>
             </View>
           </TouchableOpacity>
-        </View>
-
-        {/* Team Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👥 Meet Our Team</Text>
-          <Text style={styles.sectionDesc}>
-            PiperSmart is developed by a dedicated team of professionals passionate about agricultural technology.
-          </Text>
-          
-          {teamMembers.map((member, idx) => (
-            <View key={idx} style={styles.teamMemberCard}>
-              <View style={styles.memberAvatar}>
-                <Text style={styles.memberAvatarText}>{member.initials}</Text>
-              </View>
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>{member.name}</Text>
-                <Text style={styles.memberRole}>{member.role}</Text>
-                <TouchableOpacity
-                  style={styles.facebookBtn}
-                  onPress={() => handleFacebook(member.facebookLink)}
-                >
-                  <FontAwesome name="facebook" size={14} color="white" />
-                  <Text style={styles.facebookBtnText}>Profile</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
         </View>
 
         {/* Additional Info Section */}
@@ -306,20 +315,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     alignItems: 'center',
   },
-  memberAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'linear-gradient(135deg, #22c55e, #3b82f6)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  memberProfileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     marginRight: 15,
-    backgroundColor: '#22c55e',
-  },
-  memberAvatarText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '700',
+    resizeMode: 'cover',
   },
   memberInfo: {
     flex: 1,

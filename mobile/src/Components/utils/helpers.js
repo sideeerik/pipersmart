@@ -79,7 +79,6 @@ export const updateUser = async (updatedUserData) => {
 export const getToken = async () => {
   try {
     const token = await AsyncStorage.getItem('token');
-    console.log('🔍 Token retrieved:', token ? token.substring(0, 20) + '...' : 'NULL');
     return token || null;
   } catch (error) {
     console.error('Error getting token', error);

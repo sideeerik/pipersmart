@@ -17,10 +17,32 @@ const bungaAnalysisSchema = new mongoose.Schema({
     }
   },
   results: {
-    // e.g., "Class A-a"
-    full_class: {
+    // Ripeness: "Ripe", "Unripe", "Rotten"
+    ripeness: {
       type: String,
+      enum: ['Ripe', 'Unripe', 'Rotten'],
       required: true
+    },
+    ripeness_percentage: {
+      type: Number,
+      default: 0
+    },
+
+    // Health Class: "a", "b", "c", "d"
+    health_class: {
+      type: String,
+      enum: ['a', 'b', 'c', 'd', null],
+      default: null
+    },
+    health_percentage: {
+      type: Number,
+      default: 0
+    },
+
+    // Detection Confidence: 0-100
+    confidence: {
+      type: Number,
+      default: 0
     },
 
     // Market Grade Calculation (Stored for easy reporting)
@@ -28,38 +50,7 @@ const bungaAnalysisSchema = new mongoose.Schema({
       type: String,
       enum: ['Premium', 'Standard', 'Commercial', 'Reject', 'Unknown'],
       default: 'Unknown'
-    },
-
-    // Ripeness (A-D)
-    ripeness: {
-      grade: {
-        type: String,
-        enum: ['A', 'B', 'C', 'D', 'Rotten', 'Unknown']
-      }, // Big Letter
-      percentage: Number, // 0-100
-      confidence: Number // 0-100
-    },
-
-    // Health (a-d)
-    health: {
-      grade: {
-        type: String,
-        enum: ['a', 'b', 'c', 'd', null]
-      }, // Small Letter
-      percentage: Number // 0-100
-    },
-
-    // Raw Detections
-    detections: [{
-      class: String,
-      confidence: Number,
-      bbox: [Number] // [x1, y1, x2, y2]
-    }],
-    
-    other_objects: [{
-      class: String,
-      confidence: Number
-    }]
+    }
   },
   processingTime: {
     type: Number, // in ms

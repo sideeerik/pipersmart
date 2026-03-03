@@ -18,6 +18,8 @@ import BungaRipenessScreen from '../Screen/User/BungaRipenessScreen';
 import ForumScreen from '../Screen/User/ForumScreen';
 import MessengerScreen from '../Screen/User/MessengerScreen';
 import KnowledgeScreen from '../Screen/User/KnowledgeScreen';
+import PiperbotScreen from '../Screen/User/piperbotScreen';
+import RecentActivitiesScreen from '../Screen/User/RecentActivitiesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -85,6 +87,11 @@ export default function UserStack() {
         options={{ headerShown: false }}
       />
       <Stack.Screen 
+        name="Pipebot" 
+        component={PiperbotScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
         name="Macromapping" 
         component={MacromappingScreen}
         options={{ headerShown: false }}
@@ -107,6 +114,11 @@ export default function UserStack() {
       <Stack.Screen 
         name="Messenger" 
         component={MessengerScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="RecentActivities" 
+        component={RecentActivitiesScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

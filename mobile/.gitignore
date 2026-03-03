@@ -6,18 +6,13 @@ node_modules/
 dist/
 web-build/
 
-# Native (still tracked as requested)
-# /android
-# /ios
+# Native
+/android
+/ios
 
-# Env (still tracked as requested)
-# .env
-
-
-# FORCE TRACK EVERYTHING requested by user
-# !node_modules/
-# !.env
-# !.env.local
-# !.env.development.local
-# !.env.test.local
-# !.env.production.local
+# Environment variables - NEVER track .env files with secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

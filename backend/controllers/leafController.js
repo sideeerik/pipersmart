@@ -45,8 +45,11 @@ exports.analyzeLeaf = async (req, res) => {
       // Python script path
       const pythonScriptPath = path.join(__dirname, '../utils/predict_disease_yolov8.py');
       const modelPath = path.join(__dirname, '../ml_models/leaf/train/weights/best.pt');
-      const pythonExe = process.env.PYTHON_EXE || 'python';
+      const pythonExe = 'C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
       
+      console.log(`🐍 [${requestId}] Python EXE: ${pythonExe}`);
+      console.log(`📜 [${requestId}] Script: ${pythonScriptPath}`);
+      console.log(`🤖 [${requestId}] Model: ${modelPath}`);
       console.log(`🐍 [${requestId}] Spawning Python CLI (CPU-Optimized)...`);
       
       // Use spawn without shell: true - Node.js handles paths with spaces correctly
@@ -198,6 +201,51 @@ exports.getLeafHistory = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch history'
+    });
+  }
+};
+
+/**
+ * Delete a Leaf Analysis Record
+ */
+exports.deleteLeafAnalysis = async (req, res) => {
+  try {
+    const { analysisId } = req.params;
+    const userId = req.user._id;
+
+    // Find the analysis record
+    const analysis = await LeafAnalysis.findById(analysisId);
+
+    if (!analysis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Analysis record not found'
+      });
+    }
+
+    // Verify ownership - user can only delete their own records
+    if (analysis.user.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only delete your own analysis records'
+      });
+    }
+
+    // Delete the record
+    await LeafAnalysis.findByIdAndDelete(analysisId);
+
+    console.log(`✅ Deleted leaf analysis: ${analysisId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Analysis record deleted successfully',
+      analysisId
+    });
+  } catch (error) {
+    console.error('❌ Error deleting leaf analysis:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete analysis record'
     });
   }
 };

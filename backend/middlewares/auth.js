@@ -10,11 +10,9 @@ exports.isAuthenticatedUser = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    console.log('🔍 Token received:', token.substring(0, 30) + '...');
     
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('✅ Token verified for user:', decoded.id);
         req.user = await User.findById(decoded.id);
         next();
     } catch (error) {

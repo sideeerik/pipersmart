@@ -13,7 +13,14 @@ const messageSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
+    },
+    // Image attachment (optional)
+    attachment: {
+      url: String,
+      type: {
+        type: String, // 'image/jpeg', 'image/png', etc.
+      },
+      cloudinaryId: String, // For deletion later
     },
     isRead: {
       type: Boolean,
@@ -29,6 +36,21 @@ const messageSchema = new mongoose.Schema(
     editedAt: {
       type: Date,
     },
+    // Reactions: each user can only have 1 reaction per message
+    // { userId, emoji: 'like' | 'heart' | 'haha' | 'angry' | 'sad' }
+    reactions: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        emoji: {
+          type: String,
+          enum: ['like', 'heart', 'haha', 'angry', 'sad'],
+        },
+        _id: false, // Prevent auto _id for subdocs
+      }
+    ],
   },
   { timestamps: true }
 );

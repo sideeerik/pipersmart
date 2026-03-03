@@ -1085,7 +1085,7 @@ export default function ForumScreen({ navigation, route }) {
           </View>
         </View>
         <View style={styles.categoriesContainer}>
-          <View style={{ flexDirection: 'row', paddingHorizontal: 12 }}>
+          <View style={{ flexDirection: 'row', paddingHorizontal: 12, gap: 8 }}>
             <TouchableOpacity
               style={[
                 styles.categoryTab,
@@ -1109,7 +1109,6 @@ export default function ForumScreen({ navigation, route }) {
                 {
                   backgroundColor: filterType === 'friends' ? colors.primary : '#FFFFFF',
                   borderColor: filterType === 'friends' ? colors.primary : colors.border,
-                  marginRight: 0,
                 }
               ]}
               onPress={() => setFilterType('friends')}
@@ -1119,6 +1118,24 @@ export default function ForumScreen({ navigation, route }) {
                 { color: filterType === 'friends' ? '#FFFFFF' : colors.text }
               ]}>
                 Friends
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.categoryTab,
+                {
+                  backgroundColor: filterType === 'myPosts' ? colors.primary : '#FFFFFF',
+                  borderColor: filterType === 'myPosts' ? colors.primary : colors.border,
+                  marginRight: 0,
+                }
+              ]}
+              onPress={() => setFilterType('myPosts')}
+            >
+              <Text style={[
+                styles.categoryTabText,
+                { color: filterType === 'myPosts' ? '#FFFFFF' : colors.text }
+              ]}>
+                My Posts
               </Text>
             </TouchableOpacity>
           </View>
@@ -1690,21 +1707,22 @@ export default function ForumScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
             {newThreadImages.length > 0 && (
-              <View style={styles.replyPreviewGrid}>
-                {newThreadImages.length === 1 ? (
-                  <Image source={{ uri: newThreadImages[0].uri }} style={{ width: width - 24, height: (width - 24) * 0.5, borderRadius: 12 }} />
-                ) : (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                    {newThreadImages.map((img, idx) => (
-                      <View key={idx} style={{ marginRight: 6, marginBottom: 6 }}>
-                        <Image source={{ uri: img.uri }} style={{ width: (width - 24 - 12) / 2, height: (width - 24 - 12) / 2, borderRadius: 12 }} />
-                        <TouchableOpacity style={styles.removeBadge} onPress={() => removeThreadImageAt(idx)}>
-                          <Feather name="x" size={14} color="#FFFFFF" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
+              <View style={[styles.replyPreviewGrid, { position: 'relative' }]}>
+                {renderImageGrid(
+                  newThreadImages.map(img => ({ uri: img.uri })),
+                  width - 24
                 )}
+                <View style={{ position: 'absolute', top: 8, right: 6, zIndex: 10, flexDirection: 'column', gap: 8 }}>
+                  {newThreadImages.map((img, idx) => (
+                    <TouchableOpacity
+                      key={`badge-${idx}`}
+                      style={styles.removeBadge}
+                      onPress={() => removeThreadImageAt(idx)}
+                    >
+                      <Feather name="x" size={14} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             )}
 
@@ -1877,13 +1895,18 @@ export default function ForumScreen({ navigation, route }) {
             {replyImages.length > 0 && (
               <View style={styles.replyPreviewGrid}>
                 {replyImages.length === 1 ? (
-                  <Image source={{ uri: replyImages[0].uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                  <View style={{ position: 'relative', width: 100, height: 100, marginBottom: 8 }}>
+                    <Image source={{ uri: replyImages[0].uri }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
+                    <TouchableOpacity style={[styles.removeBadge, { position: 'absolute', top: 4, right: 4 }]} onPress={() => removeReplyImageAt(0)}>
+                      <Feather name="x" size={14} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
                 ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
                     {replyImages.map((img, idx) => (
-                      <View key={idx} style={{ marginRight: 6, marginBottom: 6 }}>
-                        <Image source={{ uri: img.uri }} style={{ width: 80, height: 80, borderRadius: 8 }} />
-                        <TouchableOpacity style={styles.removeBadge} onPress={() => removeReplyImageAt(idx)}>
+                      <View key={idx} style={{ marginRight: 8, position: 'relative' }}>
+                        <Image source={{ uri: img.uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                        <TouchableOpacity style={[styles.removeBadge, { position: 'absolute', top: 4, right: 4 }]} onPress={() => removeReplyImageAt(idx)}>
                           <Feather name="x" size={14} color="#FFFFFF" />
                         </TouchableOpacity>
                       </View>
@@ -2357,7 +2380,9 @@ const styles = StyleSheet.create({
   },
   replyPreviewGrid: {
     marginHorizontal: 12,
-    marginBottom: 8
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   removeBadge: {
     position: 'absolute',

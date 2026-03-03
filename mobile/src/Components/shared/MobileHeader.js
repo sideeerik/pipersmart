@@ -24,6 +24,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
   const [slideAnim] = useState(new Animated.Value(0));
   const [currentUser, setCurrentUser] = useState(null); // Track logged in user
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login status
+  const [notificationFilter, setNotificationFilter] = useState('all'); // 'all' or 'unread'
   const notificationAbortController = useRef(null);
 
   const colors = {
@@ -56,11 +57,8 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         const userData = response.data.user;
         setIsLoggedIn(true);
         setCurrentUser(userData);
-        console.log('✅ MobileHeader: User fetched from backend -', userData.name);
-        console.log('🖼️ Avatar URL:', userData.avatar?.url?.substring(0, 50) + '...');
       } catch (backendError) {
         // Fallback to AsyncStorage if backend fails
-        console.warn('⚠️ Backend fetch failed, using AsyncStorage:', backendError.message);
         const userData = await getUser();
         if (userData) {
           setIsLoggedIn(true);
@@ -103,17 +101,14 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
     if (isLoggedIn) {
       // Fetch notifications after 2 seconds (non-blocking)
       initialFetchTimeout = setTimeout(() => {
-        console.log('📡 Fetching notifications (user logged in)...');
         fetchNotifications();
       }, 2000);
       
       // Poll notifications every 60 seconds (only if logged in)
       notificationInterval = setInterval(() => {
-        console.log('📡 Polling notifications...');
         fetchNotifications();
       }, 60000);
     } else {
-      console.log('🚪 User not logged in - skipping notifications');
       setNotifications([]);
       setUnreadCount(0);
     }
@@ -186,17 +181,37 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
   };
 
   const handleNotificationPress = (notification) => {
-    if (!notification.read) {
-      markAsRead(notification._id);
-    }
-    if (notification.actionUrl) {
-      setNotificationsOpen(false);
-      // Navigate based on actionUrl
-      if (notification.actionUrl === 'Forum' && notification.data?.threadId) {
-        navigation.navigate('Forum', { threadId: notification.data.threadId });
-      } else {
-        navigation.navigate(notification.actionUrl);
+    try {
+      if (!notification.read) {
+        markAsRead(notification._id);
       }
+      
+      // Handle Forum notifications with threadId
+      if (notification.actionUrl === 'Forum' || notification.type === 'forum') {
+        const threadId = notification.data?.threadId || notification.threadId;
+        
+        if (threadId) {
+          console.log('🔗 Navigating to Forum thread:', threadId);
+          setNotificationsOpen(false);
+          // Navigate to Forum screen with threadId param to trigger deep linking
+          navigation.navigate('Forum', { threadId });
+        } else {
+          console.warn('⚠️ Forum notification missing threadId, navigating to Forum feed');
+          setNotificationsOpen(false);
+          navigation.navigate('Forum');
+        }
+      } else if (notification.actionUrl) {
+        // Handle other notification types
+        console.log('🔗 Navigating to:', notification.actionUrl);
+        setNotificationsOpen(false);
+        navigation.navigate(notification.actionUrl);
+      } else {
+        console.warn('⚠️ Notification has no actionUrl or type');
+        setNotificationsOpen(false);
+      }
+    } catch (error) {
+      console.error('❌ Error handling notification press:', error);
+      setNotificationsOpen(false);
     }
   };
 
@@ -246,6 +261,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         <Text style={styles.drawerHeaderSubtext}>Menu</Text>
       </View>
 
+      {/* HOME */}
       <TouchableOpacity
         style={styles.drawerItem}
         onPress={() => handleProtectedNavigation('UserHome')}
@@ -254,6 +270,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         <Text style={[styles.drawerItemText, { color: colors.text }]}>Home</Text>
       </TouchableOpacity>
 
+      {/* ABOUT US */}
       <TouchableOpacity
         style={styles.drawerItem}
         onPress={() => {
@@ -265,16 +282,10 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         <Text style={[styles.drawerItemText, { color: colors.text }]}>About Us</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.drawerItem}
-        onPress={() => {
-          closeDrawer();
-          navigation.navigate('Contact');
-        }}
-      >
-        <Feather name="mail" size={20} color={colors.primary} />
-        <Text style={[styles.drawerItemText, { color: colors.text }]}>Contact Us</Text>
-      </TouchableOpacity>
+      {/* KNOWLEDGE & LEARNING */}
+      <View style={[styles.drawerSection, { borderTopColor: colors.border }]}>
+        <Text style={[styles.drawerSectionTitle, { color: colors.textLight }]}>LEARNING</Text>
+      </View>
 
       <TouchableOpacity
         style={styles.drawerItem}
@@ -283,6 +294,11 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         <Feather name="book" size={20} color={colors.primary} />
         <Text style={[styles.drawerItemText, { color: colors.text }]}>Piper Knowledge</Text>
       </TouchableOpacity>
+
+      {/* ANALYSIS TOOLS */}
+      <View style={[styles.drawerSection, { borderTopColor: colors.border }]}>
+        <Text style={[styles.drawerSectionTitle, { color: colors.textLight }]}>ANALYSIS</Text>
+      </View>
 
       <TouchableOpacity
         style={styles.drawerItem}
@@ -300,6 +316,24 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         <Text style={[styles.drawerItemText, { color: colors.text }]}>Bunga Ripeness</Text>
       </TouchableOpacity>
 
+      {/* FARMING & COMMUNITY */}
+      <View style={[styles.drawerSection, { borderTopColor: colors.border }]}>
+        <Text style={[styles.drawerSectionTitle, { color: colors.textLight }]}>FARMING</Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.drawerItem}
+        onPress={() => handleProtectedNavigation('Macromapping')}
+      >
+        <Feather name="map" size={20} color={colors.primary} />
+        <Text style={[styles.drawerItemText, { color: colors.text }]}>Farming Macromapping</Text>
+      </TouchableOpacity>
+
+      {/* COMMUNITY & COMMUNICATION */}
+      <View style={[styles.drawerSection, { borderTopColor: colors.border }]}>
+        <Text style={[styles.drawerSectionTitle, { color: colors.textLight }]}>COMMUNITY</Text>
+      </View>
+
       <TouchableOpacity
         style={styles.drawerItem}
         onPress={() => handleProtectedNavigation('Forum')}
@@ -312,24 +346,45 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         style={styles.drawerItem}
         onPress={() => handleProtectedNavigation('Messenger')}
       >
-        <Feather name="message-circle" size={20} color={colors.primary} />
+        <Feather name="message-square" size={20} color={colors.primary} />
         <Text style={[styles.drawerItemText, { color: colors.text }]}>Messages</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.drawerItem}
-        onPress={() => handleProtectedNavigation('Weather')}
+        onPress={() => handleProtectedNavigation('Pipebot')}
       >
-        <Feather name="cloud" size={20} color={colors.primary} />
-        <Text style={[styles.drawerItemText, { color: colors.text }]}>Weather</Text>
+        <MaterialCommunityIcons name="robot" size={20} color={colors.primary} />
+        <Text style={[styles.drawerItemText, { color: colors.text }]}>PiperBot</Text>
       </TouchableOpacity>
+
+      {/* ACTIVITIES & TRACKING */}
+      <View style={[styles.drawerSection, { borderTopColor: colors.border }]}>
+        <Text style={[styles.drawerSectionTitle, { color: colors.textLight }]}>TRACKING</Text>
+      </View>
 
       <TouchableOpacity
         style={styles.drawerItem}
-        onPress={() => handleProtectedNavigation('Macromapping')}
+        onPress={() => handleProtectedNavigation('RecentActivities')}
       >
-        <Feather name="map" size={20} color={colors.primary} />
-        <Text style={[styles.drawerItemText, { color: colors.text }]}>Farming Macromapping</Text>
+        <Feather name="activity" size={20} color={colors.primary} />
+        <Text style={[styles.drawerItemText, { color: colors.text }]}>Recent Activities</Text>
+      </TouchableOpacity>
+
+      {/* SUPPORT */}
+      <View style={[styles.drawerSection, { borderTopColor: colors.border }]}>
+        <Text style={[styles.drawerSectionTitle, { color: colors.textLight }]}>SUPPORT</Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.drawerItem}
+        onPress={() => {
+          closeDrawer();
+          navigation.navigate('Contact');
+        }}
+      >
+        <Feather name="mail" size={20} color={colors.primary} />
+        <Text style={[styles.drawerItemText, { color: colors.text }]}>Contact Us</Text>
       </TouchableOpacity>
 
       <View style={{ flex: 1 }} />
@@ -403,20 +458,46 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
             <View style={[styles.notificationHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.notificationTitle, { color: colors.text }]}>Notifications</Text>
               <TouchableOpacity onPress={() => setNotificationsOpen(false)}>
-                <Feather name="x" size={20} color={colors.text} />
+                <Feather name="x" size={18} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Filter Buttons */}
+            <View style={styles.filterContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.filterButton,
+                  notificationFilter === 'all' && [styles.filterButtonActive, { backgroundColor: colors.primary }]
+                ]}
+                onPress={() => setNotificationFilter('all')}
+              >
+                <Text style={[styles.filterButtonText, notificationFilter === 'all' && styles.filterButtonTextActive]}>
+                  All
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.filterButton,
+                  notificationFilter === 'unread' && [styles.filterButtonActive, { backgroundColor: colors.primary }]
+                ]}
+                onPress={() => setNotificationFilter('unread')}
+              >
+                <Text style={[styles.filterButtonText, notificationFilter === 'unread' && styles.filterButtonTextActive]}>
+                  Unread
+                </Text>
               </TouchableOpacity>
             </View>
 
             {loading ? (
               <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
-            ) : notifications.length === 0 ? (
+            ) : (notificationFilter === 'unread' ? notifications.filter(n => !n.read) : notifications).length === 0 ? (
               <View style={styles.emptyNotifications}>
-                <Feather name="bell-off" size={40} color={colors.border} />
+                <Feather name="bell-off" size={32} color={colors.border} />
                 <Text style={[styles.emptyText, { color: colors.textLight }]}>No notifications</Text>
               </View>
             ) : (
               <ScrollView style={styles.notificationsList}>
-                {notifications.map((notification) => (
+                {(notificationFilter === 'unread' ? notifications.filter(n => !n.read) : notifications).map((notification) => (
                   <View
                     key={notification._id}
                     style={[
@@ -448,7 +529,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
                       onPress={() => deleteNotification(notification._id)}
                       style={styles.deleteButton}
                     >
-                      <Feather name="trash-2" size={16} color={colors.danger} />
+                      <Feather name="trash-2" size={14} color={colors.danger} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -500,7 +581,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
               if (isLoggedIn && currentUser) {
                 navigation.navigate('Profile');
               } else {
-                navigation.navigate('Login');
+                navigation.navigate('Register');
               }
             }}
           >
@@ -574,7 +655,7 @@ const styles = StyleSheet.create({
   },
   notificationDropdown: {
     borderRadius: 12,
-    maxHeight: '70%',
+    maxHeight: '50%',
     elevation: 5,
     overflow: 'hidden',
   },
@@ -582,58 +663,84 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
   notificationTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  filterButtonActive: {
+    borderColor: 'transparent',
+  },
+  filterButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#666',
+  },
+  filterButtonTextActive: {
+    color: '#FFFFFF',
+  },
   notificationsList: {
-    maxHeight: 400,
+    maxHeight: 300,
   },
   notificationItem: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderLeftWidth: 4,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   notificationItemTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 3,
     flexDirection: 'row',
     alignItems: 'center',
   },
   unreadDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginLeft: 8,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginLeft: 6,
   },
   notificationItemMessage: {
-    fontSize: 11,
-    marginBottom: 6,
-    lineHeight: 16,
+    fontSize: 10,
+    marginBottom: 4,
+    lineHeight: 14,
   },
   notificationTime: {
-    fontSize: 9,
+    fontSize: 8,
   },
   deleteButton: {
-    padding: 8,
-    marginLeft: 8,
+    padding: 6,
+    marginLeft: 6,
   },
   emptyNotifications: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 30,
   },
   emptyText: {
-    fontSize: 13,
-    marginTop: 12,
+    fontSize: 11,
+    marginTop: 8,
     fontWeight: '500',
   },
   drawerOverlay: {
@@ -671,6 +778,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  drawerSection: {
+    borderTopWidth: 1,
+    marginTop: 8,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  drawerSectionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   drawerItemText: {
     fontSize: 15,

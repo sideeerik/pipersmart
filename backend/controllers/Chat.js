@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/Cloudinary');
 
 // Get or create chat between two users (only if friends)
 exports.getOrCreateChat = async (req, res) => {
@@ -90,6 +91,13 @@ exports.getAllChats = async (req, res) => {
       const currentUser = await User.findById(userId);
 
       if (otherUser) {
+        // Count unread messages in this chat for current user
+        const unreadCount = await Message.countDocuments({ 
+          chatId: chatKey, 
+          isRead: false,
+          sender: { $ne: userId } // Only messages from the other user
+        });
+
         chats.push({
           _id: chatKey,
           participants: [
@@ -98,13 +106,13 @@ exports.getAllChats = async (req, res) => {
           ],
           lastMessage: lastMsg.content,
           lastMessageBy: lastMsg.sender,
-          lastMessageTime: lastMsg.createdAt
+          lastMessageTime: lastMsg.createdAt,
+          unreadCount: unreadCount, // NEW: unread messages in this chat
         });
       }
     }
 
     chats.sort((a, b) => b.lastMessageTime - a.lastMessageTime);
-    console.log(`✅ Fetched ${chats.length} chats`);
     res.status(200).json({
       success: true,
       data: chats,
@@ -115,7 +123,7 @@ exports.getAllChats = async (req, res) => {
   }
 };
 
-// Send message
+// Send message (with optional image attachment)
 exports.sendMessage = async (req, res) => {
   try {
     const { chatId } = req.params;
@@ -123,7 +131,9 @@ exports.sendMessage = async (req, res) => {
     const senderId = req.user._id;
 
     if (!content || !content.trim()) {
-      return res.status(400).json({ success: false, message: 'Message content is required' });
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Message content or image is required' });
+      }
     }
 
     // chatId is in format: userId1-userId2
@@ -136,7 +146,6 @@ exports.sendMessage = async (req, res) => {
       // Find which part is NOT the sender
       recipientId = parts[0] === senderIdStr ? parts[1] : parts[0];
     } else {
-      // Shouldn't happen for web, but handle mobile format
       recipientId = chatId;
     }
 
@@ -146,18 +155,49 @@ exports.sendMessage = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You can only chat with friends' });
     }
 
-    // Create normalized chatKey (should match the passed chatId)
+    // Create normalized chatKey
     const chatKey = [senderIdStr, recipientId].sort().join('-');
 
-    const message = await Message.create({
+    // Handle image upload if present
+    let attachment = null;
+    if (req.file) {
+      try {
+        const fs = require('fs');
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const b64 = fileBuffer.toString('base64');
+        const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+        
+        const uploadResult = await uploadToCloudinary(dataURI, 'pipersmart/chat_images');
+        
+        // Delete temp file after upload
+        fs.unlinkSync(req.file.path);
+        
+        attachment = {
+          url: uploadResult.url,
+          type: req.file.mimetype,
+          cloudinaryId: uploadResult.public_id,
+        };
+      } catch (uploadError) {
+        console.error('❌ Image upload failed:', uploadError);
+        // Continue without image if upload fails
+      }
+    }
+
+    // Create message (content can be empty if image is provided)
+    const messageData = {
       chatId: chatKey,
       sender: senderId,
-      content: content,
-    });
+      content: content?.trim() || '', // Empty string if no content
+    };
 
+    if (attachment) {
+      messageData.attachment = attachment;
+    }
+
+    const message = await Message.create(messageData);
     const populatedMessage = await message.populate('sender', 'name email avatar');
 
-    console.log('✅ Message sent:', message._id);
+    console.log(`✅ Message sent:`, message._id);
     res.status(201).json({
       success: true,
       data: populatedMessage,
@@ -178,7 +218,16 @@ exports.getMessages = async (req, res) => {
       .populate('sender', 'name email avatar')
       .sort({ createdAt: 1 });
 
-    console.log(`✅ Fetched ${messages.length} messages from chatId: ${chatId}`);
+    // Populate reactions with user info
+    for (let msg of messages) {
+      if (msg.reactions && msg.reactions.length > 0) {
+        for (let i = 0; i < msg.reactions.length; i++) {
+          const reactionUser = await User.findById(msg.reactions[i].userId).select('name avatar');
+          msg.reactions[i].userId = reactionUser;
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
       data: messages,
@@ -309,6 +358,103 @@ exports.searchUsers = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error searching users:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Add or update reaction on message
+exports.reactToMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.user._id;
+
+    const validEmojis = ['like', 'heart', 'haha', 'angry', 'sad'];
+    if (!validEmojis.includes(emoji)) {
+      return res.status(400).json({ success: false, message: 'Invalid emoji' });
+    }
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+
+    // Check if user already reacted (find existing reaction from this user)
+    const existingReactionIndex = message.reactions.findIndex(
+      r => r.userId.toString() === userId.toString()
+    );
+
+    if (existingReactionIndex !== -1) {
+      // User already has a reaction - update it
+      message.reactions[existingReactionIndex].emoji = emoji;
+    } else {
+      // New reaction from this user
+      message.reactions.push({
+        userId: userId,
+        emoji: emoji,
+      });
+    }
+
+    await message.save();
+    
+    // Populate the message with sender info and reaction user info
+    await message.populate('sender', 'name email avatar');
+    
+    // Manually populate reactions with user info
+    if (message.reactions && message.reactions.length > 0) {
+      for (let i = 0; i < message.reactions.length; i++) {
+        const reactionUser = await User.findById(message.reactions[i].userId).select('name avatar');
+        message.reactions[i].userId = reactionUser;
+      }
+    }
+
+    console.log(`✅ Reaction ${emoji} added to message ${messageId}`);
+    res.status(200).json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error('❌ Error reacting to message:', error);
+    console.error('   Details:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Remove reaction from message
+exports.removeReaction = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+
+    // Remove this user's reaction
+    message.reactions = message.reactions.filter(
+      r => r.userId.toString() !== userId.toString()
+    );
+
+    await message.save();
+    
+    // Populate remaining reactions with user info
+    if (message.reactions && message.reactions.length > 0) {
+      for (let i = 0; i < message.reactions.length; i++) {
+        const reactionUser = await User.findById(message.reactions[i].userId).select('name avatar');
+        message.reactions[i].userId = reactionUser;
+      }
+    }
+    
+    await message.populate('sender', 'name email avatar');
+
+    console.log('✅ Reaction removed from message');
+    res.status(200).json({
+      success: true,
+      data: message,
+    });
+  } catch (error) {
+    console.error('❌ Error removing reaction:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

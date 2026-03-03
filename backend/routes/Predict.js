@@ -154,8 +154,8 @@ router.post('/bunga-ripeness', isAuthenticatedUser, upload.single('image'), asyn
   }
 });
 
-const { analyzeBunga, getHistory } = require('../controllers/bungaController');
-const { analyzeLeaf, getLeafHistory } = require('../controllers/leafController');
+const { analyzeBunga, getHistory, deleteBungaAnalysis } = require('../controllers/bungaController');
+const { analyzeLeaf, getLeafHistory, deleteLeafAnalysis } = require('../controllers/leafController');
 
 // ... existing code ...
 
@@ -183,6 +183,18 @@ router.post('/bunga-with-objects', isAuthenticatedUser, upload.single('image'), 
  * Get user's past bunga scans
  */
 router.get('/bunga-history', isAuthenticatedUser, getHistory);
+
+/**
+ * DELETE /api/v1/predict/bunga/:analysisId
+ * Delete user's bunga analysis record
+ */
+router.delete('/bunga/:analysisId', isAuthenticatedUser, deleteBungaAnalysis);
+
+/**
+ * DELETE /api/v1/predict/leaf/:analysisId
+ * Delete user's leaf analysis record
+ */
+router.delete('/leaf/:analysisId', isAuthenticatedUser, deleteLeafAnalysis);
 
 /**
  * GET /api/v1/predict/health

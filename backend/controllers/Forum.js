@@ -14,7 +14,7 @@ const fs = require('fs');
 // ============ FAST FEED - GET ALL POSTS/THREADS ============
 exports.getFastFeed = async (req, res) => {
   try {
-    const { filterType = 'all' } = req.query; // 'all' or 'friends'
+    const { filterType = 'all' } = req.query; // 'all', 'friends', or 'myPosts'
     const userId = req.user?._id;
 
     let userQuery = {};
@@ -24,6 +24,9 @@ exports.getFastFeed = async (req, res) => {
       const user = await User.findById(userId).select('friends');
       const friendIds = user?.friends || [];
       userQuery = { createdBy: { $in: [...friendIds, userId] } }; // Include own posts too
+    } else if (filterType === 'myPosts' && userId) {
+      // Show only current user's posts
+      userQuery = { createdBy: userId };
     }
 
     // Get user's uninterested thread IDs to exclude

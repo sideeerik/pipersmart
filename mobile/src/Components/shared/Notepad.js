@@ -260,7 +260,7 @@ export default function Notepad() {
             {loading ? (
               <ActivityIndicator size="large" color="#1B4D3E" style={{ marginTop: 20 }} />
             ) : (
-              <ScrollView style={styles.notesList} showsVerticalScrollIndicator={false}>
+              <ScrollView style={styles.notesList} showsVerticalScrollIndicator={true}>
                 {notes.length === 0 ? (
                   <View style={styles.emptyState}>
                     <Feather name="clipboard" size={40} color="#DDD" />
@@ -321,7 +321,7 @@ export default function Notepad() {
 const styles = StyleSheet.create({
   fabContainer: {
     position: 'absolute',
-    bottom: 100, // Positioned above the bottom navigation/tabs
+    bottom: 20,
     right: 20,
     zIndex: 999,
   },
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   contentInput: {
     fontSize: 14,
-    minHeight: 60,
+    height: 140,
     padding: 10,
     backgroundColor: '#F9F9F9',
     borderRadius: 8,
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   },
   noteTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#333',
     marginBottom: 2,
   },

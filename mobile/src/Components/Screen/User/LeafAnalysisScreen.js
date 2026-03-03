@@ -281,7 +281,7 @@ export default function LeafAnalysisScreen({ navigation }) {
     console.log(`🔍 Disease name mapping: "${diseaseName}" -> "${normalizedName}"`);
     
     return diseaseRecommendations[normalizedName] || {
-      icon: '❓',
+      icon: '🔬',
       title: `${diseaseName || 'Unknown'} Disease`,
       description: 'Unable to identify the disease. The model returned: ' + diseaseName,
       actions: ['Consult agricultural expert', 'Get professional diagnosis', 'Check backend logs for model output'],
@@ -362,6 +362,10 @@ export default function LeafAnalysisScreen({ navigation }) {
       >
         {/* Title */}
         <View style={styles.titleContainer}>
+          <Image 
+            source={require('../../../../picsbl/logowalangbg.png')} 
+            style={styles.logoImage}
+          />
           <Text style={styles.title}>🔬 Leaf Analysis</Text>
           <Text style={styles.subtitle}>Detect pepper diseases using AI</Text>
         </View>
@@ -386,11 +390,6 @@ export default function LeafAnalysisScreen({ navigation }) {
             </>
           ) : (
             <>
-              <MaterialCommunityIcons 
-                name="leaf" 
-                size={48} 
-                color={colors.textLight} 
-              />
               <Text style={[styles.placeholderText, { color: colors.textLight }]}>
                 No image selected
               </Text>
@@ -464,14 +463,27 @@ export default function LeafAnalysisScreen({ navigation }) {
 
         {/* Result Section */}
         {result && (
-          <View style={[styles.card, { borderLeftColor: resultInfo?.color || colors.primary, borderLeftWidth: 4 }]}>
+          <View style={[styles.card, { 
+            borderLeftColor: resultInfo?.color || colors.primary, 
+            borderLeftWidth: 6,
+            shadowColor: resultInfo?.color || colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 6,
+          }]}>
             {/* Result Header */}
-            <View style={styles.resultHeader}>
+            <View style={[styles.resultHeader, { 
+              backgroundColor: `${resultInfo?.color || colors.primary}12`,
+              borderRadius: 12,
+              marginBottom: 20,
+              paddingBottom: 16,
+            }]}>
               <Text style={styles.resultIcon}>{resultInfo?.icon || '🔬'}</Text>
               <Text style={[styles.resultTitle, { color: resultInfo?.color || colors.primary }]}>
                 {resultInfo?.title || result.disease || 'Analysis Complete'}
               </Text>
-              <Text style={styles.confidence}>
+              <Text style={[styles.confidence, { color: resultInfo?.color || colors.primary, fontWeight: '700' }]}>
                 {result.confidence}% Confidence
               </Text>
             </View>
@@ -487,7 +499,7 @@ export default function LeafAnalysisScreen({ navigation }) {
                 <Text style={styles.recommendationsTitle}>📋 Recommended Actions</Text>
                 {resultInfo.actions.map((action, idx) => (
                   <View key={idx} style={styles.actionItem}>
-                    <Text style={[styles.actionCheck, { color: resultInfo.color }]}>✓</Text>
+                    <Text style={[styles.actionCheck, { color: resultInfo.color, fontWeight: '800' }]}>✓</Text>
                     <Text style={[styles.actionText, { color: colors.text }]}>
                       {action}
                     </Text>
@@ -517,7 +529,14 @@ export default function LeafAnalysisScreen({ navigation }) {
 
             {/* Analyze Another */}
             <TouchableOpacity
-              style={[styles.analyzeAgainButton, { backgroundColor: colors.primaryLight }]}
+              style={[styles.analyzeAgainButton, { 
+                backgroundColor: colors.primaryLight,
+                shadowColor: colors.primaryLight,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.12,
+                shadowRadius: 6,
+                elevation: 4,
+              }]}
               onPress={() => {
                 setImageUri(null);
                 setImage(null);
@@ -573,63 +592,94 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     marginBottom: 24,
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
     color: '#1B4D3E',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
     color: '#5A7A73',
     fontWeight: '500',
+    textAlign: 'center',
   },
   imageSection: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    borderColor: '#27AE60',
+    padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    minHeight: 250,
+    marginBottom: 24,
+    minHeight: 300,
+    backgroundColor: '#E8F5E9',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   selectedImage: {
     width: '100%',
-    height: 250,
-    borderRadius: 12,
+    height: 280,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#27AE60',
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 250,
-    borderRadius: 12,
+    height: 280,
+    borderRadius: 14,
     overflow: 'hidden',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   clearButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginTop: 14,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   clearButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 8,
   },
   placeholderText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     marginTop: 12,
+    color: '#1B4D3E',
   },
   placeholderSubtext: {
     fontSize: 13,
-    marginTop: 4,
+    marginTop: 8,
+    color: '#27AE60',
+    fontWeight: '500',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -641,9 +691,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     gap: 8,
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
   },
   buttonText: {
     color: '#FFFFFF',
@@ -653,47 +708,60 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     backgroundColor: '#FFEBEE',
-    borderLeftWidth: 4,
-    borderRadius: 8,
-    padding: 12,
+    borderLeftWidth: 6,
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 16,
     gap: 12,
     alignItems: 'center',
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   errorText: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   analyzeButton: {
     flexDirection: 'row',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    marginTop: 8,
+    shadowColor: '#27AE60',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
   analyzeButtonText: {
     color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 16,
+    fontWeight: '800',
+    fontSize: 18,
   },
   resultHeader: {
     alignItems: 'center',
     marginBottom: 20,
   },
   resultIcon: {
-    fontSize: 56,
-    marginBottom: 8,
+    fontSize: 64,
+    marginBottom: 12,
   },
   resultTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 8,
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 10,
+    textAlign: 'center',
   },
   confidence: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#1B4D3E',
   },
   description: {
@@ -703,31 +771,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   recommendationsBox: {
-    backgroundColor: '#F8FAF7',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: '#F0F9F6',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: '#27AE60',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   recommendationsTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#1B4D3E',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   actionItem: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 12,
     alignItems: 'flex-start',
   },
   actionCheck: {
-    fontWeight: '700',
+    fontWeight: '800',
     marginRight: 12,
     fontSize: 16,
+    marginTop: 2,
   },
   actionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     flex: 1,
+    lineHeight: 20,
   },
   predictionsBox: {
     backgroundColor: '#F8FAF7',
@@ -742,31 +819,43 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   confidenceBox: {
-    backgroundColor: '#F8FAF7',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: '#FFF8F0',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F39C12',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   confidenceTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#1B4D3E',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   confidenceBar: {
-    height: 12,
-    backgroundColor: '#D4E5DD',
-    borderRadius: 6,
+    height: 16,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 12,
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
   confidenceFill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   confidencePercent: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#1B4D3E',
     textAlign: 'center',
   },
@@ -816,15 +905,27 @@ const styles = StyleSheet.create({
   },
   analyzeAgainButton: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    marginTop: 4,
   },
   analyzeAgainText: {
     color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

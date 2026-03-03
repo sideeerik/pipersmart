@@ -26,29 +26,29 @@ import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
-const bgImage1 = require('../../../../picsbl/1.jpg');
-const bgImage2 = require('../../../../picsbl/2.jpg');
-const bgImage3 = require('../../../../picsbl/3.jpg');
-const bgImage4 = require('../../../../picsbl/4.jpg');
+const bgImage1 = require('../../../../picsbl/5.jpg');
+const bgImage2 = require('../../../../picsbl/6.jpg');
+const bgImage3 = require('../../../../picsbl/10.jpg');
+const bgImage4 = require('../../../../picsbl/7.jpg');
 const backgroundImages = [bgImage1, bgImage2, bgImage3, bgImage4];
+
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   // Animation values
-  const formSlideAnim = useRef(new Animated.Value(height)).current;
-  const videoOpacityAnim = useRef(new Animated.Value(1)).current;
+  const formSlideAnim = useRef(new Animated.Value(0)).current;
+  const videoOpacityAnim = useRef(new Animated.Value(0.4)).current;
   const imageFadeAnim = useRef(new Animated.Value(1)).current;
   const emailFocusAnim = useRef(new Animated.Value(0)).current;
   const passwordFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
-  const getStartedScaleAnim = useRef(new Animated.Value(1)).current;
   
   const passwordInput = useRef(null);
   const emailInput = useRef(null);
@@ -60,59 +60,6 @@ export default function LoginScreen({ navigation }) {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
-
-  // Handle "Get Started" button press
-  const handleGetStarted = () => {
-    // Scale animation on button
-    Animated.sequence([
-      Animated.timing(getStartedScaleAnim, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(getStartedScaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Slide form up from bottom
-    Animated.parallel([
-      Animated.timing(formSlideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(videoOpacityAnim, {
-        toValue: 0.4,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    setShowForm(true);
-  };
-
-  // Handle close form
-  const handleCloseForm = () => {
-    Animated.parallel([
-      Animated.timing(formSlideAnim, {
-        toValue: height,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(videoOpacityAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowForm(false);
-      setEmail('');
-      setPassword('');
-    });
-  };
 
   const onGoogleButtonPress = async () => {
     setLoading(true);
@@ -266,33 +213,7 @@ export default function LoginScreen({ navigation }) {
       <View style={styles.overlay} />
 
       <SafeAreaView style={{ flex: 1 }}>
-        {/* Hero Section - Visible when form is closed */}
-        {!showForm && (
-          <View style={styles.heroSection}>
-            <View style={styles.heroContent}>
-              <Image source={logoImage} style={styles.heroLogo} resizeMode="contain" />
-              <Text style={styles.heroTitle}>PiperSmart</Text>
-              <Text style={styles.heroSubtitle}>Smart Pepper Disease Detection</Text>
-              <Text style={styles.heroDescription}>
-                Identify and manage black pepper diseases with advanced AI technology
-              </Text>
-            </View>
-
-            {/* Get Started Button */}
-            <Animated.View style={{ transform: [{ scale: getStartedScaleAnim }] }}>
-              <TouchableOpacity
-                style={styles.getStartedButton}
-                onPress={handleGetStarted}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.getStartedText}>Get Started</Text>
-                <Feather name="arrow-right" size={20} color="#FFFFFF" style={styles.arrowIcon} />
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        )}
-
-        {/* Sliding Login Form - Appears from bottom */}
+        {/* Login Form */}
         <Animated.View
           style={[
             styles.formWrapper,
@@ -303,18 +224,6 @@ export default function LoginScreen({ navigation }) {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
           >
-            {/* Close Button at top of form */}
-            {showForm && (
-              <View style={styles.closeButtonArea}>
-                <TouchableOpacity
-                  onPress={handleCloseForm}
-                  style={styles.closeButton}
-                >
-                  <Feather name="chevron-down" size={28} color="#1B4D3E" />
-                </TouchableOpacity>
-              </View>
-            )}
-
             <ScrollView
               contentContainerStyle={styles.formScrollContent}
               showsVerticalScrollIndicator={false}
@@ -371,10 +280,7 @@ export default function LoginScreen({ navigation }) {
                   />
 
                   <TouchableOpacity
-                    onPress={() => {
-                      handleCloseForm();
-                      setTimeout(() => navigation.navigate('ForgotPassword'), 300);
-                    }}
+                    onPress={() => navigation.navigate('ForgotPassword')}
                     style={styles.forgotLink}
                   >
                     <Text style={styles.linkText}>Forgot Password?</Text>
@@ -431,10 +337,7 @@ export default function LoginScreen({ navigation }) {
                 {/* Sign Up Link */}
                 <View style={styles.signupContainer}>
                   <Text style={styles.signupText}>Don't have an account? </Text>
-                  <TouchableOpacity onPress={() => {
-                    handleCloseForm();
-                    setTimeout(() => navigation.navigate('Register'), 300);
-                  }}>
+                  <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                     <Text style={styles.signupLink}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
@@ -608,7 +511,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.4,

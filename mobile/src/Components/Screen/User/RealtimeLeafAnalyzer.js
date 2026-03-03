@@ -10,6 +10,8 @@ import {
   Alert,
   Platform,
   Dimensions,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
@@ -27,6 +29,8 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [diseaseInfo, setDiseaseInfo] = useState(null);
   const cameraRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
 
@@ -48,6 +52,83 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
     'Slow_Decline': colors.warning,
     'Leaf_Blight': colors.danger,
     'Yellow_Mottle_Virus': colors.danger,
+  };
+
+  // Disease recommendations
+  const diseaseRecommendations = {
+    'Healthy': {
+      icon: '✅',
+      title: 'Plant is Healthy',
+      description: 'Your pepper plant shows no signs of disease.',
+      actions: ['Continue regular watering', 'Monitor weekly', 'Maintain proper spacing'],
+      color: colors.success
+    },
+    'Footrot': {
+      icon: '⚠️',
+      title: 'Footrot Disease Detected',
+      description: 'This is a fungal disease affecting the base of the plant.',
+      actions: ['Remove infected plant parts', 'Improve soil drainage', 'Apply fungicide treatment', 'Avoid waterlogging'],
+      color: colors.danger
+    },
+    'Pollu_Disease': {
+      icon: '🚨',
+      title: 'Pollu Disease Detected',
+      description: 'Viral infection causing leaf curling and discoloration.',
+      actions: ['Isolate affected plant', 'Remove diseased leaves', 'Control aphid vectors', 'Use insecticide if needed'],
+      color: colors.warning
+    },
+    'Slow_Decline': {
+      icon: '📉',
+      title: 'Slow Decline Detected',
+      description: 'Progressive weakening of plant vigor.',
+      actions: ['Check soil moisture', 'Test soil pH and nutrients', 'Improve fertilization', 'Ensure proper drainage'],
+      color: colors.warning
+    },
+    'Leaf_Blight': {
+      icon: '🍂',
+      title: 'Leaf Blight Detected',
+      description: 'Fungal infection causing leaf spots and browning.',
+      actions: ['Remove affected leaves', 'Improve air circulation', 'Reduce leaf wetness', 'Apply copper fungicide'],
+      color: colors.danger
+    },
+    'Yellow_Mottle_Virus': {
+      icon: '💛',
+      title: 'Yellow Mottle Virus Detected',
+      description: 'Viral infection causing yellow patterns on leaves.',
+      actions: ['Remove infected plant if severe', 'Control insect vectors', 'Sanitize tools', 'Avoid spreading to other plants'],
+      color: colors.danger
+    }
+  };
+
+  const getDiseaseInfo = (diseaseName) => {
+    let normalizedName = diseaseName;
+    const diseaseMapping = {
+      'healthy': 'Healthy',
+      'footrot': 'Footrot',
+      'pollu': 'Pollu_Disease',
+      'pollu_disease': 'Pollu_Disease',
+      'slow-decline': 'Slow_Decline',
+      'slow_decline': 'Slow_Decline',
+      'slowdecline': 'Slow_Decline',
+      'leaf-blight': 'Leaf_Blight',
+      'leaf_blight': 'Leaf_Blight',
+      'leafblight': 'Leaf_Blight',
+      'yellow-mottle': 'Yellow_Mottle_Virus',
+      'yellow_mottle': 'Yellow_Mottle_Virus',
+      'yellow_mottle_virus': 'Yellow_Mottle_Virus',
+      'ymv': 'Yellow_Mottle_Virus'
+    };
+    const lowerName = diseaseName?.toLowerCase?.() || '';
+    if (diseaseMapping[lowerName]) {
+      normalizedName = diseaseMapping[lowerName];
+    }
+    return diseaseRecommendations[normalizedName] || {
+      icon: '🔬',
+      title: `${diseaseName || 'Unknown'} Disease`,
+      description: 'Unable to identify the disease.',
+      actions: ['Consult agricultural expert', 'Get professional diagnosis'],
+      color: colors.textLight
+    };
   };
 
   // Check permission status on mount
@@ -115,6 +196,10 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
 
       if (response.data && response.data.disease) {
         setResult(response.data);
+        const info = getDiseaseInfo(response.data.disease);
+        setDiseaseInfo(info);
+        setShowResultModal(true);
+        setIsActive(false);
         setError(null);
         console.log('✅ Detected:', response.data.disease, '(' + response.data.confidence + '%)');
       }
@@ -131,15 +216,8 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
     setError(null);
     setResult(null);
     
-    // Start first capture immediately
+    // Capture ONE frame only
     await captureAndAnalyze();
-    
-    // Then continue capturing after each analysis completes (with 1.5s minimum interval)
-    analyzeIntervalRef.current = setInterval(async () => {
-      if (!analyzing) { // Only capture if previous analysis is done
-        await captureAndAnalyze();
-      }
-    }, 1500); // Check every 1.5 seconds if ready for next capture
   };
 
   const stopRealTimeAnalysis = () => {
@@ -148,6 +226,18 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
       clearInterval(analyzeIntervalRef.current);
       analyzeIntervalRef.current = null;
     }
+  };
+
+  const handleSaveResult = () => {
+    setShowResultModal(false);
+    setResult(null);
+    setDiseaseInfo(null);
+  };
+
+  const handleCancelResult = () => {
+    setShowResultModal(false);
+    setResult(null);
+    setDiseaseInfo(null);
   };
 
   // Handle permission request with dialog
@@ -290,6 +380,15 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
         facing="back"
       />
 
+      {/* Camera Frame Guide */}
+      <View style={styles.frameGuide}>
+        <View style={styles.cornerTopLeft} />
+        <View style={styles.cornerTopRight} />
+        <View style={styles.cornerBottomLeft} />
+        <View style={styles.cornerBottomRight} />
+        <Text style={styles.frameGuideText}>Position leaf here</Text>
+      </View>
+
       {/* Top Header */}
       <View style={[styles.header, { backgroundColor: `${colors.primary}F2` }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -329,28 +428,108 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
       <View style={[styles.controlsContainer, { backgroundColor: `${colors.primary}F2` }]}>
         {isActive ? (
           <>
-            <Text style={styles.statusText}>🔴 LIVE - Analyzing every 2.5s</Text>
+            <Text style={styles.statusText}>� Please wait - Analyzing...</Text>
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: colors.danger }]}
               onPress={stopRealTimeAnalysis}
+              disabled
             >
-              <Feather name="square" size={24} color="#FFFFFF" />
-              <Text style={styles.controlButtonText}>Stop</Text>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.controlButtonText}>Analyzing</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <Text style={styles.statusText}>📷 Ready for real-time analysis</Text>
+            <Text style={styles.instructionText}>Place camera on the leaf before clicking start</Text>
+            <Text style={styles.statusText}>📷 Ready for analysis</Text>
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: colors.primaryLight }]}
               onPress={startRealTimeAnalysis}
             >
               <Feather name="play-circle" size={24} color="#FFFFFF" />
-              <Text style={styles.controlButtonText}>Start</Text>
+              <Text style={styles.controlButtonText}>Start Capture</Text>
             </TouchableOpacity>
           </>
         )}
       </View>
+
+      {/* Result Confirmation Modal */}
+      <Modal
+        visible={showResultModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowResultModal(false);
+          setResult(null);
+          setDiseaseInfo(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {/* Result Header */}
+              <View style={[styles.resultModalHeader, { 
+                backgroundColor: `${diseaseInfo?.color || colors.primary}15`,
+              }]}>
+                <Text style={styles.resultModalIcon}>{diseaseInfo?.icon || '🔬'}</Text>
+                <Text style={[styles.resultModalTitle, { color: diseaseInfo?.color || colors.primary }]}>
+                  {diseaseInfo?.title || 'Analysis Result'}
+                </Text>
+                <Text style={[styles.resultModalConfidence, { color: diseaseInfo?.color || colors.primary }]}>
+                  {result?.confidence}% Confidence
+                </Text>
+              </View>
+
+              {/* Description */}
+              <Text style={[styles.resultModalDescription, { color: colors.textLight }]}>
+                {diseaseInfo?.description}
+              </Text>
+
+              {/* Recommendations */}
+              {diseaseInfo?.actions && (
+                <View style={styles.resultModalRecommendations}>
+                  <Text style={styles.resultModalRecommendationsTitle}>📋 Recommended Actions</Text>
+                  {diseaseInfo.actions.map((action, idx) => (
+                    <View key={idx} style={styles.resultModalActionItem}>
+                      <Text style={[styles.resultModalActionCheck, { color: diseaseInfo.color }]}>✓</Text>
+                      <Text style={[styles.resultModalActionText, { color: colors.text }]}>
+                        {action}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={{ height: 20 }} />
+            </ScrollView>
+
+            {/* Modal Buttons */}
+            <View style={styles.resultModalButtons}>
+              <TouchableOpacity
+                style={[styles.resultModalButton, { 
+                  backgroundColor: `${colors.danger}20`,
+                  borderColor: colors.danger,
+                  borderWidth: 2
+                }]}
+                onPress={handleCancelResult}
+              >
+                <Feather name="x" size={20} color={colors.danger} />
+                <Text style={[styles.resultModalButtonText, { color: colors.danger }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.resultModalButton, { 
+                  backgroundColor: colors.primaryLight
+                }]}
+                onPress={handleSaveResult}
+              >
+                <Feather name="check" size={20} color="#FFFFFF" />
+                <Text style={[styles.resultModalButtonText, { color: '#FFFFFF' }]}>Save Result</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -365,104 +544,197 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     zIndex: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   permissionHeaderTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   permissionContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingBottom: 40,
   },
   permissionTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 20,
-    marginBottom: 12,
+    fontSize: 26,
+    fontWeight: '900',
+    marginTop: 24,
+    marginBottom: 14,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   permissionDescription: {
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 23,
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 32,
+    fontWeight: '500',
   },
   featuresList: {
     width: '100%',
-    gap: 12,
+    gap: 14,
+    marginBottom: 12,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     paddingHorizontal: 16,
+    paddingVertical: 2,
   },
   featureText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
   },
   platformNote: {
-    fontSize: 12,
-    marginTop: 24,
+    fontSize: 13,
+    marginTop: 28,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
     fontStyle: 'italic',
+    lineHeight: 18,
   },
   permissionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 28,
     gap: 12,
   },
   permissionButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   permissionButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
   },
   centerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   centerText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#5A7A73',
     textAlign: 'center',
+    fontWeight: '500',
   },
   retryButton: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 16,
   },
   camera: {
     flex: 1,
+  },
+  frameGuide: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -120 }, { translateY: -120 }],
+    width: 240,
+    height: 240,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 4,
+  },
+  cornerTopLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopColor: '#27AE60',
+    borderLeftColor: '#27AE60',
+    borderTopLeftRadius: 8,
+  },
+  cornerTopRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderTopColor: '#27AE60',
+    borderRightColor: '#27AE60',
+    borderTopRightRadius: 8,
+  },
+  cornerBottomLeft: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderBottomColor: '#27AE60',
+    borderLeftColor: '#27AE60',
+    borderBottomLeftRadius: 8,
+  },
+  cornerBottomRight: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomColor: '#27AE60',
+    borderRightColor: '#27AE60',
+    borderBottomRightRadius: 8,
+  },
+  frameGuideText: {
+    color: 'rgba(39, 174, 96, 0.7)',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    position: 'absolute',
+    bottom: -40,
+    letterSpacing: 0.5,
   },
   header: {
     position: 'absolute',
@@ -473,68 +745,103 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     zIndex: 10,
+    backgroundColor: '#1B4D3EF0',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   resultOverlay: {
     position: 'absolute',
-    top: 80,
-    right: 12,
-    backgroundColor: '#000000CC',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderLeftWidth: 4,
+    top: 90,
+    left: '50%',
+    transform: [{ translateX: -150 }],
+    backgroundColor: '#000000F0',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderLeftWidth: 6,
     zIndex: 5,
+    width: 300,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
   diseaseLabel: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 6,
+    textAlign: 'center',
   },
   confidenceText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   errorOverlay: {
     position: 'absolute',
-    top: 80,
+    top: 90,
     left: 12,
     right: 12,
     flexDirection: 'row',
-    backgroundColor: '#E74C3CCC',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: '#E74C3CF2',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     zIndex: 5,
+    borderLeftWidth: 5,
+    borderLeftColor: '#FFFFFF',
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   errorText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     flex: 1,
   },
   loadingOverlay: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 140,
     left: '50%',
-    transform: [{ translateX: -50 }],
+    transform: [{ translateX: -75 }],
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     zIndex: 5,
+    backgroundColor: '#000000CC',
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    borderRadius: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
   analyzeText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   controlsContainer: {
     position: 'absolute',
@@ -542,28 +849,138 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
   },
   statusText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  instructionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '600',
+    fontStyle: 'italic',
+    opacity: 0.8,
+    marginBottom: 8,
   },
   controlButton: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  controlButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 17,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    maxHeight: '85%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    paddingBottom: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  resultModalHeader: {
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  resultModalIcon: {
+    fontSize: 64,
+    marginBottom: 12,
+  },
+  resultModalTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  resultModalConfidence: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  resultModalDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  resultModalRecommendations: {
+    backgroundColor: '#F0F9F6',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#27AE60',
+  },
+  resultModalRecommendationsTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1B4D3E',
+    marginBottom: 14,
+  },
+  resultModalActionItem: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  resultModalActionCheck: {
+    fontWeight: '800',
+    marginRight: 12,
+    fontSize: 16,
+    marginTop: 2,
+  },
+  resultModalActionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 20,
+  },
+  resultModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  resultModalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 14,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    width: '100%',
   },
-  controlButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  resultModalButtonText: {
+    fontWeight: '800',
     fontSize: 16,
   },
 });

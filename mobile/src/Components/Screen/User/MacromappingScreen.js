@@ -294,6 +294,21 @@ const RETAILERS_DATA = [
   },
 ];
 
+const colors = {
+  primary: '#1B4D3E',
+  primaryDark: '#0D2818',
+  background: '#F8FAF7',
+  text: '#1B4D3E',
+  textLight: '#5A7A73',
+  border: '#D4E5DD',
+  success: '#27AE60',
+  warning: '#F39C12',
+  danger: '#E74C3C',
+  white: '#FFFFFF',
+  accent: '#F39C12',
+  cardBg: '#FFFFFF',
+};
+
 const MAP_HTML = `
 <!DOCTYPE html>
 <html>
@@ -500,6 +515,18 @@ export default function MacromappingScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+
+  // Saved Locations State
+  const [savedLocations, setSavedLocations] = useState([]);
+  const [showSavedPanel, setShowSavedPanel] = useState(false);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const savedPanelAnim = useRef(new Animated.Value(300)).current;
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Double-click prevention
+  const lastClickTimes = useRef({});
+  const searchDebounceTimer = useRef(null);
 
   const webViewRef = useRef(null);
   const drawerSlideAnim = useRef(new Animated.Value(-280)).current;
@@ -556,19 +583,7 @@ export default function MacromappingScreen({ navigation }) {
     })
   ).current;
 
-  const colors = {
-    primary: '#1B4D3E',
-    primaryDark: '#0D2818',
-    background: '#F8FAF7',
-    text: '#1B4D3E',
-    textLight: '#5A7A73',
-    border: '#D4E5DD',
-    success: '#27AE60',
-    warning: '#F39C12',
-    danger: '#E74C3C',
-    white: '#FFFFFF',
-    accent: '#F39C12',
-  };
+
 
   useEffect(() => {
     initializeMap();
@@ -597,6 +612,39 @@ export default function MacromappingScreen({ navigation }) {
       }, 1000);
     }
   }, []); // Run once on mount
+
+  useEffect(() => {
+    // Fetch saved locations on mount
+    fetchSavedLocations();
+  }, []);
+
+  useEffect(() => {
+    // Center map on user location when location is obtained
+    if (userLocation && webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'focusLocation',
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude
+      }));
+    }
+  }, [userLocation]);
+
+  useEffect(() => {
+    // Auto-focus on activity location if passed via route params (from RecentActivities)
+    if (navigation.getState().routes[navigation.getState().index].params?.latitude) {
+      const { latitude, longitude, locationName } = navigation.getState().routes[navigation.getState().index].params;
+      if (webViewRef.current) {
+        setTimeout(() => {
+          webViewRef.current.postMessage(JSON.stringify({
+            type: 'focusLocation',
+            latitude: latitude,
+            longitude: longitude
+          }));
+          console.log(`📍 Focused on ${locationName}`);
+        }, 500);
+      }
+    }
+  }, [navigation]);
 
   const openDrawer = () => {
     setDrawerOpen(true);
@@ -684,18 +732,76 @@ export default function MacromappingScreen({ navigation }) {
     }
   };
 
-  const handleMapClick = (latitude, longitude) => {
-      // If user location exists, draw route to clicked point
-      if (userLocation) {
-          fetchRoute(userLocation.latitude, userLocation.longitude, latitude, longitude);
+  const handleMapClick = async (latitude, longitude) => {
+      const now = Date.now();
+      if (lastClickTimes.current.mapClick && now - lastClickTimes.current.mapClick < 500) return;
+      lastClickTimes.current.mapClick = now;
+      
+      // Get actual address via reverse geocoding
+      let addressName = "Clicked Location";
+      let fullAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+      
+      try {
+        const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+        if (reverseGeocode.length > 0) {
+          const place = reverseGeocode[0];
+          addressName = `${place.city || place.subregion || 'Location'}, ${place.region || place.country || ''}`.trim();
+          // Construct full address
+          fullAddress = [
+            place.street,
+            place.city,
+            place.subregion,
+            place.region,
+            place.country
+          ].filter(Boolean).join(', ');
+        }
+      } catch (error) {
+        console.log("Reverse geocoding failed, using coordinates");
       }
-      
-      // Update Weather for the clicked location
-      setSelectedItem(null); // Clear selected item if clicking map randomly
-      fetchLocationWeather(latitude, longitude, "Selected Location");
-      
-      // Open Bottom Sheet to show weather
-      expandBottomSheet();
+
+      // Create temporary location object from map click
+      const clickedLocation = {
+        id: Math.random(),
+        name: addressName,
+        latitude,
+        longitude,
+        address: fullAddress,
+        location: addressName,
+        specialty: 'Custom Location'
+      };
+
+      // Show confirmation dialog
+      Alert.alert(
+        'Proceed to location?',
+        `Navigate to ${addressName}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Proceed',
+            onPress: () => {
+              if (userLocation) {
+                fetchRoute(userLocation.latitude, userLocation.longitude, latitude, longitude);
+              }
+              
+              setSelectedItem(clickedLocation);
+              fetchLocationWeather(latitude, longitude, addressName);
+              expandBottomSheet();
+              
+              // Ask to save after delay
+              setTimeout(() => {
+                Alert.alert(
+                  'Save location?',
+                  `Save this location to your favorites?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Save', onPress: () => saveLocation(clickedLocation) }
+                  ]
+                );
+              }, 500);
+            }
+          }
+        ]
+      );
   };
 
   const expandBottomSheet = () => {
@@ -708,9 +814,56 @@ export default function MacromappingScreen({ navigation }) {
   };
 
   const handleItemPress = (item, type = null) => {
+    const now = Date.now();
+    if (lastClickTimes.current.itemPress && now - lastClickTimes.current.itemPress < 500) return;
+    lastClickTimes.current.itemPress = now;
+    
+    const isSaved = isLocationSaved(item.id);
+    
+    // First confirmation dialog
+    Alert.alert(
+      'Proceed to location?',
+      `Navigate to ${item.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Proceed',
+          onPress: () => {
+            // Show location with weather and route
+            showLocationDetails(item, type);
+            
+            // Ask to save/unsave after 500ms
+            setTimeout(() => {
+              if (isSaved) {
+                const savedId = getSavedLocationId(item.id);
+                Alert.alert(
+                  'Already Saved',
+                  `${item.name} is in your favorites`,
+                  [
+                    { text: 'Keep', style: 'cancel' },
+                    { text: 'Remove from Favorites', style: 'destructive', onPress: () => unsaveLocation(savedId) }
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  'Save location?',
+                  `Save ${item.name} to your favorites?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Save', onPress: () => saveLocation(item) }
+                  ]
+                );
+              }
+            }, 500);
+          }
+        }
+      ]
+    );
+  };
+
+  const showLocationDetails = (item, type = null) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     
-    // If coming from map click with different type, switch category first
     if (type && type !== activeCategory) {
       setActiveCategory(type);
     }
@@ -718,12 +871,10 @@ export default function MacromappingScreen({ navigation }) {
     setSelectedItem(item);
     fetchLocationWeather(item.latitude, item.longitude, item.name);
     
-    // Close side panel if open
     if (sidePanelOpen) {
         toggleSidePanel();
     }
 
-    // Expand Bottom Sheet
     expandBottomSheet();
 
     if (webViewRef.current) {
@@ -737,6 +888,186 @@ export default function MacromappingScreen({ navigation }) {
     if (userLocation) {
       fetchRoute(userLocation.latitude, userLocation.longitude, item.latitude, item.longitude);
     }
+  };
+
+  const fetchSavedLocations = async () => {
+    try {
+      setLoadingSaved(true);
+      const token = await getToken();
+      if (!token) {
+        console.log('No token, skipping saved locations fetch');
+        return;
+      }
+
+      const response = await axios.get(
+        'http://192.168.100.213:4001/api/v1/macromapping/saved',
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.savedLocations) {
+        setSavedLocations(response.data.savedLocations);
+      }
+    } catch (error) {
+      console.error('Error fetching saved locations:', error);
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
+  const saveLocation = async (item) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert('Error', 'Please login to save locations');
+        return;
+      }
+
+      const response = await axios.post(
+        'http://192.168.100.213:4001/api/v1/macromapping/save',
+        {
+          farmId: item.id,
+          farmName: item.name,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          address: item.address,
+          location: item.location,
+          specialty: item.specialty
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        Alert.alert('Success', `${item.name} saved to favorites!`);
+        fetchSavedLocations(); // Refresh list
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message;
+      if (errorMsg === 'This location is already saved') {
+        Alert.alert('Already Saved', 'This location is already in your favorites');
+      } else {
+        Alert.alert('Error', `Failed to save: ${errorMsg}`);
+      }
+      console.error('❌ Save error:', error.response?.data || error.message);
+    }
+  };
+
+  const unsaveLocation = async (locationId) => {
+    try {
+      const token = await getToken();
+      const response = await axios.delete(
+        `http://192.168.100.213:4001/api/v1/macromapping/saved/${locationId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        Alert.alert('Removed', 'Location removed from favorites');
+        fetchSavedLocations(); // Refresh list
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to remove location');
+      console.error('Unsave error:', error);
+    }
+  };
+
+  const isLocationSaved = (itemId) => {
+    return savedLocations.some(loc => loc.farm.id === itemId);
+  };
+
+  const getSavedLocationId = (itemId) => {
+    const saved = savedLocations.find(loc => loc.farm.id === itemId);
+    return saved?._id;
+  };
+
+  const toggleSavedPanel = () => {
+    const toValue = showSavedPanel ? 300 : 0; // 300 = header only (collapsed), 0 = full panel (expanded)
+    Animated.timing(savedPanelAnim, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false
+    }).start(() => setShowSavedPanel(!showSavedPanel));
+  };
+
+  const handleLocationClick = (item) => {
+    const farm = item.farm;
+    Alert.alert(
+      'Go to location?',
+      `Navigate to ${farm.name}?`,
+      [
+        { text: 'Cancel', onPress: () => {} },
+        {
+          text: 'Navigate',
+          onPress: () => {
+            // Ensure userLocation is available before routing
+            if (!userLocation) {
+              Alert.alert('Location Required', 'Unable to calculate route. Please enable location services.');
+              return;
+            }
+
+            // Set selected item
+            setSelectedItem(farm);
+            
+            // Fetch weather for the location
+            fetchLocationWeather(farm.latitude, farm.longitude, farm.name);
+            
+            // Fetch and draw route
+            fetchRoute(userLocation.latitude, userLocation.longitude, farm.latitude, farm.longitude);
+            
+            // Focus map on location
+            if (webViewRef.current) {
+              webViewRef.current.postMessage(JSON.stringify({
+                type: 'focusLocation',
+                latitude: farm.latitude,
+                longitude: farm.longitude
+              }));
+            }
+            
+            // Expand bottom sheet
+            expandBottomSheet();
+            
+            // Close saved panel
+            setShowSavedPanel(false);
+            
+            // Hide floating button
+            const toValue = 300; // collapsed state
+            Animated.timing(savedPanelAnim, {
+              toValue,
+              duration: 300,
+              useNativeDriver: false
+            }).start();
+          }
+        }
+      ]
+    );
+  };
+
+  const cancelNavigation = () => {
+    const now = Date.now();
+    if (lastClickTimes.current.cancel && now - lastClickTimes.current.cancel < 500) return;
+    lastClickTimes.current.cancel = now;
+    
+    setIsNavigating(false);
+    setSelectedItem(null);
+    // Clear route from map
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'drawRoute',
+        coordinates: []
+      }));
+    }
+    // Collapse bottom sheet
+    Animated.spring(sheetY, { 
+      toValue: height - BOTTOM_SHEET_MIN_HEIGHT, 
+      useNativeDriver: false 
+    }).start();
+  };
+
+  const startNavigation = () => {
+    const now = Date.now();
+    if (lastClickTimes.current.proceed && now - lastClickTimes.current.proceed < 500) return;
+    lastClickTimes.current.proceed = now;
+    
+    setIsNavigating(true);
+    Alert.alert('Navigation Started', `Navigate to ${selectedItem.name}. Follow the route on the map.`);
   };
 
   const handleCategoryChange = (category) => {
@@ -812,18 +1143,24 @@ export default function MacromappingScreen({ navigation }) {
     }
   };
 
-  // Search Functionality
+  // Search Functionality with Debounce
   const handleSearch = async (text) => {
     setSearchQuery(text);
+    
+    if (searchDebounceTimer.current) {
+      clearTimeout(searchDebounceTimer.current);
+    }
+    
     if (text.length < 2) {
         setSearchResults([]);
         return;
     }
 
-    setIsSearching(true);
-    
-    // 1. Local Search (Farms & Retailers)
-    const localResults = [
+    searchDebounceTimer.current = setTimeout(async () => {
+      setIsSearching(true);
+      
+      // 1. Local Search (Farms & Retailers)
+      const localResults = [
         ...FARMS_DATA.map(f => ({ ...f, type: 'Farms', source: 'local', unique_id: `local_farms_${f.id}` })),
         ...RETAILERS_DATA.map(r => ({ ...r, type: 'Retailers', source: 'local', unique_id: `local_retailers_${r.id}` }))
     ].filter(item => item.name.toLowerCase().includes(text.toLowerCase()));
@@ -844,6 +1181,8 @@ export default function MacromappingScreen({ navigation }) {
                 feature.properties.state,
                 feature.properties.country
             ].filter(Boolean).join(', '),
+            location: `${feature.properties.city || feature.properties.state || 'Location'}, ${feature.properties.country || 'Philippines'}`,
+            specialty: 'Online location',
             latitude: feature.geometry.coordinates[1],
             longitude: feature.geometry.coordinates[0],
             type: 'Location',
@@ -854,15 +1193,29 @@ export default function MacromappingScreen({ navigation }) {
     } catch (error) {
         console.error("Search error:", error);
         setSearchResults(localResults); // Fallback to local only
-    } finally {
-        setIsSearching(false);
-    }
+      } finally {
+          setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
   };
 
   const handleSelectSearchResult = (item) => {
+      const now = Date.now();
+      if (lastClickTimes.current.searchSelect && now - lastClickTimes.current.searchSelect < 500) return;
+      lastClickTimes.current.searchSelect = now;
+      
       Keyboard.dismiss();
       setSearchQuery(item.name);
       setSearchResults([]);
+      setSearchActive(false);
+      
+      // Clear route when closing search
+      if (webViewRef.current) {
+          webViewRef.current.postMessage(JSON.stringify({
+              type: 'drawRoute',
+              coordinates: []
+          }));
+      }
 
       // Focus on map
       if (webViewRef.current) {
@@ -884,15 +1237,32 @@ export default function MacromappingScreen({ navigation }) {
       if (item.source === 'local') {
           handleItemPress(item, item.type);
       } else {
-          // If it's online result, just route to it
-          if (userLocation) {
-              fetchRoute(userLocation.latitude, userLocation.longitude, item.latitude, item.longitude);
-          }
-          // Fetch weather for this new location
-          fetchLocationWeather(item.latitude, item.longitude, item.name);
-          setSelectedItem({ name: item.name, address: item.address, type: 'Location' }); // Pseudo-item for header
-          expandBottomSheet();
+          // If it's online result, show confirmation before routing
+          Alert.alert(
+              'Proceed to location?',
+              `Navigate to ${item.name}?`,
+              [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                      text: 'Proceed',
+                      onPress: () => {
+                          // Only fetch route if user confirms
+                          if (userLocation) {
+                              fetchRoute(userLocation.latitude, userLocation.longitude, item.latitude, item.longitude);
+                          }
+                          // Fetch weather for this new location
+                          fetchLocationWeather(item.latitude, item.longitude, item.name);
+                          setSelectedItem(item); // Use full item so save works with all required fields
+                          expandBottomSheet();
+                      }
+                  }
+              ]
+          );
       }
+  };
+
+  const isUIActive = () => {
+    return searchActive || sidePanelOpen || showSavedPanel || isNavigating || (lastSheetY.current !== height - BOTTOM_SHEET_MIN_HEIGHT);
   };
 
   const onWebViewMessage = (event) => {
@@ -906,8 +1276,8 @@ export default function MacromappingScreen({ navigation }) {
           handleItemPress(item, msg.itemType);
         }
       } else if (msg.type === 'mapClick') {
-          // Only process map click if search is NOT active
-          if (searchQuery.trim().length === 0) {
+          // Only process map click if UI is NOT active
+          if (!isUIActive()) {
               handleMapClick(msg.latitude, msg.longitude);
               // Tell WebView to place the marker visually
               if (webViewRef.current) {
@@ -950,66 +1320,104 @@ export default function MacromappingScreen({ navigation }) {
           onLogout={() => logout(navigation)}
         />
         
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-                <Feather name="search" size={20} color={colors.textLight} />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search farms, retailers, or places..."
-                    value={searchQuery}
-                    onChangeText={handleSearch}
-                    placeholderTextColor={colors.textLight}
-                />
-                {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => {
-                        setSearchQuery('');
-                        setSearchResults([]);
-                        Keyboard.dismiss();
-                    }}>
-                        <Feather name="x" size={20} color={colors.textLight} />
-                    </TouchableOpacity>
-                )}
-            </View>
-            
-            {/* Search Results Dropdown */}
-            {searchResults.length > 0 && (
-                <View style={styles.searchResultsList}>
-                    <FlatList
-                        data={searchResults}
-                        keyExtractor={(item) => item.unique_id}
-                        keyboardShouldPersistTaps="handled"
-                        renderItem={({ item }) => (
-                            <TouchableOpacity 
-                                style={styles.searchResultItem}
-                                onPress={() => handleSelectSearchResult(item)}
-                            >
-                                <View style={[styles.resultIcon, { backgroundColor: item.type === 'Farms' ? colors.primary : (item.type === 'Retailers' ? colors.warning : '#999') }]}>
-                                    <Feather name={item.source === 'local' ? 'map-pin' : 'globe'} size={14} color="#FFF" />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.resultTitle}>{item.name}</Text>
-                                    <Text style={styles.resultSubtitle} numberOfLines={1}>{item.address}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        )}
-                        style={{ maxHeight: 200 }}
-                    />
-                </View>
-            )}
-        </View>
+        {/* Search Toggle Button */}
+        {!searchActive && (
+          <TouchableOpacity 
+              style={styles.searchToggleButton}
+              onPress={() => setSearchActive(true)}
+          >
+              <Feather name="search" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
-        {/* Toggle List Button (Below Search Bar) */}
-        <TouchableOpacity 
-            style={styles.toggleListButton}
-            onPress={toggleSidePanel}
-        >
-            <Feather name={sidePanelOpen ? "chevrons-left" : "list"} size={20} color={colors.white} />
-            <Text style={styles.toggleListText}>{sidePanelOpen ? "Hide List" : "Show List"}</Text>
-        </TouchableOpacity>
+        {/* Search Bar - Shown When Active */}
+        {searchActive && (
+          <View style={styles.searchContainer}>
+              <View style={styles.searchBar}>
+                  <Feather name="search" size={20} color={colors.textLight} />
+                  <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search farms, retailers, or places..."
+                      value={searchQuery}
+                      onChangeText={handleSearch}
+                      placeholderTextColor={colors.textLight}
+                      autoFocus={true}
+                  />
+                  <TouchableOpacity onPress={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      setSearchActive(false);
+                      Keyboard.dismiss();
+                      // Clear route when closing search
+                      if (webViewRef.current) {
+                          webViewRef.current.postMessage(JSON.stringify({
+                              type: 'drawRoute',
+                              coordinates: []
+                          }));
+                      }
+                  }}>
+                      <Feather name="x" size={20} color={colors.textLight} />
+                  </TouchableOpacity>
+              </View>
+              
+              {/* Search Results Dropdown */}
+              {searchResults.length > 0 && (
+                  <View style={styles.searchResultsList}>
+                      <FlatList
+                          data={searchResults}
+                          keyExtractor={(item) => item.unique_id}
+                          keyboardShouldPersistTaps="handled"
+                          renderItem={({ item }) => (
+                              <TouchableOpacity 
+                                  style={styles.searchResultItem}
+                                  onPress={() => handleSelectSearchResult(item)}
+                              >
+                                  <View style={[styles.resultIcon, { backgroundColor: item.type === 'Farms' ? colors.primary : (item.type === 'Retailers' ? colors.warning : (item.type === 'Location' ? '#666' : '#999')) }]}>
+                                      <Feather name={item.source === 'local' ? 'map-pin' : 'globe'} size={14} color="#FFF" />
+                                  </View>
+                                  <View style={{ flex: 1 }}>
+                                      <Text style={styles.resultTitle}>{item.name}</Text>
+                                      <Text style={styles.resultSubtitle} numberOfLines={2}>{item.address || 'Location'}</Text>
+                                      {item.type && item.type !== 'Location' && (
+                                          <Text style={styles.resultType}>{item.type}</Text>
+                                      )}
+                                  </View>
+                              </TouchableOpacity>
+                          )}
+                          style={{ maxHeight: 200 }}
+                      />
+                  </View>
+              )}
+          </View>
+        )}
+
+        {/* Toggle List Button (Right Side, Same Level as Search) - Hidden when search active */}
+        {!searchActive && (
+          <TouchableOpacity 
+              pointerEvents="auto"
+              style={styles.toggleListButton}
+              onPress={toggleSidePanel}
+          >
+              <Feather name={sidePanelOpen ? "chevrons-left" : "list"} size={20} color={colors.white} />
+              <Text style={styles.toggleListText}>{sidePanelOpen ? "Hide List" : "Show List"}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Selected Location Card */}
+        {selectedItem && (
+            <View style={styles.selectedLocationCard}>
+                <View style={[styles.selectedLocationIcon, { backgroundColor: selectedItem.type === 'Farms' ? colors.primary : colors.warning }]}>
+                    <Feather name="map-pin" size={18} color="#FFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.selectedLocationName}>{selectedItem.name}</Text>
+                    <Text style={styles.selectedLocationAddress} numberOfLines={1}>{selectedItem.address || selectedItem.location || 'Location'}</Text>
+                </View>
+            </View>
+        )}
 
         {/* Legend Overlay */}
-        <View style={styles.legendContainer}>
+        <View style={[styles.legendContainer, selectedItem && { bottom: 250 }]}>
             <Text style={styles.legendTitle}>Map Legend</Text>
             <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: 'green' }]} />
@@ -1030,7 +1438,7 @@ export default function MacromappingScreen({ navigation }) {
         </View>
       </SafeAreaView>
 
-      <View style={styles.mapContainer}>
+      <View style={styles.mapContainer} pointerEvents={isUIActive() ? 'none' : 'auto'}>
         <WebView
           ref={webViewRef}
           source={{ html: MAP_HTML }}
@@ -1039,6 +1447,7 @@ export default function MacromappingScreen({ navigation }) {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
+          pointerEvents={isUIActive() ? 'none' : 'auto'}
           onLoadEnd={() => {
             if (userLocation && webViewRef.current) {
               webViewRef.current.postMessage(JSON.stringify({
@@ -1128,23 +1537,78 @@ export default function MacromappingScreen({ navigation }) {
         <ScrollView style={styles.sheetContent}>
             {/* Header: Selected Place or Weather Location */}
             <View style={styles.weatherHeader}>
-                <Text style={styles.weatherLocationName}>
-                    {selectedItem ? selectedItem.name : (weatherData?.locationName || "Weather Details")}
-                </Text>
+                <View style={styles.headerTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.weatherLocationName}>
+                        {selectedItem ? selectedItem.name : (weatherData?.locationName || "Weather Details")}
+                    </Text>
+                    {selectedItem && (
+                        <Text style={styles.weatherLocationSub}>
+                            {selectedItem.address}
+                        </Text>
+                    )}
+                    {userLocation && (selectedItem || weatherData) && (
+                        <Text style={[styles.distanceText, {color: colors.success, marginTop: 4}]}>
+                            📏 {calculateDistance(
+                                userLocation.latitude, 
+                                userLocation.longitude, 
+                                selectedItem?.latitude || weatherData?.latitude, 
+                                selectedItem?.longitude || weatherData?.longitude
+                            )} km away
+                        </Text>
+                    )}
+                  </View>
+                  {selectedItem && (
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setSelectedItem(null);
+                        Animated.spring(sheetY, { toValue: height - BOTTOM_SHEET_MIN_HEIGHT, useNativeDriver: false }).start();
+                      }}
+                      style={styles.cancelButton}
+                    >
+                      <MaterialCommunityIcons name="close" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                  )}
+                </View>
                 {selectedItem && (
-                    <Text style={styles.weatherLocationSub}>
-                        {selectedItem.address}
-                    </Text>
-                )}
-                {userLocation && (selectedItem || weatherData) && (
-                    <Text style={[styles.distanceText, {color: colors.success, marginTop: 4}]}>
-                        📏 {calculateDistance(
-                            userLocation.latitude, 
-                            userLocation.longitude, 
-                            selectedItem?.latitude || weatherData?.latitude, 
-                            selectedItem?.longitude || weatherData?.longitude
-                        )} km away
-                    </Text>
+                  <View style={styles.actionButtons}>
+                    {!isNavigating ? (
+                      <>
+                        {isLocationSaved(selectedItem.id) ? (
+                          <TouchableOpacity 
+                            style={[styles.actionBtn, styles.saveBtnStyle]}
+                            onPress={() => unsaveLocation(getSavedLocationId(selectedItem.id))}
+                          >
+                            <MaterialCommunityIcons name="delete" size={18} color="#FFF" />
+                            <Text style={styles.actionBtnText}>Remove</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity 
+                            style={[styles.actionBtn, styles.saveBtnStyle]}
+                            onPress={() => saveLocation(selectedItem)}
+                          >
+                            <MaterialCommunityIcons name="heart" size={18} color="#FFF" />
+                            <Text style={styles.actionBtnText}>Save</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity 
+                          style={[styles.actionBtn, styles.directionBtnStyle]}
+                          onPress={() => startNavigation()}
+                        >
+                          <MaterialCommunityIcons name="navigation" size={18} color="#FFF" />
+                          <Text style={styles.actionBtnText}>Navigate</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <TouchableOpacity 
+                        style={[styles.actionBtn, { backgroundColor: '#E74C3C', flex: 1 }]}
+                        onPress={() => cancelNavigation()}
+                      >
+                        <MaterialCommunityIcons name="close" size={18} color="#FFF" />
+                        <Text style={styles.actionBtnText}>Cancel Navigation</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
             </View>
 
@@ -1195,6 +1659,43 @@ export default function MacromappingScreen({ navigation }) {
                             <Text style={styles.detailLabel}>Soil</Text>
                         </View>
                     </View>
+
+                    {/* Location Tips Section */}
+                    {selectedItem && (
+                      <View style={styles.tipsSection}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>📍 Location Tips</Text>
+                        <View style={styles.tipsContainer}>
+                          <View style={styles.tipItem}>
+                            <MaterialCommunityIcons name="road" size={18} color={colors.accent} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.tipLabel}>Road Conditions</Text>
+                              <Text style={styles.tipText}>Well-maintained routes. Check weather before travel.</Text>
+                            </View>
+                          </View>
+                          <View style={styles.tipItem}>
+                            <MaterialCommunityIcons name="clock-outline" size={18} color={colors.accent} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.tipLabel}>Best Time to Visit</Text>
+                              <Text style={styles.tipText}>Early morning (6-8 AM) for cooler weather and easier parking.</Text>
+                            </View>
+                          </View>
+                          <View style={styles.tipItem}>
+                            <MaterialCommunityIcons name="parking" size={18} color={colors.accent} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.tipLabel}>Parking</Text>
+                              <Text style={styles.tipText}>Free parking available. Shaded area near entrance.</Text>
+                            </View>
+                          </View>
+                          <View style={styles.tipItem}>
+                            <MaterialCommunityIcons name="information" size={18} color={colors.accent} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.tipLabel}>Hours</Text>
+                              <Text style={styles.tipText}>Open 8 AM - 5 PM daily. Ask for details at gate.</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    )}
 
                     {/* Recommendations */}
                     {recommendations.length > 0 && (
@@ -1406,6 +1907,62 @@ export default function MacromappingScreen({ navigation }) {
             )}
         </ScrollView>
       </Animated.View>
+
+      {/* FLOATING PANEL - SAVED LOCATIONS */}
+      <Animated.View style={[styles.floatingPanel, { transform: [{ translateY: savedPanelAnim }] }]}>
+        <TouchableOpacity style={styles.floatingHeader} onPress={toggleSavedPanel}>
+          <MaterialCommunityIcons name="heart" size={20} color="#E74C3C" />
+          <Text style={styles.floatingTitle}>{savedLocations.length} Saved</Text>
+          <MaterialCommunityIcons name={showSavedPanel ? 'chevron-down' : 'chevron-up'} size={20} color={colors.accent} />
+        </TouchableOpacity>
+
+        {showSavedPanel && (
+          <FlatList
+            data={savedLocations}
+            keyExtractor={(item) => item._id}
+            scrollEnabled={false}
+            renderItem={({ item }) => (
+              <View style={styles.savedItem}>
+                <TouchableOpacity 
+                  style={styles.savedItemContent}
+                  onPress={() => handleLocationClick(item)}
+                >
+                  <View style={styles.savedItemInfo}>
+                    <Text style={styles.savedItemName}>{item.farm.name}</Text>
+                    <Text style={styles.savedItemLocation}>{item.farm.location}</Text>
+                    {userLocation && (
+                      <Text style={styles.savedItemDistance}>
+                        📍 {calculateDistance(userLocation.latitude, userLocation.longitude, item.farm.latitude, item.farm.longitude)} km away
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => Alert.alert('Remove', `Remove ${item.farm.name}?`, [
+                    { text: 'Cancel' },
+                    { text: 'Remove', onPress: () => unsaveLocation(item._id), style: 'destructive' }
+                  ])}
+                >
+                  <MaterialCommunityIcons name="close" size={20} color="#E74C3C" />
+                </TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>No saved locations yet</Text>}
+          />
+        )}
+      </Animated.View>
+
+      {/* FLOATING BUTTON - OPEN FLOATING PANEL */}
+      {!showSavedPanel && (
+        <TouchableOpacity style={styles.floatingButton} onPress={toggleSavedPanel}>
+          <MaterialCommunityIcons name="heart" size={24} color="#FFF" />
+          {savedLocations.length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{savedLocations.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -1427,7 +1984,48 @@ const styles = StyleSheet.create({
     top: 80, 
     left: 16,
     right: 16,
+    zIndex: 120,
+  },
+  searchToggleButton: {
+    position: 'absolute',
+    top: 80,
+    left: 16,
     zIndex: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  toggleListButton: {
+    position: 'absolute',
+    top: 80,
+    right: 16,
+    zIndex: 100,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 20,
+  },
+  toggleListText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   searchBar: {
     flexDirection: 'row',
@@ -1484,29 +2082,57 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#777',
     marginTop: 2,
+    fontWeight: '500',
   },
-  toggleListButton: {
-      position: 'absolute',
-      top: 140, // Below search bar
-      left: 16,
-      backgroundColor: '#1B4D3E',
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 4,
-      zIndex: 25,
+  resultType: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 4,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  selectedLocationCard: {
+    position: 'absolute',
+    top: 160,
+    left: 16,
+    right: 16,
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  selectedLocationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  selectedLocationName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 2,
+  },
+  selectedLocationAddress: {
+    fontSize: 11,
+    color: colors.textLight,
+    fontWeight: '500',
   },
   toggleListText: {
       color: '#FFF',
-      fontSize: 12,
+      fontSize: 8,
       fontWeight: '600',
-      marginLeft: 6,
   },
   legendContainer: {
     position: 'absolute',
@@ -1858,5 +2484,173 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 8,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cancelButton: {
+    backgroundColor: '#E74C3C',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  saveBtnStyle: {
+    backgroundColor: '#E74C3C',
+  },
+  directionBtnStyle: {
+    backgroundColor: '#22c55e',
+  },
+  actionBtnText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  tipsSection: {
+    marginTop: 16,
+    marginHorizontal: 12,
+  },
+  tipsContainer: {
+    gap: 12,
+    marginTop: 12,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAF7',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'flex-start',
+    gap: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#22c55e',
+  },
+  tipLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B4D3E',
+  },
+  tipText: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  floatingPanel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    maxHeight: 350,
+    zIndex: 100,
+  },
+  floatingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  floatingTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1B4D3E',
+    flex: 1,
+    marginLeft: 8,
+  },
+  savedItem: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  savedItemContent: {
+    flex: 1,
+  },
+  savedItemInfo: {
+    gap: 4,
+  },
+  savedItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B4D3E',
+  },
+  savedItemLocation: {
+    fontSize: 11,
+    color: '#666',
+  },
+  savedItemDistance: {
+    fontSize: 10,
+    color: '#22c55e',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginVertical: 20,
+    color: '#999',
+    fontSize: 12,
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#E74C3C',
+    borderRadius: 50,
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 99,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#22c55e',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

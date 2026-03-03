@@ -13,12 +13,25 @@ import {
   Dimensions,
   Keyboard,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { getToken, getUser } from '../../utils/helpers';
+import MobileHeader from '../../shared/MobileHeader';
 
 const { width } = Dimensions.get('window');
+
+const EMOJI_REACTIONS = [
+  { emoji: 'like', label: '👍' },
+  { emoji: 'heart', label: '❤️' },
+  { emoji: 'haha', label: '😂' },
+  { emoji: 'angry', label: '😠' },
+  { emoji: 'sad', label: '😢' }
+];
 
 export default function MessengerScreen({ navigation }) {
   const [chats, setChats] = useState([]);
@@ -31,7 +44,29 @@ export default function MessengerScreen({ navigation }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [showEmojiReaction, setShowEmojiReaction] = useState(null); // messageId of message to react to
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerSlideAnim] = useState(new Animated.Value(-300));
   const flatListRef = useRef(null);
+
+  const openDrawer = () => {
+    setDrawerOpen(true);
+    Animated.timing(drawerSlideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const closeDrawer = () => {
+    Animated.timing(drawerSlideAnim, {
+      toValue: -300,
+      duration: 300,
+      useNativeDriver: false,
+    }).start(() => setDrawerOpen(false));
+  };
 
   const colors = {
     primary: '#1B4D3E',
@@ -113,13 +148,6 @@ export default function MessengerScreen({ navigation }) {
 
       if (response.data?.data) {
         setMessages(response.data.data);
-        console.log(`✅ Fetched ${response.data.data.length} messages from chat`);
-        response.data.data.forEach((msg) => {
-          console.log(`   - ${msg.sender?.name}: ${msg.content}`);
-        });
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -128,22 +156,44 @@ export default function MessengerScreen({ navigation }) {
     }
   };
 
+
+
   const sendMessage = async () => {
-    if (!messageInput.trim() || !selectedChat) return;
+    if ((!messageInput.trim() && !selectedImage) || !selectedChat) return;
 
     setSendingMessage(true);
     try {
       const token = await getToken();
+      const formData = new FormData();
+      
+      if (messageInput.trim()) {
+        formData.append('content', messageInput);
+      }
+      
+      if (selectedImage) {
+        formData.append('image', {
+          uri: selectedImage,
+          type: 'image/jpeg',
+          name: `chat_${Date.now()}.jpg`,
+        });
+      }
+
       const response = await axios.post(
         `/api/v1/chat/${selectedChat._id}/send`,
-        { content: messageInput },
-        { headers: { Authorization: `Bearer ${token}` } }
+        formData,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          } 
+        }
       );
 
       if (response.data?.data) {
-        console.log(`✅ Message sent: "${messageInput.substring(0, 50)}..."`);
+        console.log(`✅ Message sent with ${selectedImage ? 'image' : 'text'}`);
         setMessages([...messages, response.data.data]);
         setMessageInput('');
+        setSelectedImage(null);
         
         // Refresh chats list to show updated lastMessage
         fetchChats();
@@ -154,7 +204,7 @@ export default function MessengerScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      console.error('❌ Message failed to send:', messageInput);
+      console.error('❌ Message failed to send');
       Alert.alert('Error', 'Failed to send message');
     } finally {
       setSendingMessage(false);
@@ -203,6 +253,80 @@ export default function MessengerScreen({ navigation }) {
     return chat.participants.find(p => p._id?.toString() !== currentUserId?.toString());
   };
 
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setSelectedImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const markMessageAsRead = async (messageId) => {
+    try {
+      const token = await getToken();
+      await axios.put(
+        `/api/v1/chat/${messageId}/read`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+    }
+  };
+
+  const addReaction = async (messageId, emoji) => {
+    try {
+      const token = await getToken();
+      const response = await axios.post(
+        `/api/v1/chat/${messageId}/react`,
+        { emoji },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data?.data) {
+        const updatedMessages = messages.map(msg =>
+          msg._id === messageId ? response.data.data : msg
+        );
+        setMessages(updatedMessages);
+        setShowEmojiReaction(null);
+        console.log(`✅ Reaction ${emoji} added`);
+      }
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      Alert.alert('Error', 'Failed to add reaction');
+    }
+  };
+
+  const removeReaction = async (messageId) => {
+    try {
+      const token = await getToken();
+      const response = await axios.delete(
+        `/api/v1/chat/${messageId}/react`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data?.data) {
+        const updatedMessages = messages.map(msg =>
+          msg._id === messageId ? response.data.data : msg
+        );
+        setMessages(updatedMessages);
+        console.log('✅ Reaction removed');
+      }
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+    }
+  };
+
   // Merge friends with existing chats
   const mergedList = friends.map(friend => {
     const existingChat = chats.find(chat => 
@@ -226,17 +350,7 @@ export default function MessengerScreen({ navigation }) {
   if (!selectedChat) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.primary }]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Feather name="arrow-left" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Messages</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <MobileHeader navigation={navigation} drawerOpen={drawerOpen} openDrawer={openDrawer} closeDrawer={closeDrawer} drawerSlideAnim={drawerSlideAnim} />
 
         {/* Search */}
         <View style={[styles.searchContainer, { borderColor: colors.border }]}>
@@ -273,6 +387,12 @@ export default function MessengerScreen({ navigation }) {
                   onPress={() => {
                     if (item.lastMessage) {
                       setSelectedChat(item);
+                      // Mark all messages as read when entering chat
+                      messages.forEach(msg => {
+                        if (!msg.isRead && msg.sender?._id?.toString() !== currentUserId?.toString()) {
+                          markMessageAsRead(msg._id);
+                        }
+                      });
                     } else {
                       startChat(friend._id);
                     }
@@ -292,14 +412,21 @@ export default function MessengerScreen({ navigation }) {
                       style={[styles.chatMessage, { color: colors.textLight }]}
                       numberOfLines={1}
                     >
-                      {item.lastMessage || 'Tap to start chat'}
+                      {item.lastMessage ? item.lastMessage : (item.attachment ? '📷 Image' : 'Tap to start chat')}
                     </Text>
                   </View>
-                  <Text style={[styles.chatTime, { color: colors.textLight }]}>
-                    {item.lastMessageTime
-                      ? new Date(item.lastMessageTime).toLocaleDateString()
-                      : ''}
-                  </Text>
+                  <View style={styles.chatRightContainer}>
+                    <Text style={[styles.chatTime, { color: colors.textLight }]}>
+                      {item.lastMessageTime
+                        ? new Date(item.lastMessageTime).toLocaleDateString()
+                        : ''}
+                    </Text>
+                    {item.unreadCount > 0 && (
+                      <View style={[styles.unreadBadge, { backgroundColor: colors.danger }]}>
+                        <Text style={styles.unreadText}>{item.unreadCount}</Text>
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             }}
@@ -315,7 +442,8 @@ export default function MessengerScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Chat Header */}
+      <MobileHeader navigation={navigation} drawerOpen={drawerOpen} openDrawer={openDrawer} closeDrawer={closeDrawer} drawerSlideAnim={drawerSlideAnim} />
+      
       <View style={[styles.chatHeader, { backgroundColor: colors.primary }]}>
         <TouchableOpacity onPress={() => setSelectedChat(null)} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
@@ -332,92 +460,224 @@ export default function MessengerScreen({ navigation }) {
         />
       </View>
 
-      {/* Messages */}
-      {loadingMessages ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => {
-            const isSent = item.sender?._id?.toString() === currentUserId?.toString(); // Check if message is from current user
-            return (
-              <View
-                style={[
-                  styles.messageWrapper,
-                  isSent ? styles.sentMessage : styles.receivedMessage,
-                ]}
-              >
-                {!isSent && (
-                  <Image
-                    source={{
-                      uri: item.sender?.avatar?.url || `https://ui-avatars.com/api/?name=${item.sender?.name}`,
-                    }}
-                    style={styles.messageAvatar}
-                  />
-                )}
-                <TouchableOpacity
-                  style={[
-                    styles.messageBubble,
-                    {
-                      backgroundColor: isSent ? colors.messageSent : colors.message,
-                    },
-                  ]}
-                  onLongPress={() => {
-                    Alert.alert('Delete Message?', '', [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: () => deleteMessage(item._id),
-                      },
-                    ]);
-                  }}
-                >
-                  <Text style={[styles.messageContent, { color: '#000000' }]}>
-                    {item.content}
-                  </Text>
-                  <Text style={[styles.messageTime, { color: '#666666' }]}>
-                    {new Date(item.createdAt).toLocaleTimeString()}
-                  </Text>
-                  {item.isEdited && (
-                    <Text style={[styles.editedTag, { color: '#999999' }]}>
-                      (edited)
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            );
-          }}
-          scrollEnabled={true}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
-      )}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        {/* Messages */}
+        {loadingMessages ? (
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+        ) : (
+          <View style={{ flex: 1 }}>
+            <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => {
+              const isSent = item.sender?._id?.toString() === currentUserId?.toString();
+              
+              // Mark message as read if it's from other user and not read yet
+              if (!isSent && !item.isRead) {
+                markMessageAsRead(item._id);
+              }
 
-      {/* Message Input */}
-      <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>
-        <TextInput
-          style={[styles.messageInput, { color: colors.text, borderColor: colors.border }]}
-          placeholder="Type a message..."
-          placeholderTextColor={colors.textLight}
-          value={messageInput}
-          onChangeText={setMessageInput}
-          multiline
-          maxLength={500}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, { backgroundColor: colors.primary }]}
-          onPress={sendMessage}
-          disabled={sendingMessage || !messageInput.trim()}
-        >
-          {sendingMessage ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Feather name="send" size={20} color="#FFFFFF" />
-          )}
-        </TouchableOpacity>
-      </View>
+              const userReaction = item.reactions?.find(r => r.userId?._id?.toString() === currentUserId?.toString() || r.userId?.toString() === currentUserId?.toString());
+              const reactionCounts = {};
+              item.reactions?.forEach(r => {
+                reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
+              });
+
+              return (
+                <View style={styles.messageContainer}>
+                  <View
+                    style={[
+                      styles.messageWrapper,
+                      isSent ? styles.sentMessage : styles.receivedMessage,
+                    ]}
+                  >
+                    {!isSent && (
+                      <Image
+                        source={{
+                          uri: item.sender?.avatar?.url || `https://ui-avatars.com/api/?name=${item.sender?.name}`,
+                        }}
+                        style={styles.messageAvatar}
+                      />
+                    )}
+                    <TouchableOpacity
+                      style={[
+                        styles.messageBubble,
+                        {
+                          backgroundColor: isSent ? colors.messageSent : colors.message,
+                        },
+                      ]}
+                      onLongPress={() => {
+                        setShowEmojiReaction(item._id);
+                      }}
+                    >
+                      {item.attachment?.url && (
+                        <Image
+                          source={{ uri: item.attachment.url }}
+                          style={styles.attachmentImage}
+                          resizeMode="contain"
+                        />
+                      )}
+                      {item.content && (
+                        <Text style={[styles.messageContent, { color: '#000000' }]}>
+                          {item.content}
+                        </Text>
+                      )}
+                      <View style={styles.messageFooter}>
+                        <Text style={[styles.messageTime, { color: '#666666' }]}>
+                          {new Date(item.createdAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} {new Date(item.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                        </Text>
+                        {isSent && (
+                          <Text style={[styles.readStatus, { color: '#666666', marginLeft: 4 }]}>
+                            {item.isRead ? '✓✓' : '✓'}
+                          </Text>
+                        )}
+                      </View>
+                      {item.isEdited && (
+                        <Text style={[styles.editedTag, { color: '#999999' }]}>
+                          (edited)
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Reactions Display */}
+                  {Object.keys(reactionCounts).length > 0 && (
+                    <View style={[styles.reactionsContainer, { justifyContent: isSent ? 'flex-end' : 'flex-start', marginHorizontal: isSent ? 0 : 40 }]}>
+                      {Object.entries(reactionCounts).map(([emoji, count]) => {
+                        const emojiLabel = EMOJI_REACTIONS.find(e => e.emoji === emoji)?.label || emoji;
+                        const showCount = count > 1;
+                        return (
+                          <TouchableOpacity
+                            key={emoji}
+                            style={[
+                              styles.reactionBubble,
+                              { backgroundColor: userReaction?.emoji === emoji ? 'rgba(27, 77, 62, 0.2)' : '#f0f0f0' }
+                            ]}
+                            onPress={() => {
+                              if (userReaction?.emoji === emoji) {
+                                removeReaction(item._id);
+                              } else {
+                                addReaction(item._id, emoji);
+                              }
+                            }}
+                          >
+                            <Text style={styles.reactionEmoji}>{emojiLabel}</Text>
+                            {showCount && <Text style={styles.reactionCount}>{count}</Text>}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  {/* Emoji Reaction Picker */}
+                  {showEmojiReaction === item._id && (
+                    <View style={[styles.emojiPickerContainer, { justifyContent: isSent ? 'flex-end' : 'flex-start', marginHorizontal: isSent ? 0 : 40 }]}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiPicker}>
+                        {EMOJI_REACTIONS.map((e) => (
+                          <TouchableOpacity
+                            key={e.emoji}
+                            style={styles.emojiOption}
+                            onPress={() => {
+                              addReaction(item._id, e.emoji);
+                              setShowEmojiReaction(null);
+                            }}
+                          >
+                            <Text style={styles.emojiOptionLabel}>{e.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  {/* Delete and Cancel Options */}
+                  {showEmojiReaction === item._id && item.sender?._id?.toString() === currentUserId?.toString() && (
+                    <View style={[styles.emojiActionContainer, { justifyContent: isSent ? 'flex-end' : 'flex-start', marginHorizontal: isSent ? 0 : 40 }]}>
+                      <TouchableOpacity
+                        style={[styles.emojiActionBtn, { backgroundColor: '#E74C3C' }]}
+                        onPress={() => {
+                          Alert.alert('Delete Message?', 'This cannot be undone.', [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: () => {
+                                deleteMessage(item._id);
+                                setShowEmojiReaction(null);
+                              },
+                            },
+                          ]);
+                        }}
+                      >
+                        <Feather name="trash-2" size={16} color="#FFFFFF" />
+                        <Text style={styles.emojiActionText}>Delete</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[styles.emojiActionBtn, { backgroundColor: colors.textLight }]}
+                        onPress={() => setShowEmojiReaction(null)}
+                      >
+                        <Feather name="x" size={16} color="#FFFFFF" />
+                        <Text style={styles.emojiActionText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            }}
+            scrollEnabled={true}
+          />
+          </View>
+        )}
+
+        {/* Image Preview */}
+        {selectedImage && (
+          <View style={styles.imagePreviewContainer}>
+            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+            <TouchableOpacity
+              style={styles.removeImageBtn}
+              onPress={() => setSelectedImage(null)}
+            >
+              <Feather name="x" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Message Input */}
+        <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>
+          <TouchableOpacity
+            style={styles.attachButton}
+            onPress={pickImage}
+            disabled={uploadingImage}
+          >
+            <Feather name="paperclip" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TextInput
+            style={[styles.messageInput, { color: colors.text, borderColor: colors.border }]}
+            placeholder="Type a message..."
+            placeholderTextColor={colors.textLight}
+            value={messageInput}
+            onChangeText={setMessageInput}
+            multiline
+            maxLength={500}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, { backgroundColor: colors.primary }]}
+            onPress={sendMessage}
+            disabled={sendingMessage || uploadingImage || (!messageInput.trim() && !selectedImage)}
+          >
+            {sendingMessage || uploadingImage ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Feather name="send" size={20} color="#FFFFFF" />
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -457,6 +717,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
   },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flexDirection: 'row',
+  },
+  drawer: {
+    width: 300,
+    height: '100%',
+    paddingTop: 20,
+  },
+  drawerBackdrop: {
+    flex: 1,
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -495,6 +768,22 @@ const styles = StyleSheet.create({
   chatTime: {
     fontSize: 11,
   },
+  chatRightContainer: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  unreadBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unreadText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -517,9 +806,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
   },
-  messageWrapper: {
+  messageContainer: {
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  messageWrapper: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
@@ -544,14 +835,108 @@ const styles = StyleSheet.create({
   messageContent: {
     fontSize: 14,
   },
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   messageTime: {
     fontSize: 10,
-    marginTop: 4,
+  },
+  readStatus: {
+    fontSize: 10,
   },
   editedTag: {
     fontSize: 9,
     marginTop: 2,
     fontStyle: 'italic',
+  },
+  attachmentImage: {
+    width: width * 0.65,
+    height: width * 0.65,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  reactionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 4,
+    gap: 4,
+  },
+  reactionBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 2,
+  },
+  reactionEmoji: {
+    fontSize: 14,
+  },
+  reactionCount: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  emojiPickerContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  emojiPicker: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  emojiOption: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  emojiOptionLabel: {
+    fontSize: 18,
+  },
+  emojiActionContainer: {
+    flexDirection: 'row',
+    marginTop: 6,
+    gap: 8,
+  },
+  emojiActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  emojiActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  imagePreviewContainer: {
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginVertical: 8,
+    position: 'relative',
+  },
+  previewImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
+    resizeMode: 'contain',
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#E74C3C',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -560,6 +945,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderTopWidth: 1,
     gap: 8,
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   messageInput: {
     flex: 1,

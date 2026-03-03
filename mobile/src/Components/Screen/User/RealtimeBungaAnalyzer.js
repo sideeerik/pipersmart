@@ -11,6 +11,7 @@ import {
   Platform,
   Dimensions,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
@@ -31,11 +32,12 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
   const [bungaDetections, setBungaDetections] = useState([]);
   const [otherObjects, setOtherObjects] = useState([]);
   const [imageSize, setImageSize] = useState(null);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [modalResult, setModalResult] = useState(null);
   const cameraRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
-  const isActiveRef = useRef(false);
-  const { width: screenWidth } = Dimensions.get('window');
   const isFirstLoadRef = useRef(true);
+  const { width: screenWidth } = Dimensions.get('window');
 
   const colors = {
     primary: '#1B4D3E',
@@ -71,31 +73,16 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      isActiveRef.current = false;
+      setIsActive(false);
       if (analyzeIntervalRef.current) {
-        clearTimeout(analyzeIntervalRef.current);
+        clearInterval(analyzeIntervalRef.current);
       }
     };
   }, []);
 
-  // Keep latest results during live analysis (don't auto-clear)
-  // Only clear when user stops analysis
-  const handleStopAnalysis = () => {
-    isActiveRef.current = false;
-    setIsActive(false);
-    if (analyzeIntervalRef.current) {
-      clearTimeout(analyzeIntervalRef.current);
-      analyzeIntervalRef.current = null;
-    }
-    // Clear results after stopping
-    setResult(null);
-    setBungaDetections([]);
-    setOtherObjects([]);
-    setImageSize(null);
-  };
-
   const captureAndAnalyze = async () => {
-    if (!cameraRef.current) return;
+    // Guard clause: skip if no camera or already analyzing
+    if (!cameraRef.current || analyzing) return;
 
     try {
       setAnalyzing(true);
@@ -108,9 +95,9 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
         return;
       }
       
-      // Capture at very low quality for maximum speed
+      // Capture at quality that works with ML model
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.2, // Ultra-low = fastest
+        quality: 0.8, // Matches BungaRipenessScreen quality
       });
 
       if (!photo || !photo.uri) {
@@ -134,26 +121,32 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
             'Content-Type': 'multipart/form-data',
             'Authorization': token,
           },
-          // First load: 90s (model initialization + COCO download)
-          // Subsequent: 80s (COCO model needs time to load into memory)
+          // First load: 90s (model initialization)
+          // Subsequent: 80s (model inference)
           timeout: isFirstLoadRef.current ? 90000 : 80000,
         }
       );
 
+      if (response.data?.error || response.data?.success === false) {
+        // Backend returned error (invalid image, no bunga, processing error)
+        setError(response.data.error || (response.data?.success === false ? 'No bunga detected' : 'Analysis failed'));
+        setAnalyzing(false);
+        return;
+      }
+
       if (response.data && response.data.ripeness) {
-        // NEW: Progressive display - show results as they arrive
-        // Mark first load complete - all subsequent loads will use faster timeout
+        // Mark first load complete - faster timeout afterwards
         if (isFirstLoadRef.current) isFirstLoadRef.current = false;
         
-        // Process ripeness confidence
-        let ripenessConf = response.data.ripeness_confidence;
-        if (ripenessConf > 100) {
-          while (ripenessConf > 100) ripenessConf = ripenessConf / 10;
+        // Process confidence - use confidence from response
+        let conf = response.data.confidence || 0;
+        if (conf > 100) {
+          while (conf > 100) conf = conf / 10;
         }
-        if (ripenessConf < 1) {
-          ripenessConf = ripenessConf * 100;
+        if (conf < 1) {
+          conf = conf * 100;
         }
-        ripenessConf = Math.round(ripenessConf * 100) / 100;
+        conf = Math.round(conf * 100) / 100;
 
         // Show bounding boxes immediately
         const newDetections = response.data.bunga_detections || [];
@@ -164,38 +157,41 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
         // Update image size for overlay scaling
         setImageSize(response.data.image_size || null);
         
-        // Update result progressively
-        setResult(prevResult => ({
-          ...(prevResult || {}),
+        // Prepare result for modal
+        const resultData = {
           class: response.data.class,
           ripeness: response.data.ripeness,
-          ripeness_percentage: response.data.ripeness_percentage, // NEW
-          ripeness_confidence: ripenessConf,
-          // Health available? show it : keep loading state
-          health_class: response.data.health_class || prevResult?.health_class || null,
-          health_percentage: response.data.health_percentage !== undefined ? response.data.health_percentage : prevResult?.health_percentage || 0,
-          health_range: response.data.health_range || prevResult?.health_range || null,
+          ripeness_percentage: response.data.ripeness_percentage,
+          confidence: conf,
+          health_class: response.data.health_class || null,
+          health_percentage: response.data.health_percentage || 0,
           bunga_detections: response.data.bunga_detections,
-        }));
+          analysisId: response.data.analysisId,
+          market_grade: response.data.market_grade,
+        };
         
-        // Update objects as they arrive
-        setOtherObjects(response.data.other_objects || []);
+        setResult(resultData);
+        setModalResult(resultData);
+        
+        // Stop continuous analysis and show modal
+        setIsActive(false);
+        if (analyzeIntervalRef.current) {
+          clearInterval(analyzeIntervalRef.current);
+          analyzeIntervalRef.current = null;
+        }
+        setShowResultModal(true);
         
         setError(null);
         
-        console.log(`✅ ${response.data.class || response.data.ripeness} - Health Class ${response.data.health_class || 'Analyzing...'} (${response.data.health_percentage || 0}%)`);
-        console.log('📦 Other objects:', response.data.other_objects?.length || 0, response.data.other_objects || []);
+        console.log(`✅ ${response.data.ripeness} - Health Class ${response.data.health_class || 'Unknown'} (${response.data.health_percentage || 0}%)`);
       } else {
-        // No ripeness detection this frame
-        console.log('⚠️ No bunga');
-        setAnalyzing(false);
-        return;
+        // No ripeness detection this frame - skip silently
+        console.log('⚠️ No bunga detected in frame');
       }
     } catch (err) {
       // Silent skip on no pepper detected
       if (err.response?.status === 400 && err.response?.data?.error?.includes('No pepper')) {
         console.log('⚠️ No pepper frame');
-        setAnalyzing(false);
         return;
       }
 
@@ -205,8 +201,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
       }
       // Timeout - skip silently
       else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
-        console.warn('⚠️ Timeout');
-        setAnalyzing(false);
+        console.warn('⚠️ Timeout - retrying');
         return;
       }
       // Network error
@@ -226,36 +221,27 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
       return;
     }
 
-    isActiveRef.current = true;
     setIsActive(true);
-    setAnalyzing(false);
     setError(null);
+    setResult(null);
     
     console.log('🎥 Starting real-time analysis with token:', token.substring(0, 20) + '...');
     
-    // Non-blocking loop - skip frames if previous analysis is still running
-    const analyzeLoop = async () => {
-      if (!isActiveRef.current) return; // Stop if user stopped analysis
-      
-      // Don't capture new frame if still analyzing previous one
-      if (!analyzing) {
+    // Start first capture immediately
+    await captureAndAnalyze();
+    
+    // Then continue capturing with 1.5s minimum interval between captures
+    analyzeIntervalRef.current = setInterval(async () => {
+      if (isActive) {
         await captureAndAnalyze();
       }
-      
-      // Schedule next analysis (1 second interval for fast continuous tracking)
-      if (isActiveRef.current) {
-        analyzeIntervalRef.current = setTimeout(analyzeLoop, 1000);
-      }
-    };
-    
-    analyzeLoop();
+    }, 1500); // Check every 1.5 seconds if ready for next capture
   };
 
   const stopRealTimeAnalysis = () => {
-    isActiveRef.current = false;
     setIsActive(false);
     if (analyzeIntervalRef.current) {
-      clearTimeout(analyzeIntervalRef.current);
+      clearInterval(analyzeIntervalRef.current);
       analyzeIntervalRef.current = null;
     }
     // Clear results after stopping
@@ -292,6 +278,26 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
   const handleDenyPermission = () => {
     setPermissionRequested(true);
     navigation.goBack();
+  };
+
+  const handleSaveResult = async () => {
+    // Result already saved by backend during prediction
+    setShowResultModal(false);
+    setResult(null);
+    setModalResult(null);
+    setIsActive(false);
+    setBungaDetections([]);
+    setImageSize(null);
+    console.log('✅ Analysis saved successfully');
+  };
+
+  const handleCancelResult = () => {
+    setShowResultModal(false);
+    setResult(null);
+    setModalResult(null);
+    setIsActive(false);
+    setBungaDetections([]);
+    setImageSize(null);
   };
 
   if (!permissionRequested) {
@@ -429,10 +435,10 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
       {result && result.ripeness && (
         <View style={[styles.resultOverlay, { borderLeftColor: ripenessColors[result.ripeness] || colors.primary }]}>
           <Text style={styles.ripenessLabel}>
-            {result.class || result.ripeness} {result.ripeness_percentage ? `(${result.ripeness_percentage}%)` : ''}
+            {result.ripeness}{result.ripeness_percentage ? ` (${result.ripeness_percentage}%)` : ''}
           </Text>
           <Text style={[styles.confidenceText, { color: ripenessColors[result.ripeness] || colors.primary }]}>
-            Health {result.health_class}: {Math.round(result.ripeness_confidence)}% • {result.health_percentage}%
+            Health {result.health_class}: {result.health_percentage}% • Conf: {Math.round(result.confidence)}%
           </Text>
         </View>
       )}
@@ -467,12 +473,12 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
           {isActive ? (
             <View style={[styles.statusBadge, { backgroundColor: colors.danger + '40' }]}>
               <Text style={styles.statusDot}>🔴</Text>
-              <Text style={[styles.statusText, { color: colors.danger }]}>LIVE - Analyzing continuously</Text>
+              <Text style={[styles.statusText, { color: colors.danger }]}>🔴 LIVE - Analyzing every 1.5s</Text>
             </View>
           ) : (
             <View style={[styles.statusBadge, { backgroundColor: colors.primaryLight + '40' }]}>
               <Text style={styles.statusDot}>📷</Text>
-              <Text style={[styles.statusText, { color: colors.primaryLight }]}>Ready for analysis</Text>
+              <Text style={[styles.statusText, { color: colors.primaryLight }]}> Ready for real-time analysis</Text>
             </View>
           )}
         </View>
@@ -484,13 +490,13 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
             {result.ripeness && (
               <View style={[styles.resultCard, { backgroundColor: colors.primaryLight + '20', borderLeftColor: colors.primaryLight }]}>
                 <View style={styles.resultCardHeader}>
-                  <Text style={[styles.resultCardTitle, { color: colors.primaryLight }]}> ◉ RIPENESS</Text>
+                  <Text style={[styles.resultCardTitle, { color: colors.primaryLight }]}>◉ RIPENESS</Text>
                 </View>
                 <Text style={[styles.resultCardValue, { color: colors.primaryLight }]}>
-                  {result.class || result.ripeness}{result.ripeness_percentage ? ` (${result.ripeness_percentage}%)` : ''}
+                  {result.ripeness}{result.ripeness_percentage ? ` (${result.ripeness_percentage}%)` : ''}
                 </Text>
                 <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
-                  Confidence: {Math.round(result.ripeness_confidence)}%
+                  Confidence: {Math.round(result.confidence)}%
                 </Text>
               </View>
             )}
@@ -498,18 +504,20 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
             {/* Health Status - Show loading if not yet detected */}
             <View style={[styles.resultCard, { backgroundColor: '#2196F3' + '20', borderLeftColor: '#2196F3' }]}>
               <View style={styles.resultCardHeader}>
-                <Text style={[styles.resultCardTitle, { color: '#2196F3' }]}>💚 HEALTH CLASS</Text>
-                {!result.health_class && isActive && (
-                  <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />
-                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.resultCardTitle, { color: '#2196F3' }]}>💚 HEALTH CLASS</Text>
+                  {!result.health_class && isActive && (
+                    <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />
+                  )}
+                </View>
               </View>
               {result.health_class ? (
                 <>
                   <Text style={[styles.resultCardValue, { color: '#2196F3' }]}>
-                    Class {result.health_class}
+                    Class {result.health_class} ({result.health_percentage}%)
                   </Text>
                   <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
-                    Health: {result.health_percentage}% {result.health_range ? `(${result.health_range})` : ''}
+                    Health Score: {result.health_percentage}%
                   </Text>
                 </>
               ) : (
@@ -519,28 +527,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
               )}
             </View>
 
-            {/* Other Objects - Show loading if not yet detected */}
-            <View style={[styles.resultCard, { backgroundColor: '#FF9800' + '20', borderLeftColor: '#FF9800' }]}>
-              <View style={styles.resultCardHeader}>
-                <Text style={[styles.resultCardTitle, { color: '#FF9800' }]}>👁️ OBJECTS</Text>
-                {otherObjects.length === 0 && isActive && (
-                  <ActivityIndicator size="small" color="#FF9800" style={{ marginLeft: 8 }} />
-                )}
-              </View>
-              {otherObjects && otherObjects.length > 0 ? (
-                <View style={styles.objectsList}>
-                  {otherObjects.map((obj, idx) => (
-                    <Text key={idx} style={[styles.objectItem, { color: '#FF9800' }]}>
-                      • {obj.class || 'Unknown'}
-                    </Text>
-                  ))}
-                </View>
-              ) : (
-                <Text style={[styles.resultCardSubText, { color: colors.textLight, fontStyle: 'italic' }]}>
-                  {isActive ? 'Detecting objects...' : 'No other objects'}
-                </Text>
-              )}
-            </View>
+
           </View>
         )}
         
@@ -551,20 +538,94 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
               style={[styles.controlButton, { backgroundColor: colors.danger }]}
               onPress={stopRealTimeAnalysis}
             >
-              <Feather name="square" size={20} color="#FFFFFF" />
-              <Text style={styles.controlButtonText}>Stop Analysis</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="square" size={20} color="#FFFFFF" />
+                <Text style={styles.controlButtonText}>Stop Analysis</Text>
+              </View>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: colors.primaryLight }]}
               onPress={startRealTimeAnalysis}
             >
-              <Feather name="play-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.controlButtonText}>Start Analysis</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="play-circle" size={20} color="#FFFFFF" />
+                <Text style={styles.controlButtonText}>Start Analysis</Text>
+              </View>
             </TouchableOpacity>
           )}
         </View>
       </ScrollView>
+
+      {/* Result Confirmation Modal */}
+      {showResultModal && modalResult && (
+        <Modal visible={showResultModal} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Modal Header */}
+              <View style={[styles.resultModalHeader, { backgroundColor: ripenessColors[modalResult.ripeness] + '20' }]}>
+                <Text style={[styles.resultModalIcon, { color: ripenessColors[modalResult.ripeness] }]}>
+                  {modalResult.ripeness === 'Ripe' ? '🟢' : modalResult.ripeness === 'Unripe' ? '🟡' : '🔴'}
+                </Text>
+                <Text style={[styles.resultModalTitle, { color: ripenessColors[modalResult.ripeness] }]}>
+                  {modalResult.ripeness}
+                </Text>
+              </View>
+
+              {/* Details */}
+              <View style={styles.resultModalDetails}>
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel]}>Ripeness:</Text>
+                  <Text style={[styles.detailValue]}>
+                    {modalResult.ripeness_percentage}%
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel]}>Health Class:</Text>
+                  <Text style={[styles.detailValue]}>
+                    {modalResult.health_class ? `Class ${modalResult.health_class} (${modalResult.health_percentage}%)` : 'Unknown'}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel]}>Confidence:</Text>
+                  <Text style={[styles.detailValue]}>
+                    {modalResult.confidence}%
+                  </Text>
+                </View>
+                {modalResult.market_grade && (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel]}>Market Grade:</Text>
+                    <Text style={[styles.detailValue]}>
+                      {modalResult.market_grade}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.resultModalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#E74C3C20', borderColor: '#E74C3C', borderWidth: 1.5 }]}
+                  onPress={handleCancelResult}
+                >
+                  <Feather name="x" size={20} color="#E74C3C" />
+                  <Text style={[styles.modalButtonText, { color: '#E74C3C' }]}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#27AE60' }]}
+                  onPress={handleSaveResult}
+                >
+                  <Feather name="check" size={20} color="#FFFFFF" />
+                  <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>Save Result</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -583,101 +644,122 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     zIndex: 10,
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   permissionHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   permissionContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingBottom: 40,
   },
   permissionTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
-    marginTop: 20,
-    marginBottom: 12,
+    marginTop: 24,
+    marginBottom: 14,
     textAlign: 'center',
+    color: '#1B4D3E',
   },
   permissionDescription: {
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 23,
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 32,
+    color: '#5A7A73',
   },
   featuresList: {
     width: '100%',
-    gap: 12,
+    gap: 14,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
+    gap: 14,
+    paddingHorizontal: 18,
   },
   featureText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
   },
   platformNote: {
-    fontSize: 12,
-    marginTop: 24,
+    fontSize: 13,
+    marginTop: 28,
     textAlign: 'center',
     fontWeight: '500',
     fontStyle: 'italic',
+    color: '#5A7A73',
   },
   permissionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 28,
     gap: 12,
   },
   permissionButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   permissionButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
   },
   centerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   centerText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#5A7A73',
     textAlign: 'center',
+    lineHeight: 22,
   },
   retryButton: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: '#1B4D3E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 16,
+    fontWeight: '800',
+    fontSize: 17,
   },
   camera: {
     flex: 1,
@@ -691,68 +773,99 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     zIndex: 10,
+    backgroundColor: `#1B4D3EE6`,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFFFFF10',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   resultOverlay: {
     position: 'absolute',
     top: 80,
-    right: 12,
-    backgroundColor: '#000000CC',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderLeftWidth: 4,
+    left: '50%',
+    transform: [{ translateX: -150 }],
+    width: 300,
+    backgroundColor: '#000000E6',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderLeftWidth: 5,
     zIndex: 5,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   ripenessLabel: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 6,
   },
   confidenceText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   errorOverlay: {
     position: 'absolute',
     top: 80,
-    left: 12,
-    right: 12,
+    left: 14,
+    right: 14,
     flexDirection: 'row',
-    backgroundColor: '#E74C3CCC',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: '#E74C3CE6',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderRadius: 12,
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     zIndex: 5,
+    shadowColor: '#E74C3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFFFFF',
   },
   errorText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     flex: 1,
   },
   loadingOverlay: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 140,
     left: '50%',
     transform: [{ translateX: -50 }],
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
     zIndex: 5,
+    backgroundColor: '#000000CC',
+    paddingVertical: 20,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
   analyzeText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
   controlsContainer: {
     position: 'absolute',
@@ -760,61 +873,74 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    maxHeight: 280,
+    paddingVertical: 14,
+    maxHeight: 300,
+    backgroundColor: '#1B4D3EF2',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#FFFFFF10',
   },
   statusSection: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
   statusText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 10,
   },
   statusDot: {
     fontSize: 16,
   },
   resultsSection: {
-    gap: 8,
-    paddingVertical: 8,
+    gap: 10,
+    paddingVertical: 10,
   },
   resultCard: {
-    borderLeftWidth: 4,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF10',
+    borderLeftWidth: 5,
+    padding: 13,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF15',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   resultCardHeader: {
-    marginBottom: 6,
+    marginBottom: 8,
   },
   resultCardTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
   },
   resultCardValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 5,
   },
   resultCardSubText: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
   },
   objectsList: {
-    gap: 4,
+    gap: 5,
   },
   objectItem: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     marginLeft: 4,
   },
   objectBox: {
@@ -854,21 +980,102 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   buttonContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
   },
   controlButton: {
     flexDirection: 'row',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
   },
   controlButtonText: {
     color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 16,
+    fontWeight: '800',
+    fontSize: 17,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#00000099',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 30,
+    maxHeight: '80%',
+  },
+  resultModalHeader: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  resultModalIcon: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  resultModalTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  resultModalDetails: {
+    marginHorizontal: 16,
+    gap: 14,
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFFFFF20',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#5A7A73',
+  },
+  detailValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1B4D3E',
+  },
+  resultModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalButtonText: {
+    fontWeight: '800',
+    fontSize: 15,
   },
 });

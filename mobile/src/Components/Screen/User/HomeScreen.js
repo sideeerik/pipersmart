@@ -12,12 +12,14 @@ import {
   StatusBar,
   Animated,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import axios from 'axios';
 import MobileHeader from '../../shared/MobileHeader';
 import MobileFooter from '../../shared/MobileFooter';
 import Notepad from '../../shared/Notepad';
-import { logout, getUser } from '../../utils/helpers';
+import { logout, getUser, getToken } from '../../utils/helpers';
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +34,8 @@ const bpImages = [
 export default function HomeScreen({ navigation }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
   const drawerSlideAnim = React.useRef(new Animated.Value(-280)).current;
   
   // Pulse animation for FAB
@@ -81,6 +85,7 @@ export default function HomeScreen({ navigation }) {
       setUser(userData);
     };
     fetchUser();
+    fetchRecentActivities();
     
     // Start pulse animation
     Animated.loop(
@@ -106,6 +111,34 @@ export default function HomeScreen({ navigation }) {
       }
     };
   }, []);
+
+  const fetchRecentActivities = async () => {
+    try {
+      setLoadingActivities(true);
+      const token = await getToken();
+      if (!token) {
+        setLoadingActivities(false);
+        return;
+      }
+
+      const response = await axios.get(
+        `${process.env.BACKEND_URL}/api/v1/activities/limited?limit=3`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 8000
+        }
+      );
+
+      if (response.data.success) {
+        setRecentActivities(response.data.data.activities);
+        console.log('✅ Fetched recent activities:', response.data.data.activities.length);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching recent activities:', error.message);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
 
   const resetCarouselTimer = () => {
     if (carouselTimerRef.current) {
@@ -159,6 +192,49 @@ export default function HomeScreen({ navigation }) {
       return;
     }
     navigation.navigate(screen);
+  };
+
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'BUNGA_ANALYSIS':
+        return { name: 'flower', color: colors.warning };
+      case 'LEAF_ANALYSIS':
+        return { name: 'activity', color: colors.success };
+      case 'FORUM_POST':
+        return { name: 'message-circle', color: colors.primary };
+      case 'SAVED_LOCATION':
+        return { name: 'map-pin', color: colors.danger };
+      default:
+        return { name: 'activity', color: colors.textLight };
+    }
+  };
+
+  const getActivityTitle = (activity) => {
+    switch (activity.type) {
+      case 'BUNGA_ANALYSIS':
+        return `Bunga: ${activity.results?.full_class || 'Analysis'}`;
+      case 'LEAF_ANALYSIS':
+        return `Leaf: ${activity.results?.disease || 'Analysis'}`;
+      case 'FORUM_POST':
+        return `Forum Post`;
+      case 'SAVED_LOCATION':
+        return `Saved: ${activity.farm.name}`;
+      default:
+        return 'Activity';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const getGreeting = () => {
@@ -382,22 +458,49 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity onPress={() => handleNavigation('LeafAnalysis')}>
+            <TouchableOpacity onPress={() => handleNavigation('RecentActivities')}>
               <Text style={styles.seeAllText}>View All</Text>
             </TouchableOpacity>
           </View>
           
-          {/* Placeholder for empty state */}
-          <View style={styles.emptyState}>
-            <Feather name="activity" size={32} color={colors.border} />
-            <Text style={styles.emptyStateText}>No recent scans found</Text>
-            <TouchableOpacity 
-              style={styles.scanButtonSmall}
-              onPress={() => handleNavigation('LeafAnalysis')}
-            >
-              <Text style={styles.scanButtonText}>Scan Now</Text>
-            </TouchableOpacity>
-          </View>
+          {loadingActivities ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : recentActivities.length > 0 ? (
+            <View style={styles.activitiesContainer}>
+              {recentActivities.map((activity, index) => {
+                const iconData = getActivityIcon(activity.type);
+                return (
+                  <View key={index} style={styles.activityItemHome}>
+                    <View style={[styles.activityIconHome, { backgroundColor: iconData.color + '20' }]}>
+                      <Feather name={iconData.name} size={20} color={iconData.color} />
+                    </View>
+                    <View style={styles.activityDetailsHome}>
+                      <Text style={styles.activityTitleHome}>{getActivityTitle(activity)}</Text>
+                      <Text style={styles.activityTimeHome}>
+                        {formatDate(activity.createdAt || activity.savedAt)}
+                      </Text>
+                    </View>
+                    <View style={styles.activityBadgeHome}>
+                      <Text style={styles.badgeTypeHome}>{activity.type.split('_')[0]}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Feather name="activity" size={32} color={colors.border} />
+              <Text style={styles.emptyStateText}>No recent activities yet</Text>
+              <TouchableOpacity 
+                style={styles.scanButtonSmall}
+                onPress={() => handleNavigation('LeafAnalysis')}
+              >
+                <Text style={styles.scanButtonText}>Start Scanning</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 80 }} />
@@ -825,5 +928,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5A7A73',
     textAlign: 'center',
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activitiesContainer: {
+    gap: 12,
+  },
+  activityItemHome: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  activityIconHome: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  activityDetailsHome: {
+    flex: 1,
+  },
+  activityTitleHome: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B4D3E',
+    marginBottom: 2,
+  },
+  activityTimeHome: {
+    fontSize: 11,
+    color: '#5A7A73',
+    fontWeight: '500',
+  },
+  activityBadgeHome: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  badgeTypeHome: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#1B4D3E',
+    textTransform: 'uppercase',
   },
 });

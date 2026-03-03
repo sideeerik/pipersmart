@@ -61,6 +61,14 @@ app.use('/api/v1/chat', chatRoutes);
 const noteRoutes = require('./routes/Note');
 app.use('/api/v1/notes', noteRoutes);
 
+// ========== MACROMAPPING ROUTES ==========
+const macromappingRoutes = require('./routes/Macromapping');
+app.use('/api/v1/macromapping', macromappingRoutes);
+
+// ========== RECENT ACTIVITIES ROUTES ==========
+const recentActivitiesRoutes = require('./routes/recentActivities');
+app.use('/api/v1/activities', recentActivitiesRoutes);
+
 // ========== HEALTH CHECK ==========
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

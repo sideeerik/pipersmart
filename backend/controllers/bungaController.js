@@ -129,24 +129,20 @@ exports.analyzeBunga = async (req, res) => {
         const b64 = Buffer.from(req.file.buffer).toString('base64');
         const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
         
-        // Add timeout option if supported by helper, or just rely on global timeout
         const uploadResult = await uploadToCloudinary(dataURI, 'pipersmart/bunga_scans');
 
-        // Prepare DB Object
-        const marketGrade = getMarketGrade(result.class);
+        // Determine market grade based on ripeness and health_class
+        let marketGrade = 'Unknown';
         
-        // Parse Class String (e.g. "Class A-a")
-        let ripenessGrade = 'Unknown';
-        let healthGrade = null;
-        
-        if (result.class && result.class.toLowerCase() !== 'rotten') {
-          const match = result.class.match(/Class\s*([A-D])-([a-d])/);
-          if (match) {
-            ripenessGrade = match[1];
-            healthGrade = match[2];
-          }
-        } else if (result.class && result.class.toLowerCase() === 'rotten') {
-          ripenessGrade = 'Rotten';
+        if (result.ripeness === 'Rotten') {
+          marketGrade = 'Reject';
+        } else if (result.ripeness === 'Ripe' && result.health_class === 'a') {
+          marketGrade = 'Premium';
+        } else if ((result.ripeness === 'Ripe' && result.health_class === 'b') || 
+                   (result.ripeness === 'Ripe' && result.health_class === 'a')) {
+          marketGrade = 'Standard';
+        } else {
+          marketGrade = 'Commercial';
         }
 
         savedAnalysis = await BungaAnalysis.create({
@@ -156,19 +152,12 @@ exports.analyzeBunga = async (req, res) => {
             url: uploadResult.url
           },
           results: {
-            full_class: result.class || 'Unknown',
-            market_grade: marketGrade,
-            ripeness: {
-              grade: ripenessGrade,
-              percentage: result.ripeness_percentage || 0,
-              confidence: result.ripeness_confidence || 0
-            },
-            health: {
-              grade: healthGrade,
-              percentage: result.health_percentage || 0
-            },
-            detections: result.bunga_detections || [],
-            other_objects: result.other_objects || []
+            ripeness: result.ripeness,                    // "Ripe", "Unripe", "Rotten"
+            ripeness_percentage: result.ripeness_percentage,
+            health_class: result.health_class,            // "a", "b", "c", "d"
+            health_percentage: result.health_percentage,
+            confidence: result.confidence,                // 0-100
+            market_grade: marketGrade
           },
           processingTime: duration
         });
@@ -216,6 +205,51 @@ exports.getHistory = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch history'
+    });
+  }
+};
+
+/**
+ * Delete a Bunga Analysis Record
+ */
+exports.deleteBungaAnalysis = async (req, res) => {
+  try {
+    const { analysisId } = req.params;
+    const userId = req.user._id;
+
+    // Find the analysis record
+    const analysis = await BungaAnalysis.findById(analysisId);
+
+    if (!analysis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Analysis record not found'
+      });
+    }
+
+    // Verify ownership - user can only delete their own records
+    if (analysis.user.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only delete your own analysis records'
+      });
+    }
+
+    // Delete the record
+    await BungaAnalysis.findByIdAndDelete(analysisId);
+
+    console.log(`✅ Deleted bunga analysis: ${analysisId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Analysis record deleted successfully',
+      analysisId
+    });
+  } catch (error) {
+    console.error('❌ Error deleting bunga analysis:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete analysis record'
     });
   }
 };

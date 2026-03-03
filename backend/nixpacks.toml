@@ -1,0 +1,7 @@
+[build]
+dependsOn = ["python"]
+
+[build.python]
+
+[start]
+cmd = "node server.js"

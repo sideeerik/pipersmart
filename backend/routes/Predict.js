@@ -128,26 +128,9 @@ router.post('/bunga-ripeness', isAuthenticatedUser, upload.single('image'), asyn
 
     console.log(`✅ Bunga ripeness prediction - Result: ${result.ripeness}, Confidence: ${result.confidence}%`);
     
-    // Send response immediately (don't wait for DB save)
     res.status(200).json({
       ...result
     });
-    
-    // Save to DB in background (non-blocking) - frees up server memory
-    setImmediate(async () => {
-      try {
-        console.log('💾 Saving analysis to database (background)...');
-        // Optional: Save to database here if needed
-        // For now, this is handled by the frontend
-      } catch (dbErr) {
-        console.error('⚠️ Background DB save error (non-fatal):', dbErr.message);
-      }
-    });
-    
-    // Trigger garbage collection if available
-    if (global.gc && typeof global.gc === 'function') {
-      setImmediate(() => global.gc());
-    }
 
   } catch (error) {
     console.error('❌ Bunga ripeness prediction error:', error);

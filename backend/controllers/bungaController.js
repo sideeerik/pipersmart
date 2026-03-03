@@ -96,12 +96,11 @@ exports.analyzeBunga = async (req, res) => {
       console.log(`🐍 Spawning Python...`);
       const python = spawn(pythonExe, [pythonScriptPath, tempImagePath, unifiedModelPath], {
         stdio: ['ignore', 'pipe', 'pipe'],
-        timeout: 300000  // 5 minutes - YOLO inference is compute-heavy
+        timeout: 120000 
       });
 
       let output = '';
       let errorOutput = '';
-      let timeoutTriggered = false;
 
       python.stdout.on('data', (data) => output += data.toString());
       python.stderr.on('data', (data) => {
@@ -109,16 +108,7 @@ exports.analyzeBunga = async (req, res) => {
         console.log(data.toString()); // Show Python debug logs in real-time
       });
 
-      const timeoutHandle = setTimeout(() => {
-        timeoutTriggered = true;
-        python.kill('SIGTERM');
-        reject(new Error(`Python inference timeout (>300s) - CPU may be throttled. Output so far: ${output}`));
-      }, 300000);
-
       python.on('close', (code) => {
-        clearTimeout(timeoutHandle);
-        if (timeoutTriggered) return; // Already handled by timeout
-        
         if (code === 0 || code === null) {
           try {
             const lines = output.trim().split('\n');
@@ -131,19 +121,16 @@ exports.analyzeBunga = async (req, res) => {
               }
             }
             if (jsonLine) resolve(JSON.parse(jsonLine));
-            else reject(new Error('No JSON output from Python. Stderr: ' + errorOutput));
+            else reject(new Error('No JSON output from Python'));
           } catch (e) {
-            reject(new Error('Parse error: ' + e.message + '. Raw output: ' + output));
+            reject(new Error('Parse error: ' + e.message));
           }
         } else {
-          reject(new Error(`Python failed with code ${code}: ${errorOutput}`));
+          reject(new Error('Python failed: ' + errorOutput));
         }
       });
 
-      python.on('error', (err) => {
-        clearTimeout(timeoutHandle);
-        reject(err);
-      });
+      python.on('error', (err) => reject(err));
     });
 
     // ✅ PYTHON PROCESSING COMPLETE

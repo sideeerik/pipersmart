@@ -61,14 +61,13 @@ def predict_leaf_disease(image_path, model_path):
         print(f"📋 Number of classes: {len(model.names)}", file=sys.stderr)
         
         # Run inference - Optimized for speed
-        # Use conf=0.5 (filter weak detections), imgsz=320 (smaller = faster), half=True (FP16)
+        # Use conf=0.5 (filter weak detections), imgsz=512 (smaller = faster), half=True (FP16)
         results = model.predict(
             image_path, 
             conf=0.5,      # Higher confidence threshold - only strong detections
-            imgsz=320,     # Reduced from 416 to 320 for 30% faster CPU inference + less memory
+            imgsz=512,     # Smaller size = ~30% faster than 640 with minimal accuracy loss
             verbose=False, 
-            half=True,     # FP16 inference (30% memory savings)
-            device='cpu'   # Explicit CPU device for stability
+            half=True      # FP16 inference (faster on GPU)
         )
         detection_data = results[0]
         

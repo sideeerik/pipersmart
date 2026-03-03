@@ -18,7 +18,7 @@ const connectDatabase = async () => {
         });
 
         console.log(`✅ MongoDB connected with HOST: ${mongoose.connection.host}`);
-        console.log(`📊 Database: ${mongoose.connection.db.getName()}`);
+        console.log(`📊 Database: ${mongoose.connection.name}`);
         return true;
     } catch (error) {
         console.error('❌ MongoDB Connection Error:', error.message);

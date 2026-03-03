@@ -71,6 +71,10 @@ app.use('/api/v1', chatRoutes);
 const notificationRoutes = require('./routes/Notification');
 app.use('/api/v1', notificationRoutes);
 
+// ========== REPORTS ROUTES ==========
+const reportsRoutes = require('./routes/Reports');
+app.use('/api/v1/reports', reportsRoutes);
+
 // ========== HEALTH CHECK ==========
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

@@ -54,11 +54,13 @@ exports.analyzeLeaf = async (req, res) => {
       
       // Use spawn without shell: true - Node.js handles paths with spaces correctly
       const python = spawn(pythonExe, [pythonScriptPath, tempImagePath, modelPath], {
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 300000  // 5 minutes - YOLO inference is compute-heavy
       });
 
       let output = '';
       let errorOutput = '';
+      let timeoutTriggered = false;
 
       python.stdout.on('data', (data) => {
         output += data.toString();
@@ -69,7 +71,16 @@ exports.analyzeLeaf = async (req, res) => {
         console.error(`⚠️ [${requestId}] Python stderr: ${data}`);
       });
 
+      const timeoutHandle = setTimeout(() => {
+        timeoutTriggered = true;
+        python.kill('SIGTERM');
+        reject(new Error(`Python inference timeout (>300s) - CPU may be throttled.`));
+      }, 300000);
+
       python.on('close', (code) => {
+        clearTimeout(timeoutHandle);
+        if (timeoutTriggered) return; // Already handled by timeout
+        
         if (code === 0) {
           try {
             const parsedOutput = JSON.parse(output.trim());
@@ -86,6 +97,7 @@ exports.analyzeLeaf = async (req, res) => {
       });
 
       python.on('error', (err) => {
+        clearTimeout(timeoutHandle);
         console.error(`[${requestId}] Failed to start Python process:`, err);
         reject(new Error('Failed to start prediction service'));
       });

@@ -59,11 +59,11 @@ def predict_bunga_unified(image_path, unified_model_path):
             unified_model = YOLO(unified_model_path)
             print(f"✅ Model loaded successfully", file=sys.stderr)
             
-            print(f"🎯 Running inference with conf=0.25, imgsz=640...", file=sys.stderr)
+            print(f"🎯 Running inference with conf=0.25, imgsz=416...", file=sys.stderr)
             unified_results = unified_model.predict(
                 image_path, 
                 conf=0.25,      # Lowered from 0.5 to catch weaker detections
-                imgsz=640,      # Increased from 512 for better detail
+                imgsz=416,      # Reduced from 640 for faster CPU inference
                 verbose=False, 
                 half=True
             )

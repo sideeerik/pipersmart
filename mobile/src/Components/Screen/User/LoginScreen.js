@@ -21,8 +21,8 @@ import { BACKEND_URL, GOOGLE_WEB_CLIENT_ID } from 'react-native-dotenv';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
-// import auth from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import auth from '@react-native-firebase/auth';
 
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
@@ -53,6 +53,19 @@ export default function LoginScreen({ navigation }) {
   const passwordInput = useRef(null);
   const emailInput = useRef(null);
   
+  // Initialize GoogleSignin
+  useEffect(() => {
+    if (GOOGLE_WEB_CLIENT_ID) {
+      GoogleSignin.configure({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        scopes: ['email', 'profile'],
+      });
+      console.log('✅ GoogleSignin configured');
+    } else {
+      console.error('❌ GOOGLE_WEB_CLIENT_ID not found in .env');
+    }
+  }, []);
+  
   // Rotate background images every 4 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -64,11 +77,72 @@ export default function LoginScreen({ navigation }) {
   const onGoogleButtonPress = async () => {
     setLoading(true);
     try {
-      console.log('🔥 Native Google Login attempt (DISABLED IN EXPO GO)');
-      Alert.alert('Development Mode', 'Google Login is disabled in Expo Go. Please build the native app to test.');
+      console.log('🔥 Starting Google Sign-In...');
+      
+      // Sign out first to ensure fresh login
+      await GoogleSignin.signOut();
+      console.log('✅ Previous session cleared');
+      
+      // Sign in with Google
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      console.log('✅ Google Sign-In successful:', response.user.email);
+      
+      // Get ID token
+      const idToken = response.idToken;
+      if (!idToken) {
+        throw new Error('No ID token received from Google Sign-In');
+      }
+      console.log('🔑 ID Token received (length: ' + idToken.length + ')');
+      
+      // Send to backend for verification
+      console.log('📡 Sending ID token to backend...');
+      const res = await axios.post(
+        `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
+        { idToken },
+        { timeout: 10000 }
+      );
+      
+      console.log('✅ Backend verified Google token');
+      console.log('🎯 User:', res.data?.user?.email, '| Role:', res.data?.user?.role);
+      
+      // Authenticate user
+      await authenticate(res.data, () => {
+        setTimeout(() => {
+          Alert.alert(
+            'Welcome! 🌿',
+            `Signed in as ${res.data.user?.name || res.data.user?.email}`,
+            [
+              { 
+                text: 'Continue', 
+                onPress: () => {
+                  if (res.data.user?.role === 'admin') {
+                    navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
+                  } else {
+                    navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
+                  }
+                }
+              }
+            ]
+          );
+        }, 300);
+      });
+
     } catch (error) {
-      console.error('❌ Google Login error:', error);
-      Alert.alert('Google Login Failed', error.message || 'Something went wrong');
+      console.error('❌ Google Sign-In error:', error);
+      let errorMessage = 'Google Sign-In failed';
+      
+      if (error.code === -1) {
+        errorMessage = 'Google Sign-In was cancelled';
+      } else if (error.message && error.message.includes('Network')) {
+        errorMessage = 'Network error. Check your internet connection.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Google Sign-In Failed', errorMessage);
     } finally {
       setLoading(false);
     }

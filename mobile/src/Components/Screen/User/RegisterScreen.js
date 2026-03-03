@@ -22,8 +22,9 @@ import { BACKEND_URL, GOOGLE_WEB_CLIENT_ID } from 'react-native-dotenv';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
-// import auth from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import auth from '@react-native-firebase/auth';
+import axios from 'axios';
 
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
@@ -131,49 +132,84 @@ export default function RegisterScreen({ navigation }) {
   const onGoogleButtonPress = async () => {
     setLoading(true);
     try {
-      console.log('🔥 Native Google Register attempt (DISABLED IN EXPO GO)');
+      console.log('🔥 Starting Google Sign-Up...');
       
-      // await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      // const { data: { idToken } } = await GoogleSignin.signIn();
-      // console.log('✅ Google Sign-In success');
-
-      // const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-      // await auth().signInWithCredential(googleCredential);
-      // console.log('✅ Firebase Auth success');
-
-      // const res = await axios.post(
-      //   `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
-      //   { idToken },
-      //   { headers: { 'Content-Type': 'application/json' } }
-      // );
-
-      // console.log('✅ Backend Register/Login successful:', res.data?.user?.email);
+      // Configure GoogleSignin
+      const webClientId = GOOGLE_WEB_CLIENT_ID;
+      if (!webClientId) {
+        throw new Error('Google Web Client ID not configured in .env');
+      }
       
-      // await authenticate(res.data, () => {
-      //   setTimeout(() => {
-      //     Alert.alert(
-      //       'Welcome! 🌿',
-      //       'Account created/logged in successfully!',
-      //       [
-      //         { 
-      //           text: 'Continue', 
-      //           onPress: () => {
-      //             if (res.data.user?.role === 'admin') {
-      //               navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
-      //             } else {
-      //               navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
-      //             }
-      //           }
-      //         }
-      //       ]
-      //     );
-      //   }, 300);
-      // });
-      Alert.alert('Development Mode', 'Google Login is disabled in Expo Go. Please build the native app to test.');
+      GoogleSignin.configure({
+        webClientId,
+        scopes: ['email', 'profile'],
+      });
+      
+      // Sign out first
+      await GoogleSignin.signOut();
+      console.log('✅ Previous session cleared');
+      
+      // Check Play Services
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('✅ Play Services available');
+      
+      // Sign in
+      const response = await GoogleSignin.signIn();
+      console.log('✅ Google Sign-Up successful:', response.user.email);
+      
+      // Get ID token
+      const idToken = response.idToken;
+      if (!idToken) {
+        throw new Error('No ID token from Google');
+      }
+      console.log('🔑 ID Token received');
+      
+      // Send to backend
+      console.log('📨 Sending to backend...');
+      const res = await axios.post(
+        `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
+        { idToken },
+        { timeout: 10000 }
+      );
+      
+      console.log('✅ Backend verified:', res.data?.user?.email);
+      
+      await authenticate(res.data, () => {
+        setTimeout(() => {
+          Alert.alert(
+            'Welcome! 🌿',
+            `Account created for ${res.data.user?.name || res.data.user?.email}`,
+            [
+              { 
+                text: 'Continue', 
+                onPress: () => {
+                  if (res.data.user?.role === 'admin') {
+                    navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
+                  } else {
+                    navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
+                  }
+                }
+              }
+            ]
+          );
+        }, 300);
+      });
 
     } catch (error) {
-      console.error('❌ Google Auth error:', error);
-      Alert.alert('Google Auth Failed', error.message || 'Something went wrong');
+      console.error('❌ Google Sign-Up error:', error);
+      let errorMessage = 'Google Sign-Up failed';
+      
+      if (error.code === -1) {
+        errorMessage = 'Sign-up was cancelled';
+      } else if (error.message && error.message.includes('Network')) {
+        errorMessage = 'Network error. Check connection.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Google Sign-Up Failed', errorMessage);
     } finally {
       setLoading(false);
     }

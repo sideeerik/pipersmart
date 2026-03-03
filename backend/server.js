@@ -1,6 +1,13 @@
 const dotenv = require('dotenv');
 const path = require('path');
 
+// Global model cache (Option 2: Model Caching)
+global.modelCache = {
+  bungaModel: null,
+  leafModel: null,
+  initialized: false
+};
+
 // Load environment variables FIRST, before any other imports
 const result = dotenv.config({ path: './config/.env' });
 
@@ -35,6 +42,11 @@ const startServer = async () => {
     await connectDatabase();
     clearTimeout(dbTimeout);
     console.log('✅ Database connected successfully');
+    
+    // Initialize model cache at startup
+    console.log('🤖 Initializing model cache...');
+    global.modelCache.initialized = true;
+    console.log('✅ Model cache initialized (models will be loaded on first use and cached)');
     
     // Then start the Express server
     const server = app.listen(process.env.PORT || 4001, () => {

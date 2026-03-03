@@ -6,6 +6,7 @@ import Login from './Components/user/Login';
 import Register from './Components/user/Register';
 import Dashboard from './Components/Admin/Dashboard.jsx';
 import ReportsAdmin from './Components/Admin/ReportsAdmin.jsx';
+import PostReported from './Components/Admin/PostReported.jsx';
 import Profile from './Components/User/Profile.jsx';
 import AdminProfile from './Components/Admin/AdminProfile.jsx';
 import EditProfile from './Components/User/EditProfile.jsx';
@@ -51,6 +52,7 @@ function App() {
         <Route path="/macro-mapping" element={<MacromappingPage />} />
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/admin/reports" element={<ReportsAdmin />} />
+        <Route path="/admin/reported-posts" element={<PostReported />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/edit" element={<EditProfile />} />
         <Route path="/admin/profile" element={<AdminProfile />} />

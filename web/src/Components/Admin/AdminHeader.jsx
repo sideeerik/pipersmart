@@ -254,6 +254,7 @@ const AdminHeader = () => {
         }}>
           <NavLink to="/admin/dashboard" label="Dashboard" icon="📊" />
           <NavLink to="/admin/reports" label="Reports & Analytics" icon="📈" />
+          <NavLink to="/admin/reported-posts" label="Reported Posts" icon="🚩" />
           <NavLink to="/admin/profile" label="Profile" icon="👤" />
         </nav>
       </div>

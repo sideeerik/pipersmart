@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import axios from 'axios';
+import { BACKEND_URL } from 'react-native-dotenv';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import MobileHeader from '../../shared/MobileHeader';
@@ -900,7 +901,7 @@ export default function MacromappingScreen({ navigation }) {
       }
 
       const response = await axios.get(
-        'http://192.168.100.213:4001/api/v1/macromapping/saved',
+        `${BACKEND_URL}/api/v1/macromapping/saved`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -923,7 +924,7 @@ export default function MacromappingScreen({ navigation }) {
       }
 
       const response = await axios.post(
-        'http://192.168.100.213:4001/api/v1/macromapping/save',
+        `${BACKEND_URL}/api/v1/macromapping/save`,
         {
           farmId: item.id,
           farmName: item.name,
@@ -955,7 +956,7 @@ export default function MacromappingScreen({ navigation }) {
     try {
       const token = await getToken();
       const response = await axios.delete(
-        `http://192.168.100.213:4001/api/v1/macromapping/saved/${locationId}`,
+        `${BACKEND_URL}/api/v1/macromapping/saved/${locationId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

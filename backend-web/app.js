@@ -47,6 +47,37 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// ========== REQUEST LOGGING MIDDLEWARE ==========
+app.use((req, res, next) => {
+  const timestamp = new Date().toLocaleTimeString();
+  const method = req.method;
+  const url = req.originalUrl;
+  const ip = req.ip || req.connection.remoteAddress;
+  
+  console.log(`\n📨 [${timestamp}] ${method} ${url}`);
+  console.log(`   IP: ${ip}`);
+  
+  if (Object.keys(req.query).length > 0) {
+    console.log(`   Query: ${JSON.stringify(req.query)}`);
+  }
+  
+  if (req.headers.authorization) {
+    console.log(`   Auth: ${req.headers.authorization.substring(0, 20)}...`);
+  }
+  
+  // Log response
+  const originalSend = res.send;
+  res.send = function(data) {
+    const statusCode = res.statusCode;
+    const statusColor = statusCode >= 400 ? '❌' : statusCode >= 300 ? '⚠️' : '✅';
+    console.log(`   ${statusColor} Response: ${statusCode}`);
+    res.send = originalSend;
+    return res.send(data);
+  };
+  
+  next();
+});
+
 // ========== BODY PARSING ==========
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -75,6 +106,10 @@ app.use('/api/v1', notificationRoutes);
 const reportsRoutes = require('./routes/Reports');
 app.use('/api/v1/reports', reportsRoutes);
 
+// ========== POST REPORTED ROUTES ==========
+const postReportedRoutes = require('./routes/PostReported');
+app.use('/api/v1/reports', postReportedRoutes);
+
 // ========== DASHBOARD ROUTES ==========
 const dashboardRoutes = require('./routes/Dashboard');
 app.use('/api/v1/dashboard', dashboardRoutes);
@@ -90,6 +125,37 @@ app.get('/api/v1/health', (req, res) => {
     backendType: 'WEB (Port 5000)',
     clientOrigin: req.headers.origin || 'No origin (likely mobile app)',
     clientIP: req.ip
+  });
+});
+
+// ========== 404 HANDLER ==========
+app.use((req, res) => {
+  console.log(`\n❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: '❌ Route not found',
+    path: req.originalUrl,
+    method: req.method
+  });
+});
+
+// ========== GLOBAL ERROR HANDLER ==========
+app.use((err, req, res, next) => {
+  const timestamp = new Date().toLocaleTimeString();
+  console.error(`\n❌ [${timestamp}] ERROR:`);
+  console.error(`   Route: ${req.method} ${req.originalUrl}`);
+  console.error(`   Message: ${err.message}`);
+  console.error(`   Status: ${err.status || 500}`);
+  if (err.stack) {
+    const stackLines = err.stack.split('\n').slice(0, 5);
+    console.error(`   Stack:\n${stackLines.map(line => `     ${line}`).join('\n')}`);
+  }
+  
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err : {},
+    timestamp: new Date().toISOString()
   });
 });
 

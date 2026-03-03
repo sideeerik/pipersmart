@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import { BACKEND_URL } from 'react-native-dotenv';
 import { logout, getUser, getToken } from '../../utils/helpers';
 import MobileHeader from '../../shared/MobileHeader';
 
@@ -80,7 +81,7 @@ export default function RecentActivitiesScreen({ navigation }) {
       const token = await getToken();
       
       const response = await axios.get(
-        `${process.env.BACKEND_URL}/api/v1/activities/all?page=${pageNum}&limit=${ITEMS_PER_PAGE}`,
+        `${BACKEND_URL}/api/v1/activities/all?page=${pageNum}&limit=${ITEMS_PER_PAGE}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }

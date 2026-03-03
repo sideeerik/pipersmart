@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import { BACKEND_URL } from 'react-native-dotenv';
 import MobileHeader from '../../shared/MobileHeader';
 import MobileFooter from '../../shared/MobileFooter';
 import Notepad from '../../shared/Notepad';
@@ -122,7 +123,7 @@ export default function HomeScreen({ navigation }) {
       }
 
       const response = await axios.get(
-        `${process.env.BACKEND_URL}/api/v1/activities/limited?limit=3`,
+        `${BACKEND_URL}/api/v1/activities/limited?limit=3`,
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 8000

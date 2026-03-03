@@ -21,6 +21,7 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
+import { BACKEND_URL } from 'react-native-dotenv';
 import { logout, getUser } from '../../utils/helpers';
 import MobileHeader from '../../shared/MobileHeader';
 
@@ -30,19 +31,56 @@ const { width } = Dimensions.get('window');
 
 // Black Pepper Keywords for validation
 const BLACK_PEPPER_KEYWORDS = [
-  'black pepper', 'pepper', 'piper', 'disease', 'farming', 'cultivat', 'plant',
+  'black pepper', 'paminta', 'pepper', 'piper', 'disease', 'farming', 'cultivat', 'plant',
   'ripeness', 'harvest', 'pest', 'soil', 'water', 'fertili', 'pest management',
-  'bunga', 'leaf', 'ripe', 'unripe', 'yield', 'crop'
+  'bunga', 'leaf', 'ripe', 'unripe', 'yield', 'crop',
+  // Tagalog keywords
+  'magtanim', 'pagtatanim', 'halaman', 'sakit', 'peste', 'ani', 'aanihin',
+  'lupa', 'tubig', 'pataba', 'pagsasaka', 'magsanay', 'organiko', 'kalidad',
+  'kasamaan', 'tamasa', 'anihin', 'pangani',
+  // Pepper forms & preparation
+  'luto', 'pagluluto', 'durog', 'buo', 'pino',
+  'pamintang durog', 'pamintang buo', 'pamintang pino',
+  // Alternative names & variants
+  'blackpepper', 'peppercorn', 'white pepper',
+  // Pepper colors
+  'green', 'yellow', 'red', 'black',
+  // Farming & Planting (Tagalog)
+  'sakahan', 'hardin', 'punong-kahoy', 'puno', 'ugat', 'suporta',
+  'lutayan', 'pag-aani', 'kumpol', 'tumin',
+  // Weather & Seasons (Tagalog)
+  'ulan', 'tag-ulan', 'tag-init', 'mainit',
+  // Disease/Pest Management (Tagalog)
+  'ligtas', 'malusog', 'kumpula', 'tamaan', 'kontrol', 'spray',
+  // Quality & Production (Tagalog)
+  'grado', 'produkto', 'output', 'kita',
+  // General Agriculture & Cooking (Tagalog)
+  'lasa', 'amoy', 'gamot', 'sangkap', 'lutuing-bahay',
+  // Trading & Commercial (Tagalog & English)
+  'bili', 'bibili', 'buyer', 'seller', 'benta', 'magbenta',
+  'pagbebenta', 'magbebenta', 'selling', 'buying', 'trade', 'market'
 ];
 
-// Bad words list (basic, add more as needed)
+// Bad words list (inappropriate language not allowed in forum)
 const BAD_WORDS = [
-  'hate', 'kill', 'stupid', 'idiot', 'damn', 'hell', 'crap'
+  'hate', 'kill', 'stupid', 'idiot', 'damn', 'hell', 'crap',
+  'racist', 'discrimination', 'sexist', 'slut', 'whore', 'asshole',
+  'bastard', 'bitch', 'f***', 'shit', 'piss', 'cock', 'dick',
+  'threat', 'threaten', 'rape', 'abuse', 'scam', 'fraud', 'steal',
+  'drugs', 'cocaine', 'heroin', 'marijuana', 'meth',
+  'suicide', 'kill yourself', 'kys', 'die',
+  'spam', 'viagra', 'casino', 'porn', 'xxx',
+  'motherfucker', 'douchebag', 'jackass', 'loser', 'retard'
 ];
 
 const validateContent = (content) => {
   if (!content.trim()) {
     return { isValid: false, message: 'Content cannot be empty' };
+  }
+
+  // Check character limit (300 characters max)
+  if (content.length > 300) {
+    return { isValid: false, message: 'Exceeded 300 characters' };
   }
 
   // Check for bad words
@@ -290,22 +328,30 @@ export default function ForumScreen({ navigation, route }) {
       setPostingThread(true);
       let response;
       if (newThreadImages.length > 0) {
+        console.log('📸 Creating thread WITH images:', newThreadImages.length);
         const form = new FormData();
         form.append('title', newThreadTitle);
         form.append('description', newThreadDesc);
         form.append('category', 'General');
         form.append('status', 'published');
-        newThreadImages.forEach((img) => {
+        newThreadImages.forEach((img, idx) => {
+          console.log(`📸 Adding image ${idx + 1}:`, img.name);
           form.append('images', {
             uri: img.uri,
             name: img.name || `image_${Date.now()}.jpg`,
             type: img.type || 'image/jpeg',
           });
         });
+        console.log('🚀 POST /api/v1/forum/threads (with FormData)');
         response = await axios.post('/api/v1/forum/threads', form, {
-          timeout: 20000
+          timeout: 20000,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         });
       } else {
+        console.log('📝 Creating thread WITHOUT images');
+        console.log('🚀 POST /api/v1/forum/threads (JSON)');
         response = await axios.post(
           '/api/v1/forum/threads',
           {
@@ -318,6 +364,7 @@ export default function ForumScreen({ navigation, route }) {
         );
       }
 
+      console.log('✅ Thread created successfully:', response.data?.data?._id);
       Alert.alert('Success', '🎉 Thread posted successfully!');
       setCreateModalVisible(false);
       setNewThreadTitle('');
@@ -325,9 +372,13 @@ export default function ForumScreen({ navigation, route }) {
       setNewThreadImages([]);
       fetchFeed();
     } catch (error) {
-      console.error('Error creating thread:', error);
+      console.error('❌ Error creating thread:', error.message);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error response:', error.response?.status, error.response?.data);
+      console.error('❌ Error config URL:', error.config?.url);
+      console.error('❌ Error config method:', error.config?.method);
       if (user) {
-        const message = error.response?.data?.message || 'Failed to create thread';
+        const message = error.response?.data?.message || error.message || 'Failed to create thread';
         Alert.alert('Error', message);
       }
     } finally {
@@ -1677,10 +1728,10 @@ export default function ForumScreen({ navigation, route }) {
               onChangeText={setNewThreadDesc}
               multiline
               numberOfLines={6}
-              maxLength={1000}
+              maxLength={300}
             />
             <Text style={[styles.charCount, { color: colors.textLight }]}>
-              {newThreadDesc.length}/1000
+              {newThreadDesc.length}/300
             </Text>
 
             {newThreadDesc.length > 0 && (

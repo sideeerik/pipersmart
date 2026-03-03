@@ -45,7 +45,7 @@ exports.analyzeLeaf = async (req, res) => {
       // Python script path
       const pythonScriptPath = path.join(__dirname, '../utils/predict_disease_yolov8.py');
       const modelPath = path.join(__dirname, '../ml_models/leaf/train/weights/best.pt');
-      const pythonExe = 'C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+      const pythonExe = process.env.PYTHON_EXE || 'python';
       
       console.log(`🐍 [${requestId}] Python EXE: ${pythonExe}`);
       console.log(`📜 [${requestId}] Script: ${pythonScriptPath}`);

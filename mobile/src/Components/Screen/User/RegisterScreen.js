@@ -790,7 +790,7 @@ const RequirementItem = ({ met, text }) => (
       color={met ? '#27AE60' : '#C8E6C9'}
       style={{ marginRight: 8 }}
     />
-    <Text style={[styles.requirementText, { color: met ? '#27AE60' : '#A0A9A3' }]}>
+    <Text style={[styles.requirementText, { color: '#000000' }]}>
       {text}
     </Text>
   </View>
@@ -1111,7 +1111,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   loginText: {
-    color: '#999999',
+    color: '#000000',
     fontSize: 13,
   },
   loginLink: {

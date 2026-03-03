@@ -12,6 +12,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
@@ -231,7 +232,8 @@ export default function BungaRipenessScreen({ navigation }) {
         return;
       }
 
-      console.log('🖼️ Launching image picker on iOS...');
+      const platformName = Platform.OS === 'ios' ? 'iOS' : 'Android';
+      console.log(`🖼️ Launching image picker on ${platformName}...`);
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -244,7 +246,14 @@ export default function BungaRipenessScreen({ navigation }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        console.log('🖼️ Asset:', asset);
+        console.log(`🖼️ [${platformName}] Asset:`, {
+          uri: asset.uri?.substring(0, 50),
+          width: asset.width,
+          height: asset.height,
+          type: asset.type,
+          fileName: asset.fileName,
+          timestamp: new Date(asset.timestamp).toISOString()
+        });
         
         if (asset.uri) {
           setImageUri(asset.uri);
@@ -275,7 +284,8 @@ export default function BungaRipenessScreen({ navigation }) {
     try {
       // Request camera permission
       const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-      console.log('� Device Info - iOS');
+      const platformName = Platform.OS === 'ios' ? 'iOS' : 'Android';
+      console.log(`📱 Device Info - ${platformName}`);
       console.log('🔐 Camera permission status:', cameraPermission.status);
       console.log('🔐 Permission details:', cameraPermission);
       
@@ -285,7 +295,7 @@ export default function BungaRipenessScreen({ navigation }) {
         return;
       }
 
-      console.log('📸 Launching camera on iOS...');
+      console.log(`📸 Launching camera on ${platformName}...`);
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -298,14 +308,22 @@ export default function BungaRipenessScreen({ navigation }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        console.log('📸 Asset:', asset);
+        const platformName = Platform.OS === 'ios' ? 'iOS' : 'Android';
+        console.log(`📸 [${platformName}] Asset:`, {
+          uri: asset.uri?.substring(0, 50),
+          width: asset.width,
+          height: asset.height,
+          type: asset.type,
+          duration: asset.duration,
+          fileSize: asset.fileSize
+        });
         
         if (asset.uri) {
           setImageUri(asset.uri);
           setImage(asset);
           setError(null);
           setResult(null);
-          console.log('✅ Camera capture successful:', asset.uri);
+          console.log(`✅ [${platformName}] Camera capture successful`);
         }
       } else {
         console.log('⚠️ Camera canceled by user');
@@ -352,13 +370,28 @@ export default function BungaRipenessScreen({ navigation }) {
       // Create FormData
       const formData = new FormData();
       const filename = imageUri.split('/').pop() || `bunga_${Date.now()}.jpg`;
+      
+      // Platform-specific debug info
+      const platformName = Platform.OS === 'ios' ? 'iOS' : 'Android';
+      console.log(`\n📱 Platform: ${platformName}`);
+      console.log(`   URI Format: ${imageUri.substring(0, 50)}...`);
+      
       formData.append('image', {
         uri: imageUri,
         type: 'image/jpeg',
         name: filename,
       });
 
-      console.log('📤 Analyzing bunga image...');
+      // LOG: Confirm image is being sent
+      const timestamp = new Date().toISOString();
+      const requestId = `bunga_${Date.now()}`;
+      console.log(`\n🟢 [${requestId}] BUNGA IMAGE TRANSMISSION STARTED`);
+      console.log(`   ⏰ Timestamp: ${timestamp}`);
+      console.log(`   📤 Filename: ${filename}`);
+      console.log(`   📱 Platform: ${platformName}`);
+      console.log(`   🔐 Token present: ${token ? '✅ YES' : '❌ NO'}`);
+      console.log(`   📍 Target URL: ${BACKEND_URL}/api/v1/predict/bunga-with-objects`);
+      console.log(`   ⏱️ Timeout: 120000ms`);
 
       const response = await axios.post(
         `${BACKEND_URL}/api/v1/predict/bunga-with-objects`,
@@ -372,7 +405,12 @@ export default function BungaRipenessScreen({ navigation }) {
         }
       );
 
-      console.log('✅ Result:', response.data);
+      // LOG: Confirm image received and response got back
+      console.log(`\n✅ [${requestId}] BUNGA IMAGE TRANSMISSION SUCCESSFUL`);
+      console.log(`   📥 Response received from backend`);
+      console.log(`   ⏱️ Total request time: ${Date.now() - parseInt(requestId.split('_')[1])}ms`);
+      console.log(`   📱 From ${platformName}`);
+      console.log('✅ Backend result:', response.data);
       
       // Check if backend returned a failure response
       if (response.data.error || response.data.success === false) {
@@ -885,7 +923,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 28,
   },
   headerSection: {
     borderRadius: 12,

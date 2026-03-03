@@ -678,19 +678,19 @@ export default function KnowledgeScreen({ navigation }) {
                     <Text style={[styles.sectionTitle, { color: colors.text, fontSize: 14, marginVertical: 10 }]}>Morphological Components</Text>
                     <View style={styles.plantPartsList}>
                       {[
-                        { part: '🎋 Habit', desc: 'A trailing or climbing vine that requires support, producing adventitious roots at nodes for climbing.' },
-                        { part: '🌳 Stem', desc: 'Woody at the base with swollen nodes. Two types of branches: orthotropic (main, climbing stems with adventitious roots) and plagiotropic (lateral, fruit-bearing branches lacking aerial roots).' },
-                        { part: '🍃 Leaves', desc: 'Simple, alternate, dark green, glossy, ovate-elliptic or ovate-lanceolate, often with an acuminate tip. Blade sizes typically 8–17.5 cm long.' },
-                        { part: '🌸 Inflorescence', desc: 'A spike or catkin, 3–12 cm long, produced opposite the leaves. Contains minute, sessile, bisexual or unisexual flowers with 2–3 stamens.' },
+                        { part: 'Habit', desc: 'A trailing or climbing vine that requires support, producing adventitious roots at nodes for climbing.', emoji: '🎋' },
+                        { part: 'Stem', desc: 'Woody at the base with swollen nodes. Two types of branches: orthotropic (main, climbing stems with adventitious roots) and plagiotropic (lateral, fruit-bearing branches lacking aerial roots).', emoji: '🌳' },
+                        { part: 'Leaves', desc: 'Simple, alternate, dark green, glossy, ovate-elliptic or ovate-lanceolate, often with an acuminate tip. Blade sizes typically 8–17.5 cm long.', emoji: '🍃' },
+                        { part: 'Inflorescence', desc: 'A spike or catkin, 3–12 cm long, produced opposite the leaves. Contains minute, sessile, bisexual or unisexual flowers with 2–3 stamens.', emoji: '🌸' },
                         { part: 'Fruit (Peppercorn)', icon: 'logo', desc: 'A sessile, globose berry (drupe), 5–6 mm in diameter. Green when immature, turning red when ripe. Dried berries become black pepper of commerce.' },
-                        { part: '🌾 Root System', desc: 'Adventitious roots arising from nodes, allowing for vegetative propagation. Well-developed root systems enable climbing and nutrient absorption.' },
+                        { part: 'Root System', desc: 'Adventitious roots arising from nodes, allowing for vegetative propagation. Well-developed root systems enable climbing and nutrient absorption.', emoji: '🌾' },
                       ].map((item, i) => (
                         <View key={i} style={[styles.partItem, { backgroundColor: colors.background, borderRadius: 12, padding: 14, borderWidth: 2, borderColor: colors.border, marginBottom: 12 }]}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             {item.icon === 'logo' ? (
                               <Image source={require('../../../../picsbl/logowalangbg.png')} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
                             ) : (
-                              <Text style={{ fontSize: 18 }}>{item.part.split(' ')[0]}</Text>
+                              <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
                             )}
                             <Text style={[styles.partName, { color: colors.text, fontSize: 15, fontWeight: '700' }]}>{item.part}</Text>
                           </View>
@@ -1305,6 +1305,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 10,
     fontWeight: '500',
+    textAlign: 'justify',
   },
   expandHeader: {
     paddingVertical: 12,
@@ -1328,6 +1329,7 @@ const styles = StyleSheet.create({
   listDesc: {
     fontSize: 13,
     color: '#6b7280',
+    textAlign: 'justify',
   },
   newsItem: {
     borderWidth: 2,
@@ -1643,6 +1645,7 @@ const styles = StyleSheet.create({
   diseaseDesc: {
     fontSize: 13,
     lineHeight: 18,
+    textAlign: 'justify',
   },
   diseaseSeverityBadge: {
     marginBottom: 10,
@@ -1774,6 +1777,7 @@ const styles = StyleSheet.create({
   partDesc: {
     fontSize: 12,
     lineHeight: 16,
+    textAlign: 'justify',
   },
   newsImage: {
     width: '100%',
@@ -1867,6 +1871,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 16,
     fontWeight: '500',
+    textAlign: 'justify',
   },
   guideCardsContainer: {
     gap: 12,
@@ -1945,6 +1950,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '500',
+    textAlign: 'justify',
   },
 });
 

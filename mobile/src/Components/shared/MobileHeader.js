@@ -617,6 +617,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 12,
+    paddingTop: 35,
   },
   navTitle: {
     fontSize: 20,

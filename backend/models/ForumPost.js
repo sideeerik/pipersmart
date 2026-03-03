@@ -10,7 +10,8 @@ const forumPostSchema = new mongoose.Schema(
     content: {
       type: String,
       required: [true, 'Please provide post content'],
-      trim: true
+      trim: true,
+      maxLength: [300, 'Post content cannot exceed 300 characters']
     },
     images: [
       {

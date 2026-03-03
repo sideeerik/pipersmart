@@ -52,13 +52,30 @@ exports.analyzeBunga = async (req, res) => {
 
   try {
     if (!req.file) {
+      console.error(`❌ [${requestId}] IMAGE RECEPTION FAILED - No image file provided`);
       return res.status(400).json({
         success: false,
-        error: 'No image provided'
+        error: 'No image provided',
+        requestId
       });
     }
 
-    console.log(`\n📸 [${requestId}] Bunga Analysis Request`);
+    // ✅ CONFIRM IMAGE RECEIVED
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const platform = userAgent.toLowerCase().includes('android') ? 'Android' : 
+                     userAgent.toLowerCase().includes('iphone') ? 'iOS' : 'Unknown';
+    
+    console.log(`\n🟢 [${requestId}] NEW BUNGA RIPENESS PREDICTION REQUEST RECEIVED`);
+    console.log(`   ⏰ Timestamp: ${new Date().toISOString()}`);
+    console.log(`   📱 Platform: ${platform}`);
+    console.log(`   👤 User ID: ${req.user._id}`);
+    console.log(`✅ [${requestId}] IMAGE RECEPTION CONFIRMED`);
+    console.log(`   📸 Filename: ${req.file.originalname}`);
+    console.log(`   📦 File size: ${req.file.size} bytes (${(req.file.size / 1024).toFixed(2)} KB)`);
+    console.log(`   📋 MIME type: ${req.file.mimetype}`);
+    console.log(`   🔍 Buffer size: ${req.file.buffer.length} bytes`);
+    console.log(`   📱 Device: ${platform}`);
+    console.log(`   📍 Request ID: ${requestId}`);
 
     // 1. Save Temp File
     const tempDir = path.join(__dirname, '../temp');
@@ -66,6 +83,9 @@ exports.analyzeBunga = async (req, res) => {
     
     const tempImagePath = path.join(tempDir, `${requestId}.jpg`);
     fs.writeFileSync(tempImagePath, req.file.buffer);
+
+    console.log(`💾 [${requestId}] IMAGE SAVED TO TEMPORARY STORAGE`);
+    console.log(`   📁 Temp path: ${tempImagePath}`);
 
     // 2. Run Python Script
     const unifiedModelPath = path.join(__dirname, '../ml_models/bunga/train/weights/best.pt');
@@ -85,7 +105,7 @@ exports.analyzeBunga = async (req, res) => {
       python.stdout.on('data', (data) => output += data.toString());
       python.stderr.on('data', (data) => {
         errorOutput += data.toString();
-        // console.log(data.toString()); // Debug logs
+        console.log(data.toString()); // Show Python debug logs in real-time
       });
 
       python.on('close', (code) => {
@@ -113,6 +133,14 @@ exports.analyzeBunga = async (req, res) => {
       python.on('error', (err) => reject(err));
     });
 
+    // ✅ PYTHON PROCESSING COMPLETE
+    console.log(`🐍 [${requestId}] PYTHON PROCESSING COMPLETED`);
+    console.log(`   🎯 Ripeness: ${result.ripeness}`);
+    console.log(`   📊 Ripeness %: ${result.ripeness_percentage}%`);
+    console.log(`   🎯 Health Class: ${result.health_class}`);
+    console.log(`   📊 Health %: ${result.health_percentage}%`);
+    console.log(`   📈 Confidence: ${result.confidence}%`);
+
     // Clean up temp file (local)
     try { fs.unlinkSync(tempImagePath); } catch (e) {}
 
@@ -122,7 +150,7 @@ exports.analyzeBunga = async (req, res) => {
     let savedAnalysis = null;
     if (result.success && result.ripeness) {
       try {
-        console.log('☁️ Uploading evidence to Cloudinary...');
+        console.log(`☁️ [${requestId}] UPLOADING TO CLOUDINARY...`);
         
         // Upload buffer directly to Cloudinary
         // Convert buffer to base64 data URI
@@ -130,6 +158,10 @@ exports.analyzeBunga = async (req, res) => {
         const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
         
         const uploadResult = await uploadToCloudinary(dataURI, 'pipersmart/bunga_scans');
+
+        console.log(`☁️ [${requestId}] CLOUDINARY UPLOAD SUCCESSFUL`);
+        console.log(`   🔗 Public ID: ${uploadResult.public_id}`);
+        console.log(`   📍 URL: ${uploadResult.url}`);
 
         // Determine market grade based on ripeness and health_class
         let marketGrade = 'Unknown';
@@ -162,14 +194,25 @@ exports.analyzeBunga = async (req, res) => {
           processingTime: duration
         });
         
-        console.log(`💾 Saved analysis to DB: ${savedAnalysis._id} (${marketGrade})`);
+        console.log(`💾 [${requestId}] SAVED TO DATABASE`);
+        console.log(`   🔑 Analysis ID: ${savedAnalysis._id}`);
+        console.log(`   🏷️ Market Grade: ${marketGrade}`);
+        console.log(`   👤 User: ${req.user._id}`);
       } catch (uploadError) {
-        console.error('⚠️ Cloudinary Upload Failed - Result returned but not saved to history:', uploadError.message);
+        console.error(`❌ [${requestId}] CLOUDINARY UPLOAD FAILED:`, uploadError.message);
+        console.warn(`⚠️ [${requestId}] Result will be returned but NOT saved to history`);
         // We continue to return the result to the user even if history save fails
       }
     }
 
     // 4. Respond to Client
+    console.log(`\n✅ [${requestId}] RESPONSE SENT TO FRONTEND`);
+    console.log(`   🎯 Status: SUCCESS`);
+    console.log(`   ⏱️ Total processing time: ${duration}ms`);
+    console.log(`   🔍 Result: ${result.ripeness} | Health: ${result.health_class} | Confidence: ${result.confidence}%`);
+    console.log(`   💾 Saved to DB: ${savedAnalysis ? '✅ YES' : '❌ NO'}`);
+    console.log(`   🏷️ Market Grade: ${savedAnalysis ? savedAnalysis.results.market_grade : 'NOT SAVED'}`);
+    
     res.status(200).json({
       success: true,
       ...result,
@@ -179,10 +222,12 @@ exports.analyzeBunga = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Analysis Error:', error.message);
+    const duration = Date.now() - startTime;
+    console.error(`❌ [${requestId}] ANALYSIS ERROR (${duration}ms):`, error.message);
     res.status(500).json({
       success: false,
-      error: error.message || 'Analysis failed'
+      error: error.message || 'Analysis failed',
+      requestId
     });
   }
 };

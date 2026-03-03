@@ -197,7 +197,7 @@ export default function HomeScreen({ navigation }) {
   const getActivityIcon = (type) => {
     switch (type) {
       case 'BUNGA_ANALYSIS':
-        return { name: 'flower', color: colors.warning };
+        return { image: require('../../../../picsbl/logowalangbg.png'), color: colors.warning };
       case 'LEAF_ANALYSIS':
         return { name: 'activity', color: colors.success };
       case 'FORUM_POST':
@@ -474,7 +474,11 @@ export default function HomeScreen({ navigation }) {
                 return (
                   <View key={index} style={styles.activityItemHome}>
                     <View style={[styles.activityIconHome, { backgroundColor: iconData.color + '20' }]}>
-                      <Feather name={iconData.name} size={20} color={iconData.color} />
+                      {iconData.image ? (
+                        <Image source={iconData.image} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
+                      ) : (
+                        <Feather name={iconData.name} size={20} color={iconData.color} />
+                      )}
                     </View>
                     <View style={styles.activityDetailsHome}>
                       <Text style={styles.activityTitleHome}>{getActivityTitle(activity)}</Text>

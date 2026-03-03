@@ -11,7 +11,8 @@ const forumThreadSchema = new mongoose.Schema(
     description: {
       type: String,
       required: [true, 'Please provide a description'],
-      trim: true
+      trim: true,
+      maxLength: [300, 'Description cannot exceed 300 characters']
     },
     category: {
       type: String,

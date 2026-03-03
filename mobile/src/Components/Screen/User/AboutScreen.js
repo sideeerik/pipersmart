@@ -211,7 +211,13 @@ export default function AboutScreen({ navigation }) {
         {activeTab === 'pepper' && (
           <View>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🌶️ Black Pepper: The King of Spices</Text>
+              <View style={styles.titleWithLogo}>
+                <Image 
+                  source={require('../../../../picsbl/rara.png')} 
+                  style={styles.sectionLogo}
+                />
+                <Text style={styles.sectionTitle}>Black Pepper: The King of Spices</Text>
+              </View>
               <Text style={styles.sectionText}>
                 Black pepper (Piper nigrum), often referred to as the "King of Spices" holds immense global significance, acting as a cornerstone of the international spice trade for thousands of years, a vital culinary staple, and a potent, multi-functional medicinal agent. Native to the Malabar Coast of India, it is currently the world's most traded spice, accounting for approximately 20% of all global spice imports.
               </Text>
@@ -419,6 +425,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1B4D3E',
     marginBottom: 15,
+  },
+  titleWithLogo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  sectionLogo: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+    marginRight: 12,
   },
   sectionText: {
     fontSize: 15,

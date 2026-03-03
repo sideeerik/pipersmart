@@ -102,6 +102,32 @@ const AdminProfile = () => {
         gap: '10px'
       }}>
         <Link
+          to="/admin/reports"
+          style={{
+            padding: '12px 24px',
+            background: colors.secondary,
+            color: colors.primary,
+            border: 'none',
+            borderRadius: '12px',
+            textDecoration: 'none',
+            fontWeight: '600',
+            fontSize: '14px',
+            transition: 'all 0.3s ease',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+          }}
+        >
+          📊 Reports
+        </Link>
+        <Link
           to="/admin/profile"
           style={{
             padding: '12px 24px',

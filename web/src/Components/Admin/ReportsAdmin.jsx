@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import {
+  PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, Cell
+} from 'recharts';
 
 const ReportsAdmin = () => {
   const navigate = useNavigate();
@@ -385,6 +389,191 @@ const ReportsAdmin = () => {
     );
   };
 
+  // ==================== CHARTS TAB ====================
+  const ChartsTab = () => {
+    // Combine data for comprehensive charts
+    const [chartData, setChartData] = useState({
+      bungaRipeness: [],
+      bungaMarketGrade: [],
+      bungaHealthClass: [],
+      leafDisease: [],
+      bungaConfidence: [],
+      leafConfidence: []
+    });
+
+    useEffect(() => {
+      // Build pie chart data for Bunga Ripeness
+      if (bungaReports?.statistics?.ripeness) {
+        const ripData = [
+          { name: 'Ripe', value: parseInt(bungaReports.statistics.ripeness.Ripe) },
+          { name: 'Unripe', value: parseInt(bungaReports.statistics.ripeness.Unripe) },
+          { name: 'Rotten', value: parseInt(bungaReports.statistics.ripeness.Rotten) }
+        ];
+        setChartData(prev => ({ ...prev, bungaRipeness: ripData }));
+      }
+
+      // Build bar chart data for Market Grade
+      if (bungaReports?.statistics?.marketGrade) {
+        const gradeData = [
+          { name: 'Premium', value: parseInt(bungaReports.statistics.marketGrade.Premium) },
+          { name: 'Standard', value: parseInt(bungaReports.statistics.marketGrade.Standard) },
+          { name: 'Commercial', value: parseInt(bungaReports.statistics.marketGrade.Commercial) },
+          { name: 'Reject', value: parseInt(bungaReports.statistics.marketGrade.Reject) }
+        ];
+        setChartData(prev => ({ ...prev, bungaMarketGrade: gradeData }));
+      }
+
+      // Build bar chart data for Health Class
+      if (bungaReports?.statistics?.healthClass) {
+        const healthData = [
+          { name: 'Class A', value: parseInt(bungaReports.statistics.healthClass.A) },
+          { name: 'Class B', value: parseInt(bungaReports.statistics.healthClass.B) },
+          { name: 'Class C', value: parseInt(bungaReports.statistics.healthClass.C) },
+          { name: 'Class D', value: parseInt(bungaReports.statistics.healthClass.D) }
+        ];
+        setChartData(prev => ({ ...prev, bungaHealthClass: healthData }));
+      }
+
+      // Build pie chart data for Leaf Disease
+      if (leafReports?.statistics?.diseaseDistribution) {
+        const diseaseData = Object.entries(leafReports.statistics.diseaseDistribution).map(([disease, stats]) => ({
+          name: disease,
+          value: parseFloat(stats.percentage)
+        }));
+        setChartData(prev => ({ ...prev, leafDisease: diseaseData }));
+      }
+    }, [bungaReports, leafReports]);
+
+    const COLORS = ['#27AE60', '#F39C12', '#E74C3C', '#3498DB', '#9B59B6', '#1ABC9C'];
+
+    return (
+      <div className="space-y-6">
+        {/* Chart Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Bunga Ripeness - Pie Chart */}
+          <div style={{
+            backgroundColor: colors.secondary,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '8px',
+            padding: '20px'
+          }}>
+            <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 'bold', marginBottom: '15px' }}>
+              🌶️ Bunga Ripeness Distribution
+            </h3>
+            {chartData.bungaRipeness.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData.bungaRipeness}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.bungaRipeness.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p style={{ color: colors.textLight }}>No data available</p>
+            )}
+          </div>
+
+          {/* Market Grade - Bar Chart */}
+          <div style={{
+            backgroundColor: colors.secondary,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '8px',
+            padding: '20px'
+          }}>
+            <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 'bold', marginBottom: '15px' }}>
+              🏆 Market Grade Distribution
+            </h3>
+            {chartData.bungaMarketGrade.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData.bungaMarketGrade}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill={colors.accent} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p style={{ color: colors.textLight }}>No data available</p>
+            )}
+          </div>
+
+          {/* Health Class - Bar Chart */}
+          <div style={{
+            backgroundColor: colors.secondary,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '8px',
+            padding: '20px'
+          }}>
+            <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 'bold', marginBottom: '15px' }}>
+              💪 Health Class Distribution
+            </h3>
+            {chartData.bungaHealthClass.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData.bungaHealthClass}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill={colors.primary} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p style={{ color: colors.textLight }}>No data available</p>
+            )}
+          </div>
+
+          {/* Leaf Disease - Pie Chart */}
+          <div style={{
+            backgroundColor: colors.secondary,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '8px',
+            padding: '20px'
+          }}>
+            <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 'bold', marginBottom: '15px' }}>
+              🍃 Disease Distribution
+            </h3>
+            {chartData.leafDisease.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData.leafDisease}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.leafDisease.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p style={{ color: colors.textLight }}>No data available</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ backgroundColor: colors.background, minHeight: '100vh', padding: '20px' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
@@ -424,7 +613,7 @@ const ReportsAdmin = () => {
           marginBottom: '30px',
           borderBottom: `2px solid ${colors.border}`
         }}>
-          {['dashboard', 'bunga', 'leaf'].map((tab) => (
+          {['dashboard', 'bunga', 'leaf', 'charts'].map((tab) => (
             <button
               key={tab}
               onClick={() => {
@@ -446,13 +635,14 @@ const ReportsAdmin = () => {
               {tab === 'dashboard' && '📈 Dashboard'}
               {tab === 'bunga' && '🌶️ Bunga Analysis'}
               {tab === 'leaf' && '🍃 Leaf Analysis'}
+              {tab === 'charts' && '📊 Charts'}
             </button>
           ))}
         </div>
 
         {/* Tab Content */}
         <div style={{ minHeight: '600px' }}>
-          {loading && activeTab !== 'dashboard' ? (
+          {loading && activeTab !== 'dashboard' && activeTab !== 'charts' ? (
             <div style={{ textAlign: 'center', padding: '50px', color: colors.textLight }}>
               ⏳ Loading...
             </div>
@@ -461,6 +651,7 @@ const ReportsAdmin = () => {
               {activeTab === 'dashboard' && <DashboardTab />}
               {activeTab === 'bunga' && <BungaReportsTab />}
               {activeTab === 'leaf' && <LeafReportsTab />}
+              {activeTab === 'charts' && <ChartsTab />}
             </>
           )}
         </div>
@@ -527,44 +718,65 @@ const DataTable = ({ data, type, colors, pagination, currentPage, onPageChange }
           </tr>
         </thead>
         <tbody>
-          {data.map((item, index) => (
-            <tr
-              key={item._id}
-              style={{
-                backgroundColor: index % 2 === 0 ? colors.background : colors.secondary,
-                borderBottom: `1px solid ${colors.border}`
-              }}
-            >
-              <td style={{ padding: '12px', color: colors.text }}>{item.userName}</td>
-              <td style={{ padding: '12px' }}>
-                <img
-                  src={item.image?.url}
-                  alt="analysis"
-                  style={{ width: '50px', height: '50px', borderRadius: '4px', objectFit: 'cover' }}
-                />
-              </td>
-              {type === 'bunga' ? (
-                <>
-                  <td style={{ padding: '12px', color: colors.text }}>{item.results.ripeness}</td>
-                  <td style={{ padding: '12px', color: colors.text }}>
-                    {item.results.health_class || 'N/A'}
+          {data && data.length > 0 ? (
+            data.map((item, index) => {
+              // Ensure results is an object, not null/undefined
+              const results = item.results || {};
+              
+              return (
+                <tr
+                  key={item._id}
+                  style={{
+                    backgroundColor: index % 2 === 0 ? colors.background : colors.secondary,
+                    borderBottom: `1px solid ${colors.border}`
+                  }}
+                >
+                  <td style={{ padding: '12px', color: colors.text }}>{item.userName || 'Unknown'}</td>
+                  <td style={{ padding: '12px' }}>
+                    {item.image?.url && (
+                      <img
+                        src={item.image.url}
+                        alt="analysis"
+                        style={{ width: '50px', height: '50px', borderRadius: '4px', objectFit: 'cover' }}
+                      />
+                    )}
+                  </td>
+                  {type === 'bunga' ? (
+                    <>
+                      <td style={{ padding: '12px', color: colors.text }}>
+                        {String(results.ripeness || 'N/A')}
+                      </td>
+                      <td style={{ padding: '12px', color: colors.text }}>
+                        {String(results.health_class || 'N/A')}
+                      </td>
+                      <td style={{ padding: '12px', color: colors.text }}>
+                        {String(results.market_grade || 'N/A')}
+                      </td>
+                    </>
+                  ) : (
+                    <td style={{ padding: '12px', color: colors.text }}>
+                      {String(results.disease || 'N/A')}
+                    </td>
+                  )}
+                  <td style={{ padding: '12px', color: colors.primary, fontWeight: 'bold' }}>
+                    {String(results.confidence || 0)}%
                   </td>
                   <td style={{ padding: '12px', color: colors.text }}>
-                    {item.results.market_grade}
+                    {String(item.processingTime || '0s')}
                   </td>
-                </>
-              ) : (
-                <td style={{ padding: '12px', color: colors.text }}>{item.results.disease}</td>
-              )}
-              <td style={{ padding: '12px', color: colors.primary, fontWeight: 'bold' }}>
-                {item.results.confidence}%
-              </td>
-              <td style={{ padding: '12px', color: colors.text }}>{item.processingTime}</td>
-              <td style={{ padding: '12px', fontSize: '12px', color: colors.textLight }}>
-                {new Date(item.createdAt).toLocaleString()}
+                  <td style={{ padding: '12px', fontSize: '12px', color: colors.textLight }}>
+                    {new Date(item.createdAt).toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: colors.textLight }}>
+                No data available
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>

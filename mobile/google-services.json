@@ -12,7 +12,16 @@
           "package_name": "com.sideeerik.mobile"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "279289326349-dnepg8lgd1pe7gnf4hf4cnh9e6c23sel.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sideeerik.mobile",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA32pM7S4ZS_sjr0YK7z7SRfhRFYvBv3fc"

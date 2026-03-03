@@ -55,9 +55,23 @@ export default function RegisterScreen({ navigation }) {
   const getStartedScaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // GoogleSignin.configure({
-    //   webClientId: GOOGLE_WEB_CLIENT_ID,
-    // });
+    // Initialize GoogleSignin
+    const initGoogleSignIn = async () => {
+      try {
+        if (GOOGLE_WEB_CLIENT_ID) {
+          GoogleSignin.configure({
+            webClientId: GOOGLE_WEB_CLIENT_ID,
+            scopes: ['email', 'profile'],
+          });
+          console.log('✅ GoogleSignin configured in RegisterScreen');
+        } else {
+          console.warn('⚠️ GOOGLE_WEB_CLIENT_ID not found in .env');
+        }
+      } catch (err) {
+        console.error('❌ Failed to configure GoogleSignin:', err);
+      }
+    };
+    initGoogleSignIn();
     
     // Start carousel timer
     carouselTimerRef.current = setInterval(() => {
@@ -133,20 +147,18 @@ export default function RegisterScreen({ navigation }) {
     try {
       console.log('🔥 Starting Google Sign-Up...');
       
-      // Configure GoogleSignin
-      const webClientId = GOOGLE_WEB_CLIENT_ID;
-      if (!webClientId) {
-        throw new Error('Google Web Client ID not configured in .env');
+      // Check if GoogleSignin is configured
+      if (!GOOGLE_WEB_CLIENT_ID) {
+        throw new Error('🔴 GOOGLE_WEB_CLIENT_ID not configured in .env file');
       }
       
-      GoogleSignin.configure({
-        webClientId,
-        scopes: ['email', 'profile'],
-      });
-      
-      // Sign out first
-      await GoogleSignin.signOut();
-      console.log('✅ Previous session cleared');
+      // Sign out first to avoid cached sessions
+      try {
+        await GoogleSignin.signOut();
+        console.log('✅ Previous session cleared');
+      } catch (e) {
+        console.log('ℹ️ No previous session to clear');
+      }
       
       // Check Play Services
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -159,9 +171,9 @@ export default function RegisterScreen({ navigation }) {
       // Get ID token
       const idToken = response.idToken;
       if (!idToken) {
-        throw new Error('No ID token from Google');
+        throw new Error('No ID token received from Google');
       }
-      console.log('🔑 ID Token received');
+      console.log('🔑 ID Token received (length: ' + idToken.length + ')');
       
       // Send to backend
       console.log('📨 Sending to backend...');
@@ -198,10 +210,13 @@ export default function RegisterScreen({ navigation }) {
       console.error('❌ Google Sign-Up error:', error);
       let errorMessage = 'Google Sign-Up failed';
       
-      if (error.code === -1) {
-        errorMessage = 'Sign-up was cancelled';
-      } else if (error.message && error.message.includes('Network')) {
-        errorMessage = 'Network error. Check connection.';
+      // Handle specific error types
+      if (error.message?.includes('DEVELOPER_ERROR')) {
+        errorMessage = '🔴 DEVELOPER_ERROR: Check your Google Cloud Console configuration.\n\nEnsure:\n1. SHA-1 fingerprint matches\n2. Package name is correct\n3. Web Client ID is correct';
+      } else if (error.code === -1 || error.code === 'DEVELOPER_ERROR') {
+        errorMessage = 'Google configuration error. Please check your .env file and Google Cloud Console setup.';
+      } else if (error.message?.includes('Network')) {
+        errorMessage = 'Network error. Check your internet connection.';
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {

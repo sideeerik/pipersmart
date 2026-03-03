@@ -239,7 +239,7 @@ export default function BungaRipenessScreen({ navigation }) {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        exif: false,
+        exif: false,  // Disable EXIF to prevent date issues
       });
 
       console.log('🖼️ Gallery result:', result);
@@ -252,7 +252,6 @@ export default function BungaRipenessScreen({ navigation }) {
           height: asset.height,
           type: asset.type,
           fileName: asset.fileName,
-          timestamp: new Date(asset.timestamp).toISOString()
         });
         
         if (asset.uri) {
@@ -269,8 +268,13 @@ export default function BungaRipenessScreen({ navigation }) {
       console.error('❌ Full gallery error:', err);
       console.error('❌ Error code:', err?.code);
       console.error('❌ Error message:', err?.message);
+      console.error('❌ Error name:', err?.name);
       
-      if (err?.code === 'E_PICKER_CANCELLED') {
+      // Handle specific date-related errors
+      if (err?.message?.includes('Date') || err?.message?.includes('date') || err?.name === 'RangeError') {
+        console.warn('⚠️ Image metadata date issue - selecting without metadata');
+        setError('❌ Image has invalid metadata.\n\nTry a different photo or take a new one with the camera.');
+      } else if (err?.code === 'E_PICKER_CANCELLED') {
         console.log('⚠️ User cancelled gallery');
       } else if (err?.code === 'E_PERMISSION_MISSING' || err?.message?.includes('permission')) {
         setError('❌ Photo library permission denied.\n\nGo to Settings > PiperSmart > Photos');
@@ -301,7 +305,7 @@ export default function BungaRipenessScreen({ navigation }) {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        exif: false,
+        exif: false,  // Disable EXIF to prevent date issues
       });
 
       console.log('📸 Camera result:', result);
@@ -314,8 +318,6 @@ export default function BungaRipenessScreen({ navigation }) {
           width: asset.width,
           height: asset.height,
           type: asset.type,
-          duration: asset.duration,
-          fileSize: asset.fileSize
         });
         
         if (asset.uri) {
@@ -332,9 +334,13 @@ export default function BungaRipenessScreen({ navigation }) {
       console.error('❌ Full camera error:', err);
       console.error('❌ Error code:', err?.code);
       console.error('❌ Error message:', err?.message);
-      console.error('❌ Error domain:', err?.domain);
+      console.error('❌ Error name:', err?.name);
       
-      if (err?.code === 'E_PICKER_CANCELLED') {
+      // Handle specific date-related errors
+      if (err?.message?.includes('Date') || err?.message?.includes('date') || err?.name === 'RangeError') {
+        console.warn('⚠️ Image metadata date issue');
+        setError('❌ Camera error with image metadata.\n\nTry restarting the app or device.');
+      } else if (err?.code === 'E_PICKER_CANCELLED') {
         console.log('⚠️ User cancelled camera');
       } else if (err?.code === 'E_CAMERA_UNAVAILABLE') {
         setError('❌ Camera not available.\n\nCheck if another app is using the camera.');
@@ -343,7 +349,7 @@ export default function BungaRipenessScreen({ navigation }) {
       } else if (err?.message?.includes('Camera')) {
         setError('❌ Camera error.\n\nTry restarting the app or device.');
       } else {
-        setError('❌ Failed to open camera on iOS.\n\nError: ' + (err?.message || 'Unknown error'));
+        setError('❌ Failed to open camera.\n\nError: ' + (err?.message || 'Unknown error'));
       }
     }
   };
@@ -414,13 +420,16 @@ export default function BungaRipenessScreen({ navigation }) {
       
       // Check if backend returned a failure response
       if (response.data.error || response.data.success === false) {
+        console.error('❌ Backend returned error:', response.data.error);
         setError(response.data.error || 'Analysis failed');
         setAnalyzing(false);
         return;
       }
       
+      console.log('📦 Full response data:', response.data);
+      
       // Process confidence
-      let processedResult = response.data;
+      let processedResult = { ...response.data };
       if (processedResult.confidence) {
         let conf = Number(processedResult.confidence);
         while (conf > 100) {
@@ -433,25 +442,35 @@ export default function BungaRipenessScreen({ navigation }) {
       }
       
       console.log(`✅ ${processedResult.ripeness} - Health Class ${processedResult.health_class} (${processedResult.health_percentage}%)`);
+      console.log('📊 Processed result:', processedResult);
       
       // Extract data (bunga_detections and other_objects no longer returned by backend, default to empty)
       setBungaDetections([]);
       setOtherObjects([]);
       setImageSize(processedResult.image_size || null);
       
+      // Set the result to display
       setResult(processedResult);
+      console.log('✅ Result state updated with:', processedResult);
     } catch (err) {
-      console.error('❌ Error:', err.message);
+      console.error('❌ Full error object:', err);
+      console.error('❌ Error type:', err.constructor.name);
+      console.error('❌ Error message:', err.message);
+      console.error('❌ Response status:', err.response?.status);
+      console.error('❌ Response data:', err.response?.data);
       
       // Check response error first (higher priority)
       if (err.response?.data?.error) {
+        console.error('Setting error from response.data.error:', err.response.data.error);
         setError(err.response.data.error);
       } else if (err.response?.status === 401) {
         setError('Authentication failed');
       } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
         setError('Request timeout. First run may take 1-2 minutes while models initialize. Try again.');
       } else {
-        setError(err.response?.data?.error || err.message || 'Analysis failed');
+        const errorMsg = err.response?.data?.error || err.message || 'Analysis failed';
+        console.error('Setting error:', errorMsg);
+        setError(errorMsg);
       }
     } finally {
       setAnalyzing(false);

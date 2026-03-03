@@ -79,12 +79,24 @@ export default function LoginScreen({ navigation }) {
     try {
       console.log('🔥 Starting Google Sign-In...');
       
+      // Check if GoogleSignin is configured
+      if (!GOOGLE_WEB_CLIENT_ID) {
+        throw new Error('🔴 GOOGLE_WEB_CLIENT_ID not configured in .env file');
+      }
+      
       // Sign out first to ensure fresh login
-      await GoogleSignin.signOut();
-      console.log('✅ Previous session cleared');
+      try {
+        await GoogleSignin.signOut();
+        console.log('✅ Previous session cleared');
+      } catch (e) {
+        console.log('ℹ️ No previous session to clear');
+      }
+      
+      // Check Play Services
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('✅ Play Services available');
       
       // Sign in with Google
-      await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
       console.log('✅ Google Sign-In successful:', response.user.email);
       
@@ -132,9 +144,12 @@ export default function LoginScreen({ navigation }) {
       console.error('❌ Google Sign-In error:', error);
       let errorMessage = 'Google Sign-In failed';
       
-      if (error.code === -1) {
-        errorMessage = 'Google Sign-In was cancelled';
-      } else if (error.message && error.message.includes('Network')) {
+      // Handle specific error types
+      if (error.message?.includes('DEVELOPER_ERROR')) {
+        errorMessage = '🔴 DEVELOPER_ERROR: Check your Google Cloud Console configuration.\n\nEnsure:\n1. SHA-1 fingerprint matches\n2. Package name is correct\n3. Web Client ID is correct';
+      } else if (error.code === -1 || error.code === 'DEVELOPER_ERROR') {
+        errorMessage = 'Google configuration error. Please check your .env file and Google Cloud Console setup.';
+      } else if (error.message?.includes('Network')) {
         errorMessage = 'Network error. Check your internet connection.';
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;

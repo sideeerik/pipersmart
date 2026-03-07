@@ -155,8 +155,8 @@ router.post('/bunga-ripeness', isAuthenticatedUser, upload.single('image'), asyn
   }
 });
 
-const { analyzeBunga, getHistory, deleteBungaAnalysis } = require('../controllers/bungaController');
-const { analyzeLeaf, getLeafHistory, deleteLeafAnalysis } = require('../controllers/leafController');
+const { analyzeBunga, saveBungaAnalysis, getHistory, deleteBungaAnalysis } = require('../controllers/bungaController');
+const { analyzeLeaf, saveLeafAnalysis, getLeafHistory, deleteLeafAnalysis } = require('../controllers/leafController');
 
 // ... existing code ...
 
@@ -165,6 +165,12 @@ const { analyzeLeaf, getLeafHistory, deleteLeafAnalysis } = require('../controll
  * Predict pepper leaf disease from image
  */
 router.post('/disease', isAuthenticatedUser, upload.single('image'), analyzeLeaf);
+
+/**
+ * POST /api/v1/predict/leaf-save
+ * Save leaf analysis result without running inference
+ */
+router.post('/leaf-save', isAuthenticatedUser, upload.single('image'), saveLeafAnalysis);
 
 /**
  * GET /api/v1/predict/leaf-history
@@ -178,6 +184,12 @@ router.get('/leaf-history', isAuthenticatedUser, getLeafHistory);
  * Optimized for SPEED - single model inference
  */
 router.post('/bunga-with-objects', isAuthenticatedUser, upload.single('image'), analyzeBunga);
+
+/**
+ * POST /api/v1/predict/bunga-save
+ * Save bunga analysis result without running inference
+ */
+router.post('/bunga-save', isAuthenticatedUser, upload.single('image'), saveBungaAnalysis);
 
 /**
  * GET /api/v1/predict/bunga-history

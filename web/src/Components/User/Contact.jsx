@@ -1,37 +1,17 @@
-import { Link, useNavigate } from 'react-router-dom';
 import './Contact.css';
 import Header from '../shared/Header';
-import { FaFacebook, FaEnvelope, FaPhone, FaArrowLeft, FaUserFriends } from 'react-icons/fa';
+import { FaFacebook, FaEnvelope, FaPhone } from 'react-icons/fa';
+import EL from '../../../../EL.jpg';
+import YA from '../../../../YA.jpg';
+import JD from '../../../../JD.jpg';
+import LC from '../../../../LC.jpg';
 
 export default function Contact() {
-  const navigate = useNavigate();
-  
-  // Team member data with Facebook links
   const teamMembers = [
-    {
-      name: "Even Lloyd S. Billoned",
-      role: "Developer",
-      facebookLink: "https://www.facebook.com/lloyd.billoned",
-      initials: "LB"
-    },
-    {
-      name: "Yhanskie Adriel D. Cipriano",
-      role: "Developerr",
-      facebookLink: "https://www.facebook.com/yhanskie.cipriano.1",
-      initials: "YC"
-    },
-    {
-      name: "Jenard D. Inojales",
-      role: "Developer",
-      facebookLink: "https://www.facebook.com/jenard.inojales",
-      initials: "JI"
-    },
-    {
-      name: "Lord Cedric O. Vila",
-      role: "Developer",
-      facebookLink: "https://www.facebook.com/sideeerik",
-      initials: "LV"
-    }
+    { name: "Even Lloyd S. Billoned", role: "Developer", facebookLink: "https://www.facebook.com/lloyd.billoned", initials: "EL", image: EL },
+    { name: "Yhanskie Adriel D. Cipriano", role: "Developer", facebookLink: "https://www.facebook.com/yhanskie.cipriano.1", initials: "YA", image: YA },
+    { name: "Jenard D. Inojales", role: "Developer", facebookLink: "https://www.facebook.com/jenard.inojalae", initials: "JD", image: JD },
+    { name: "Lord Cedric O. Vila", role: "Developer", facebookLink: "https://www.facebook.com/sideeerik", initials: "LC", image: LC }
   ];
 
   return (
@@ -40,66 +20,66 @@ export default function Contact() {
       <div className="contact-container">
         {/* Header Section */}
         <div className="contact-header">
-          <button className="back-button" onClick={() => navigate(-1)}>
-            <FaArrowLeft /> Back
-          </button>
           <h1>Contact Us</h1>
-          <p>Get in touch with the PiperSmart development team. We're here to support your black pepper farming journey with innovative solutions.</p>
+          <p>Get in touch with the PiperSmart development team. We're here to support your black pepper farming journey.</p>
         </div>
 
         {/* Main Content */}
         <div className="contact-content">
-          {/* Contact Information Section */}
+          {/* Contact Information */}
           <section className="contact-section">
-            <h2><FaEnvelope /> Contact Information</h2>
-            <div className="contact-details">
-              <div className="contact-item" onClick={() => window.location.href = 'mailto:billonedlloyd@gmail.com'}>
+            <h2>Get In Touch</h2>
+            <div className="contact-grid">
+              <div 
+                className="contact-card"
+                onClick={() => window.location.href = 'mailto:pipersmart2026@gmail.com'}
+              >
                 <div className="contact-icon"><FaEnvelope /></div>
-                <div className="contact-info">
-                  <h3>Email</h3>
-                  <p>pipersmart2026@gmail.com</p>
-                  <p>Click to send us an email</p>
-                </div>
+                <h3>Email</h3>
+                <p>pipersmart2026@gmail.com</p>
               </div>
               
-              <div className="contact-item" onClick={() => window.location.href = 'tel:09633769724'}>
+              <div 
+                className="contact-card"
+                onClick={() => window.location.href = 'tel:+639633769724'}
+              >
                 <div className="contact-icon"><FaPhone /></div>
-                <div className="contact-info">
-                  <h3>Phone</h3>
-                  <p>+63 963 376 9724</p>
-                  <p>Call us for immediate assistance</p>
-                </div>
+                <h3>Phone</h3>
+                <p>+63 963 376 9724</p>
               </div>
               
-              <div className="contact-item">
+              <div className="contact-card">
                 <div className="contact-icon"><FaFacebook /></div>
-                <div className="contact-info">
-                  <h3>Facebook</h3>
-                  <p>Connect with us on Facebook</p>
-                  <p>Message us for inquiries and updates</p>
-                </div>
+                <h3>Facebook</h3>
+                <p>Connect with us</p>
               </div>
             </div>
           </section>
 
           {/* Team Section */}
-          <section className="team-section">
-            <h2><FaUserFriends /> Meet Our Team</h2>
-            <p>PiperSmart is developed by a dedicated team of professionals passionate about agricultural technology. Connect with us directly through our Facebook profiles.</p>
+          <section className="contact-section">
+            <h2>Meet Our Team</h2>
+            <p className="team-subtitle">Dedicated professionals passionate about agricultural technology</p>
             
             <div className="team-grid">
               {teamMembers.map((member, index) => (
-                <div className="team-member" key={index}>
-                  <div className="member-avatar">{member.initials}</div>
-                  <h3 className="member-name">{member.name}</h3>
-                  <p className="member-role">{member.role}</p>
+                <div key={index} className="team-card">
+                  <div className="team-avatar">
+                    {member.image ? (
+                      <img src={member.image} alt={member.name} className="team-image" />
+                    ) : (
+                      <span>{member.initials}</span>
+                    )}
+                  </div>
+                  <h3>{member.name}</h3>
+                  <p className="team-role">{member.role}</p>
                   <a 
                     href={member.facebookLink} 
                     target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="facebook-link"
+                    rel="noopener noreferrer"
+                    className="facebook-btn"
                   >
-                    <FaFacebook /> Facebook Profile
+                    <FaFacebook /> Profile
                   </a>
                 </div>
               ))}
@@ -108,18 +88,14 @@ export default function Contact() {
 
           {/* Additional Info */}
           <section className="contact-section">
-            <h2>💬 Get In Touch</h2>
+            <h2>Office Information</h2>
             <p>
-              Have questions about PiperSmart or need support with your black pepper farming operations? 
-              Our team is ready to assist you with technical guidance, troubleshooting, and feature requests.
+              Have questions about PiperSmart or need support? Our team is ready to assist you with technical guidance and troubleshooting.
             </p>
             <p>
-              We typically respond within 24 hours on weekdays. For urgent matters, please call us directly. 
-              Follow us on Facebook for the latest updates, farming tips, and feature announcements.
+              We typically respond within 24 hours on weekdays. For urgent matters, please call us directly.
             </p>
-            <p>
-              <strong>Office Hours:</strong> Monday to Friday, 9:00 AM - 5:00 PM (PHT)
-            </p>
+            <p className="office-hours">Office Hours: Monday to Friday, 9:00 AM - 5:00 PM (PHT)</p>
           </section>
         </div>
       </div>

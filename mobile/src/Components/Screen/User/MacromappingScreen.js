@@ -48,7 +48,11 @@ const BOTTOM_SHEET_MIN_HEIGHT = 180; // Increased to show basic weather glance
 const BOTTOM_SHEET_SNAP_POINT = height * 0.5;
 
 // Side Panel Config
-const SIDE_PANEL_WIDTH = width * 0.6;
+const SIDE_PANEL_WIDTH = width * 0.78;
+const CONTROL_TOP_OFFSET = Platform.OS === 'android'
+  ? (StatusBar.currentHeight || 0) + 74
+  : 98;
+const SELECTED_CARD_TOP_OFFSET = CONTROL_TOP_OFFSET + 86;
 
 const DEFAULT_LOCATION = {
   latitude: 13.9419,
@@ -322,6 +326,29 @@ const MAP_HTML = `
         body { margin: 0; padding: 0; }
         #map { width: 100%; height: 100vh; }
         .leaflet-control-container .leaflet-routing-container-hide { display: none; }
+        .marker-popup { min-width: 190px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .marker-popup-type { font-size: 11px; font-weight: 700; color: #1B4D3E; margin-bottom: 6px; }
+        .marker-popup-name-row { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #1F2937; }
+        .marker-popup-location { margin-top: 6px; font-size: 11px; color: #5A7A73; line-height: 1.4; }
+        .map-name-tooltip.leaflet-tooltip {
+            background: #FFFFFF;
+            border: 1px solid #D4E5DD;
+            border-radius: 12px;
+            color: #1B4D3E;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.14);
+        }
+        .map-name-tooltip.leaflet-tooltip-top:before {
+            border-top-color: #D4E5DD;
+        }
+        .map-name-tooltip.farm-label.leaflet-tooltip {
+            border-color: #9BD1A6;
+        }
+        .map-name-tooltip.retailer-label.leaflet-tooltip {
+            border-color: #F7C37A;
+        }
     </style>
 </head>
 <body>
@@ -392,9 +419,24 @@ const MAP_HTML = `
 
             data.forEach(item => {
                 var icon = item.type === 'Farms' ? farmIcon : retailerIcon;
+                var markerType = item.type === 'Farms' ? 'Farm' : 'Retailer';
+                var popupContent = '<div class="marker-popup">' +
+                    '<div class="marker-popup-type">' + (item.type === 'Farms' ? 'Farm Location' : 'Retailer Location') + '</div>' +
+                    '<div class="marker-popup-name-row"><span>-></span><span>' + item.name + '</span></div>' +
+                    '<div class="marker-popup-location">Location: ' + (item.location || item.address || 'Location') + '</div>' +
+                    '<div class="marker-popup-location" style="margin-top:4px;">' + markerType + ' Name: ' + item.name + '</div>' +
+                    '</div>';
+
                 var marker = L.marker([item.latitude, item.longitude], {icon: icon})
                     .addTo(map)
-                    .bindPopup(item.name);
+                    .bindPopup(popupContent)
+                    .bindTooltip('-> ' + markerType + ': ' + item.name, {
+                        permanent: true,
+                        direction: 'top',
+                        offset: [0, -26],
+                        opacity: 0.95,
+                        className: 'map-name-tooltip ' + (item.type === 'Farms' ? 'farm-label' : 'retailer-label')
+                    });
                 
                 marker.on('click', function() {
                     window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -528,6 +570,7 @@ export default function MacromappingScreen({ navigation }) {
   // Double-click prevention
   const lastClickTimes = useRef({});
   const searchDebounceTimer = useRef(null);
+  const suppressMapTapUntil = useRef(0);
 
   const webViewRef = useRef(null);
   const drawerSlideAnim = useRef(new Animated.Value(-280)).current;
@@ -664,8 +707,13 @@ export default function MacromappingScreen({ navigation }) {
     }).start(() => setDrawerOpen(false));
   };
 
+  const suppressMapTap = (duration = 800) => {
+    suppressMapTapUntil.current = Date.now() + duration;
+  };
+
   // Side Panel Animations
   const toggleSidePanel = () => {
+    suppressMapTap(1000);
     const toValue = sidePanelOpen ? -SIDE_PANEL_WIDTH : 0;
     Animated.timing(sidePanelAnim, {
       toValue,
@@ -869,7 +917,7 @@ export default function MacromappingScreen({ navigation }) {
       setActiveCategory(type);
     }
 
-    setSelectedItem(item);
+    setSelectedItem(type ? { ...item, type } : item);
     fetchLocationWeather(item.latitude, item.longitude, item.name);
     
     if (sidePanelOpen) {
@@ -980,6 +1028,7 @@ export default function MacromappingScreen({ navigation }) {
   };
 
   const toggleSavedPanel = () => {
+    suppressMapTap(1000);
     const toValue = showSavedPanel ? 300 : 0; // 300 = header only (collapsed), 0 = full panel (expanded)
     Animated.timing(savedPanelAnim, {
       toValue,
@@ -1146,6 +1195,7 @@ export default function MacromappingScreen({ navigation }) {
 
   // Search Functionality with Debounce
   const handleSearch = async (text) => {
+    suppressMapTap(900);
     setSearchQuery(text);
     
     if (searchDebounceTimer.current) {
@@ -1201,6 +1251,7 @@ export default function MacromappingScreen({ navigation }) {
   };
 
   const handleSelectSearchResult = (item) => {
+      suppressMapTap(900);
       const now = Date.now();
       if (lastClickTimes.current.searchSelect && now - lastClickTimes.current.searchSelect < 500) return;
       lastClickTimes.current.searchSelect = now;
@@ -1277,6 +1328,7 @@ export default function MacromappingScreen({ navigation }) {
           handleItemPress(item, msg.itemType);
         }
       } else if (msg.type === 'mapClick') {
+          if (Date.now() < suppressMapTapUntil.current) return;
           // Only process map click if UI is NOT active
           if (!isUIActive()) {
               handleMapClick(msg.latitude, msg.longitude);
@@ -1306,11 +1358,14 @@ export default function MacromappingScreen({ navigation }) {
     return 'cloud';
   };
 
+  const directoryItems = activeCategory === 'Farms' ? FARMS_DATA : RETAILERS_DATA;
+  const isFarmCategory = activeCategory === 'Farms';
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
-      <SafeAreaView pointerEvents="box-none" style={styles.headerOverlay}>
+      <SafeAreaView pointerEvents="box-none" style={styles.headerOverlay} onTouchStart={() => suppressMapTap(900)}>
         <MobileHeader
           navigation={navigation}
           drawerOpen={drawerOpen}
@@ -1324,7 +1379,8 @@ export default function MacromappingScreen({ navigation }) {
         {/* Search Toggle Button */}
         {!searchActive && (
           <TouchableOpacity 
-              style={styles.searchToggleButton}
+              style={[styles.searchToggleButton, { top: CONTROL_TOP_OFFSET }]}
+              onPressIn={() => suppressMapTap(900)}
               onPress={() => setSearchActive(true)}
           >
               <Feather name="search" size={24} color={colors.primary} />
@@ -1333,7 +1389,7 @@ export default function MacromappingScreen({ navigation }) {
 
         {/* Search Bar - Shown When Active */}
         {searchActive && (
-          <View style={styles.searchContainer}>
+          <View style={[styles.searchContainer, { top: CONTROL_TOP_OFFSET }]} onTouchStart={() => suppressMapTap(900)}>
               <View style={styles.searchBar}>
                   <Feather name="search" size={20} color={colors.textLight} />
                   <TextInput
@@ -1343,8 +1399,11 @@ export default function MacromappingScreen({ navigation }) {
                       onChangeText={handleSearch}
                       placeholderTextColor={colors.textLight}
                       autoFocus={true}
+                      onFocus={() => suppressMapTap(900)}
                   />
-                  <TouchableOpacity onPress={() => {
+                  <TouchableOpacity
+                    onPressIn={() => suppressMapTap(900)}
+                    onPress={() => {
                       setSearchQuery('');
                       setSearchResults([]);
                       setSearchActive(false);
@@ -1356,7 +1415,8 @@ export default function MacromappingScreen({ navigation }) {
                               coordinates: []
                           }));
                       }
-                  }}>
+                    }}
+                  >
                       <Feather name="x" size={20} color={colors.textLight} />
                   </TouchableOpacity>
               </View>
@@ -1371,6 +1431,7 @@ export default function MacromappingScreen({ navigation }) {
                           renderItem={({ item }) => (
                               <TouchableOpacity 
                                   style={styles.searchResultItem}
+                                  onPressIn={() => suppressMapTap(900)}
                                   onPress={() => handleSelectSearchResult(item)}
                               >
                                   <View style={[styles.resultIcon, { backgroundColor: item.type === 'Farms' ? colors.primary : (item.type === 'Retailers' ? colors.warning : (item.type === 'Location' ? '#666' : '#999')) }]}>
@@ -1396,7 +1457,8 @@ export default function MacromappingScreen({ navigation }) {
         {!searchActive && (
           <TouchableOpacity 
               pointerEvents="auto"
-              style={styles.toggleListButton}
+              style={[styles.toggleListButton, { top: CONTROL_TOP_OFFSET }]}
+              onPressIn={() => suppressMapTap(900)}
               onPress={toggleSidePanel}
           >
               <Feather name={sidePanelOpen ? "chevrons-left" : "list"} size={20} color={colors.white} />
@@ -1406,7 +1468,7 @@ export default function MacromappingScreen({ navigation }) {
 
         {/* Selected Location Card */}
         {selectedItem && (
-            <View style={styles.selectedLocationCard}>
+            <View style={[styles.selectedLocationCard, { top: SELECTED_CARD_TOP_OFFSET }]}>
                 <View style={[styles.selectedLocationIcon, { backgroundColor: selectedItem.type === 'Farms' ? colors.primary : colors.warning }]}>
                     <Feather name="map-pin" size={18} color="#FFF" />
                 </View>
@@ -1463,20 +1525,37 @@ export default function MacromappingScreen({ navigation }) {
       </View>
 
       {/* Side Panel for List */}
-      <Animated.View style={[styles.sidePanel, { transform: [{ translateX: sidePanelAnim }] }]}>
+      <Animated.View style={[styles.sidePanel, { transform: [{ translateX: sidePanelAnim }] }]} onTouchStart={() => suppressMapTap(1000)}>
           <View style={styles.sidePanelHeader}>
-              <Text style={styles.sidePanelTitle}>Directory</Text>
-              <TouchableOpacity onPress={toggleSidePanel}>
-                  <Feather name="x" size={24} color={colors.text} />
-              </TouchableOpacity>
+              <View style={styles.sidePanelHeaderMain}>
+                <Text style={styles.sidePanelTitle}>Directory</Text>
+                <Text style={styles.sidePanelSubtitle}>Farms and retailers around you</Text>
+              </View>
+              <View style={styles.sidePanelHeaderActions}>
+                <View style={[
+                  styles.sidePanelCountBadge,
+                  { backgroundColor: isFarmCategory ? '#E8F5E9' : '#FFF5E8' },
+                ]}>
+                  <Text style={[
+                    styles.sidePanelCountText,
+                    { color: isFarmCategory ? colors.primary : '#C97A00' },
+                  ]}>
+                    {directoryItems.length}
+                  </Text>
+                </View>
+                <TouchableOpacity onPressIn={() => suppressMapTap(900)} onPress={toggleSidePanel}>
+                    <Feather name="x" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
           </View>
           
           <View style={styles.sidePanelToggle}>
             <TouchableOpacity
               style={[
                 styles.panelToggleButton,
-                { backgroundColor: activeCategory === 'Farms' ? colors.primary : '#F0F0F0' }
+                { backgroundColor: activeCategory === 'Farms' ? colors.primary : '#EAF0EC' }
               ]}
+              onPressIn={() => suppressMapTap(900)}
               onPress={() => handleCategoryChange('Farms')}
             >
               <Text style={[
@@ -1489,8 +1568,9 @@ export default function MacromappingScreen({ navigation }) {
             <TouchableOpacity
               style={[
                 styles.panelToggleButton,
-                { backgroundColor: activeCategory === 'Retailers' ? colors.warning : '#F0F0F0' }
+                { backgroundColor: activeCategory === 'Retailers' ? colors.warning : '#EAF0EC' }
               ]}
+              onPressIn={() => suppressMapTap(900)}
               onPress={() => handleCategoryChange('Retailers')}
             >
               <Text style={[
@@ -1502,20 +1582,62 @@ export default function MacromappingScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.sidePanelList}>
-            {(activeCategory === 'Farms' ? FARMS_DATA : RETAILERS_DATA).map((item) => (
+          <ScrollView
+            style={styles.sidePanelList}
+            contentContainerStyle={styles.sidePanelListContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {directoryItems.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={[
                   styles.sidePanelItem,
                   {
-                    borderLeftColor: activeCategory === 'Farms' ? colors.primary : colors.warning
+                    borderColor: isFarmCategory ? '#D3E6DA' : '#FFDDB1',
                   },
                 ]}
-                onPress={() => handleItemPress(item)}
+                onPressIn={() => suppressMapTap(900)}
+                onPress={() => handleItemPress({ ...item, type: activeCategory }, activeCategory)}
+                activeOpacity={0.9}
               >
-                <Text style={styles.sidePanelItemName}>{item.name}</Text>
-                <Text style={styles.sidePanelItemLocation}>📍 {item.location}</Text>
+                <View style={styles.sidePanelItemTop}>
+                  <View style={[
+                    styles.sidePanelItemIconWrap,
+                    { backgroundColor: isFarmCategory ? '#E8F5E9' : '#FFF4E5' },
+                  ]}>
+                    <MaterialCommunityIcons
+                      name={isFarmCategory ? 'sprout-outline' : 'store-outline'}
+                      size={18}
+                      color={isFarmCategory ? colors.primary : '#C97A00'}
+                    />
+                  </View>
+
+                  <View style={styles.sidePanelItemMain}>
+                    <Text style={styles.sidePanelItemName} numberOfLines={1}>{item.name}</Text>
+
+                    <View style={styles.sidePanelItemRow}>
+                      <MaterialCommunityIcons
+                        name="navigation-variant-outline"
+                        size={14}
+                        color={isFarmCategory ? colors.primary : '#C97A00'}
+                      />
+                      <Text style={styles.sidePanelItemArrowText} numberOfLines={1}>
+                        {isFarmCategory ? 'Farm' : 'Retailer'}: {item.name}
+                      </Text>
+                    </View>
+
+                    <View style={styles.sidePanelItemRow}>
+                      <Feather name="map-pin" size={13} color={colors.textLight} />
+                      <Text style={styles.sidePanelItemLocation} numberOfLines={1}>{item.location}</Text>
+                    </View>
+                  </View>
+
+                  <Feather name="chevron-right" size={18} color={colors.textLight} />
+                </View>
+
+                <Text style={styles.sidePanelItemAddress} numberOfLines={1}>
+                  {item.address || 'No address available'}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -1910,52 +2032,94 @@ export default function MacromappingScreen({ navigation }) {
       </Animated.View>
 
       {/* FLOATING PANEL - SAVED LOCATIONS */}
-      <Animated.View style={[styles.floatingPanel, { transform: [{ translateY: savedPanelAnim }] }]}>
-        <TouchableOpacity style={styles.floatingHeader} onPress={toggleSavedPanel}>
-          <MaterialCommunityIcons name="heart" size={20} color="#E74C3C" />
-          <Text style={styles.floatingTitle}>{savedLocations.length} Saved</Text>
-          <MaterialCommunityIcons name={showSavedPanel ? 'chevron-down' : 'chevron-up'} size={20} color={colors.accent} />
+      <Animated.View style={[styles.floatingPanel, { transform: [{ translateY: savedPanelAnim }] }]} onTouchStart={() => suppressMapTap(1000)}>
+        <TouchableOpacity style={styles.floatingHeader} onPressIn={() => suppressMapTap(900)} onPress={toggleSavedPanel}>
+          <View style={styles.floatingHeaderLeft}>
+            <View style={styles.floatingHeartWrap}>
+              <MaterialCommunityIcons name="heart" size={18} color="#E74C3C" />
+            </View>
+            <View>
+              <Text style={styles.floatingTitle}>Saved Locations</Text>
+              <Text style={styles.floatingSubtitle}>{savedLocations.length} favorite places</Text>
+            </View>
+          </View>
+          <View style={styles.floatingHeaderRight}>
+            <View style={styles.savedCountPill}>
+              <Text style={styles.savedCountPillText}>{savedLocations.length}</Text>
+            </View>
+            <MaterialCommunityIcons name={showSavedPanel ? 'chevron-down' : 'chevron-up'} size={20} color={colors.accent} />
+          </View>
         </TouchableOpacity>
 
         {showSavedPanel && (
           <FlatList
             data={savedLocations}
             keyExtractor={(item) => item._id}
-            scrollEnabled={false}
+            scrollEnabled
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.savedListContent}
             renderItem={({ item }) => (
               <View style={styles.savedItem}>
                 <TouchableOpacity 
                   style={styles.savedItemContent}
+                  onPressIn={() => suppressMapTap(900)}
                   onPress={() => handleLocationClick(item)}
+                  activeOpacity={0.9}
                 >
-                  <View style={styles.savedItemInfo}>
-                    <Text style={styles.savedItemName}>{item.farm.name}</Text>
-                    <Text style={styles.savedItemLocation}>{item.farm.location}</Text>
-                    {userLocation && (
-                      <Text style={styles.savedItemDistance}>
-                        📍 {calculateDistance(userLocation.latitude, userLocation.longitude, item.farm.latitude, item.farm.longitude)} km away
+                  <View style={styles.savedItemTop}>
+                    <View style={styles.savedItemIconWrap}>
+                      <MaterialCommunityIcons name="map-marker-path" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.savedItemInfo}>
+                      <Text style={styles.savedItemName} numberOfLines={1}>{item.farm.name}</Text>
+                      <View style={styles.savedMetaRow}>
+                        <Feather name="map-pin" size={13} color={colors.textLight} />
+                        <Text style={styles.savedItemLocation} numberOfLines={1}>{item.farm.location}</Text>
+                      </View>
+                      <Text style={styles.savedItemAddress} numberOfLines={1}>
+                        {item.farm.address || 'No address available'}
                       </Text>
-                    )}
+                      {userLocation && (
+                        <View style={styles.savedMetaRow}>
+                          <MaterialCommunityIcons name="navigation-variant-outline" size={14} color={colors.success} />
+                          <Text style={styles.savedItemDistance}>
+                            {calculateDistance(
+                              userLocation.latitude,
+                              userLocation.longitude,
+                              item.farm.latitude,
+                              item.farm.longitude
+                            )} km away
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={styles.savedDeleteButton}
+                  onPressIn={() => suppressMapTap(900)}
                   onPress={() => Alert.alert('Remove', `Remove ${item.farm.name}?`, [
                     { text: 'Cancel' },
                     { text: 'Remove', onPress: () => unsaveLocation(item._id), style: 'destructive' }
                   ])}
                 >
-                  <MaterialCommunityIcons name="close" size={20} color="#E74C3C" />
+                  <MaterialCommunityIcons name="close" size={18} color="#E74C3C" />
                 </TouchableOpacity>
               </View>
             )}
-            ListEmptyComponent={<Text style={styles.emptyText}>No saved locations yet</Text>}
+            ListEmptyComponent={
+              <View style={styles.savedEmptyWrap}>
+                <MaterialCommunityIcons name="map-search-outline" size={22} color="#7A8E88" />
+                <Text style={styles.emptyText}>No saved locations yet</Text>
+              </View>
+            }
           />
         )}
       </Animated.View>
 
       {/* FLOATING BUTTON - OPEN FLOATING PANEL */}
       {!showSavedPanel && (
-        <TouchableOpacity style={styles.floatingButton} onPress={toggleSavedPanel}>
+        <TouchableOpacity style={styles.floatingButton} onPressIn={() => suppressMapTap(900)} onPress={toggleSavedPanel}>
           <MaterialCommunityIcons name="heart" size={24} color="#FFF" />
           {savedLocations.length > 0 && (
             <View style={styles.badge}>
@@ -1982,7 +2146,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 80, 
+    top: 80,
     left: 16,
     right: 16,
     zIndex: 120,
@@ -1998,11 +2162,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDEBE3',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 9,
   },
   toggleListButton: {
     position: 'absolute',
@@ -2010,21 +2176,23 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 100,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
     backgroundColor: colors.primary,
+    borderWidth: 1,
+    borderColor: '#2A6654',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 20,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 12,
   },
   toggleListText: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -2032,14 +2200,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#DDEBE3',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 6,
   },
   searchInput: {
     flex: 1,
@@ -2048,15 +2218,18 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   searchResultsList: {
-    marginTop: 4,
+    marginTop: 8,
     backgroundColor: '#FFF',
-    borderRadius: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DDEBE3',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-    maxHeight: 200,
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+    maxHeight: 240,
+    overflow: 'hidden',
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -2110,6 +2283,8 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderLeftWidth: 4,
     borderLeftColor: colors.primary,
+    borderWidth: 1,
+    borderColor: '#DDEBE3',
   },
   selectedLocationIcon: {
     width: 40,
@@ -2129,11 +2304,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textLight,
     fontWeight: '500',
-  },
-  toggleListText: {
-      color: '#FFF',
-      fontSize: 8,
-      fontWeight: '600',
   },
   legendContainer: {
     position: 'absolute',
@@ -2187,67 +2357,134 @@ const styles = StyleSheet.create({
       left: 0,
       bottom: 0,
       width: SIDE_PANEL_WIDTH,
-      backgroundColor: 'rgba(255, 255, 255, 0.95)', // Slightly lower opacity
+      backgroundColor: 'rgba(252, 255, 253, 0.98)',
       zIndex: 40,
       elevation: 10,
-      paddingTop: 40, // Space for status bar
+      paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 58 : 86,
       shadowColor: '#000',
       shadowOffset: { width: 2, height: 0 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
+      shadowOpacity: 0.2,
+      shadowRadius: 12,
   },
   sidePanelHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 15,
+      alignItems: 'flex-start',
+      paddingHorizontal: 18,
+      paddingBottom: 12,
       borderBottomWidth: 1,
-      borderBottomColor: '#F0F0F0',
+      borderBottomColor: '#E4F0E9',
+  },
+  sidePanelHeaderMain: {
+      flex: 1,
+      paddingRight: 10,
+  },
+  sidePanelHeaderActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
   },
   sidePanelTitle: {
-      fontSize: 20,
-      fontWeight: '700',
+      fontSize: 22,
+      fontWeight: '800',
       color: '#1B4D3E',
+  },
+  sidePanelSubtitle: {
+      marginTop: 3,
+      fontSize: 12,
+      color: '#6A877F',
+      fontWeight: '600',
+  },
+  sidePanelCountBadge: {
+      minWidth: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+  },
+  sidePanelCountText: {
+      fontSize: 14,
+      fontWeight: '800',
   },
   sidePanelToggle: {
       flexDirection: 'row',
-      padding: 15,
-      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      gap: 8,
   },
   panelToggleButton: {
       flex: 1,
-      paddingVertical: 8,
+      paddingVertical: 11,
       alignItems: 'center',
-      borderRadius: 8,
+      borderRadius: 12,
   },
   panelToggleText: {
-      fontWeight: '600',
-      fontSize: 14,
+      fontWeight: '700',
+      fontSize: 13,
   },
   sidePanelList: {
       flex: 1,
-      paddingHorizontal: 15,
+      paddingHorizontal: 14,
+  },
+  sidePanelListContent: {
+      paddingBottom: 24,
   },
   sidePanelItem: {
-      paddingVertical: 12,
-      paddingHorizontal: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: '#F5F5F5',
-      borderLeftWidth: 4,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+      borderWidth: 1,
       marginBottom: 8,
-      backgroundColor: '#FAFAFA',
-      borderRadius: 4,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 14,
+      shadowColor: '#0D2818',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 2,
+  },
+  sidePanelItemTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+  },
+  sidePanelItemIconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+  },
+  sidePanelItemMain: {
+      flex: 1,
   },
   sidePanelItemName: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#333',
+      fontSize: 13,
+      fontWeight: '800',
+      color: '#223A33',
+  },
+  sidePanelItemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 4,
+  },
+  sidePanelItemArrowText: {
+      flex: 1,
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#4B675E',
   },
   sidePanelItemLocation: {
-      fontSize: 12,
-      color: '#666',
-      marginTop: 2,
+      flex: 1,
+      fontSize: 11,
+      color: '#647A73',
+      fontWeight: '600',
+  },
+  sidePanelItemAddress: {
+      marginTop: 8,
+      fontSize: 11,
+      color: '#7A8E88',
+      fontWeight: '500',
   },
   // Bottom Sheet Styles
   bottomSheet: {
@@ -2558,68 +2795,161 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    elevation: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderColor: '#DDEBE3',
+    elevation: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    maxHeight: 350,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    maxHeight: 390,
     zIndex: 100,
   },
   floatingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: '#E7EFEA',
+    backgroundColor: '#F8FCFA',
+  },
+  floatingHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  floatingHeartWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFECEC',
+  },
+  floatingHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  floatingSubtitle: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#738B84',
+  },
+  savedCountPill: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 7,
+  },
+  savedCountPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1B4D3E',
   },
   floatingTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1B4D3E',
-    flex: 1,
-    marginLeft: 8,
+  },
+  savedListContent: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 18,
   },
   savedItem: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 9,
   },
   savedItemContent: {
     flex: 1,
+    borderWidth: 1,
+    borderColor: '#DDEBE3',
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  savedItemTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  savedItemIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
   },
   savedItemInfo: {
-    gap: 4,
+    flex: 1,
   },
   savedItemName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1B4D3E',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1F3A31',
+  },
+  savedMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
   },
   savedItemLocation: {
+    flex: 1,
     fontSize: 11,
-    color: '#666',
+    color: '#5F7971',
+    fontWeight: '600',
+  },
+  savedItemAddress: {
+    marginTop: 4,
+    fontSize: 10,
+    color: '#7E938D',
+    fontWeight: '500',
   },
   savedItemDistance: {
     fontSize: 10,
-    color: '#22c55e',
+    color: '#1E8E3E',
     fontWeight: '600',
-    marginTop: 2,
+  },
+  savedDeleteButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFECEC',
   },
   emptyText: {
     textAlign: 'center',
-    marginVertical: 20,
-    color: '#999',
+    marginTop: 8,
+    marginBottom: 2,
+    color: '#7A8E88',
     fontSize: 12,
+    fontWeight: '600',
+  },
+  savedEmptyWrap: {
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   floatingButton: {
     position: 'absolute',
@@ -2655,3 +2985,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

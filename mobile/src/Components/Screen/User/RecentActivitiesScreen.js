@@ -13,12 +13,15 @@ import {
   Image,
   Dimensions,
   Animated,
+  TextInput,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { BACKEND_URL } from 'react-native-dotenv';
 import { logout, getUser, getToken } from '../../utils/helpers';
 import MobileHeader from '../../shared/MobileHeader';
+import { exportAsPDF, exportAsWord } from '../../../utils/exportService';
 
 const { width } = Dimensions.get('window');
 
@@ -52,6 +55,9 @@ export default function RecentActivitiesScreen({ navigation }) {
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [activityFilter, setActivityFilter] = useState('all'); // all, BUNGA_ANALYSIS, LEAF_ANALYSIS, FORUM_POST, SAVED_LOCATION
   const [filterExpanded, setFilterExpanded] = useState(false);
+  const [exportMenuVisible, setExportMenuVisible] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportNotes, setExportNotes] = useState('');
   const drawerSlideAnim = useRef(new Animated.Value(-280)).current;
   const lastFetchRef = useRef(null);
   const ITEMS_PER_PAGE = 10;
@@ -156,7 +162,7 @@ export default function RecentActivitiesScreen({ navigation }) {
   const getActivityTitle = (activity) => {
     switch (activity.type) {
       case 'BUNGA_ANALYSIS':
-        return `Bunga Analysis: ${activity.results?.ripeness || 'Unknown'} (${activity.results?.market_grade || 'N/A'})`;
+        return `Peppercorn Analysis: ${activity.results?.ripeness || 'Unknown'} (${activity.results?.market_grade || 'N/A'})`;
       case 'LEAF_ANALYSIS':
         return `Leaf Disease: ${activity.results?.disease || 'Unknown'}`;
       case 'FORUM_POST':
@@ -180,6 +186,21 @@ export default function RecentActivitiesScreen({ navigation }) {
         return `${activity.farm.address || 'Location saved'} • Lat: ${activity.farm.latitude?.toFixed(4)}, Lng: ${activity.farm.longitude?.toFixed(4)}`;
       default:
         return 'Activity recorded';
+    }
+  };
+
+  const getActivityTypeChipLabel = (type) => {
+    switch (type) {
+      case 'BUNGA_ANALYSIS':
+        return 'Peppercorn';
+      case 'LEAF_ANALYSIS':
+        return 'Leaf';
+      case 'FORUM_POST':
+        return 'Forum';
+      case 'SAVED_LOCATION':
+        return 'Location';
+      default:
+        return 'Activity';
     }
   };
 
@@ -208,7 +229,7 @@ export default function RecentActivitiesScreen({ navigation }) {
           : (activity.results?.ripeness?.confidence || 0);
         
         return [
-          { label: 'Ripeness', value: String(ripenessValue), icon: '🍌', metric: true },
+          { label: 'Ripeness', value: String(ripenessValue), iconImage: bungaLogo, metric: true },
           { label: 'Ripeness %', value: `${ripenessPercent}%`, icon: '📊', percentage: ripenessPercent },
           { label: 'Health Class', value: String(activity.results?.health_class || 'N/A'), icon: '💚', metric: true },
           { label: 'Health %', value: `${healthPercent}%`, icon: '📈', percentage: healthPercent },
@@ -258,6 +279,24 @@ export default function RecentActivitiesScreen({ navigation }) {
     return date.toLocaleDateString();
   };
 
+  const getExportFilterLabel = () => {
+    if (activityFilter === 'all') return 'All Activities';
+    if (activityFilter === 'BUNGA_ANALYSIS') return 'Peppercorn Analysis';
+    if (activityFilter === 'LEAF_ANALYSIS') return 'Leaf Analysis';
+    if (activityFilter === 'FORUM_POST') return 'Forum Posts';
+    if (activityFilter === 'SAVED_LOCATION') return 'Saved Locations';
+    return 'All Activities';
+  };
+
+  const getFilterBadgeLabel = () => {
+    if (activityFilter === 'all') return 'All';
+    if (activityFilter === 'BUNGA_ANALYSIS') return 'Peppercorn Analysis';
+    if (activityFilter === 'LEAF_ANALYSIS') return 'Leaf Analysis';
+    if (activityFilter === 'FORUM_POST') return 'Forum Posts';
+    if (activityFilter === 'SAVED_LOCATION') return 'Saved Locations';
+    return 'All';
+  };
+
   const handleActivityPress = (activity) => {
     Alert.alert(
       'See Activity?',
@@ -296,7 +335,7 @@ export default function RecentActivitiesScreen({ navigation }) {
   };
 
   const handleDeleteActivity = (activity) => {
-    const activityType = activity.type === 'BUNGA_ANALYSIS' ? 'bunga' : 'leaf';
+    const activityType = activity.type === 'BUNGA_ANALYSIS' ? 'peppercorn' : 'leaf';
     
     Alert.alert(
       'Delete Analysis?',
@@ -337,6 +376,59 @@ export default function RecentActivitiesScreen({ navigation }) {
     );
   };
 
+  // ========== EXPORT HANDLERS ==========
+  const handleExportPDF = async () => {
+    setExporting(true);
+    setExportMenuVisible(false);
+    try {
+      const filters = {
+        sort: filterSort
+      };
+      if (activityFilter !== 'all') {
+        filters.types = [activityFilter];
+      }
+      if (exportNotes.trim()) {
+        filters.notes = exportNotes.trim();
+      }
+      
+      console.log('📄 Exporting as PDF with filters:', filters);
+      await exportAsPDF(filters);
+      
+      Alert.alert('✅ Success', 'PDF exported successfully! Check your downloads or share it.');
+    } catch (error) {
+      console.error('❌ PDF export error:', error);
+      Alert.alert('Export Failed', 'Could not export as PDF. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportWord = async () => {
+    setExporting(true);
+    setExportMenuVisible(false);
+    try {
+      const filters = {
+        sort: filterSort
+      };
+      if (activityFilter !== 'all') {
+        filters.types = [activityFilter];
+      }
+      if (exportNotes.trim()) {
+        filters.notes = exportNotes.trim();
+      }
+      
+      console.log('📝 Exporting as Word with filters:', filters);
+      await exportAsWord(filters);
+      
+      Alert.alert('✅ Success', 'Word document exported successfully! Check your downloads or share it.');
+    } catch (error) {
+      console.error('❌ Word export error:', error);
+      Alert.alert('Export Failed', 'Could not export as Word. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const ActivityCard = ({ activity }) => {
     const iconData = getActivityIcon(activity.type);
     const Icon = iconData.icon === 'Feather' ? Feather : MaterialCommunityIcons;
@@ -352,6 +444,8 @@ export default function RecentActivitiesScreen({ navigation }) {
         activeOpacity={0.9}
         onPress={() => setExpanded(!expanded)}
       >
+        <View style={[styles.cardAccent, { backgroundColor: iconData.color }]} />
+
         {/* Header with icon and title */}
         <View style={styles.cardHeader}>
           <View style={[styles.iconContainer, { backgroundColor: iconData.color + '20' }]}>
@@ -376,7 +470,7 @@ export default function RecentActivitiesScreen({ navigation }) {
           <View style={styles.headerRight}>
             <View style={styles.activityBadge}>
               <Text style={styles.activityType}>
-                {activity.type === 'BUNGA_ANALYSIS' ? '🍌' : activity.type === 'LEAF_ANALYSIS' ? '🍃' : activity.type === 'FORUM_POST' ? '💬' : '📍'}
+                {getActivityTypeChipLabel(activity.type)}
               </Text>
             </View>
             <MaterialCommunityIcons 
@@ -402,7 +496,11 @@ export default function RecentActivitiesScreen({ navigation }) {
                 <View key={idx}>
                   {detail.isImage && detail.imageUrl ? (
                     <View style={styles.detailItem}>
-                      <Text style={styles.detailIcon}>{detail.icon}</Text>
+                      {detail.iconImage ? (
+                        <Image source={detail.iconImage} style={styles.detailIconImage} resizeMode="contain" />
+                      ) : (
+                        <Text style={styles.detailIcon}>{detail.icon}</Text>
+                      )}
                       <View style={styles.detailContent}>
                         <Text style={styles.detailLabel}>{detail.label}</Text>
                         <Image 
@@ -462,9 +560,20 @@ export default function RecentActivitiesScreen({ navigation }) {
     </View>
   );
 
+  const filteredActivities = getFilteredActivities();
+  const pageCounts = {
+    bunga: activities.filter((item) => item.type === 'BUNGA_ANALYSIS').length,
+    leaf: activities.filter((item) => item.type === 'LEAF_ANALYSIS').length,
+    other: activities.filter((item) => item.type === 'FORUM_POST' || item.type === 'SAVED_LOCATION').length,
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
+      <View pointerEvents="none" style={styles.backgroundDecor}>
+        <View style={styles.decorCircleA} />
+        <View style={styles.decorCircleB} />
+      </View>
 
       <MobileHeader
         navigation={navigation}
@@ -476,25 +585,72 @@ export default function RecentActivitiesScreen({ navigation }) {
         onLogout={handleLogout}
       />
 
-      {/* Header Section */}
+      {/* Hero Section */}
       <View style={styles.headerSection}>
-        <View>
+        <LinearGradient
+          colors={['#0E3224', '#1B4D3E', '#2C6A55']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroGlowTop} />
+          <View style={styles.heroGlowBottom} />
+
+          <Text style={styles.pageEyebrow}>PiperSmart Feed</Text>
           <Text style={styles.pageTitle}>Recent Activities</Text>
           <Text style={styles.pageSubtitle}>
-            {totalActivities} activities · Showing page {page} of {totalPages}
+            {totalActivities} activities | page {page} of {totalPages}
           </Text>
+
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{filteredActivities.length}</Text>
+              <Text style={styles.heroStatLabel}>Visible</Text>
+            </View>
+            <View style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{pageCounts.bunga + pageCounts.leaf}</Text>
+              <Text style={styles.heroStatLabel}>Scans</Text>
+            </View>
+            <View style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{pageCounts.other}</Text>
+              <Text style={styles.heroStatLabel}>Community</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.controlsRow}>
+          <TouchableOpacity
+            style={[styles.sortButton, sortMenuVisible && styles.sortButtonActive]}
+            onPress={() => {
+              setExportMenuVisible(false);
+              setSortMenuVisible(!sortMenuVisible);
+            }}
+          >
+            <MaterialCommunityIcons name="sort" size={18} color={sortMenuVisible ? '#FFFFFF' : colors.primary} />
+            <Text style={[styles.sortButtonText, sortMenuVisible && styles.sortButtonTextActive]}>{filterSort}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.exportButton,
+              exportMenuVisible && styles.exportButtonActive,
+              exporting && { opacity: 0.65 }
+            ]}
+            onPress={() => {
+              setSortMenuVisible(false);
+              setExportMenuVisible(!exportMenuVisible);
+            }}
+            disabled={exporting}
+          >
+            <MaterialCommunityIcons name="download" size={18} color="#FFFFFF" />
+            {exporting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginLeft: 6 }} />
+            ) : (
+              <Text style={styles.exportButtonText}>Export</Text>
+            )}
+          </TouchableOpacity>
         </View>
-
-        {/* Sort Button */}
-        <TouchableOpacity
-          style={styles.sortButton}
-          onPress={() => setSortMenuVisible(!sortMenuVisible)}
-        >
-          <MaterialCommunityIcons name="sort" size={20} color={colors.primary} />
-          <Text style={styles.sortButtonText}>{filterSort}</Text>
-        </TouchableOpacity>
       </View>
-
       {/* Sort Menu */}
       {sortMenuVisible && (
         <View style={styles.sortMenu}>
@@ -525,8 +681,85 @@ export default function RecentActivitiesScreen({ navigation }) {
         </View>
       )}
 
+      {/* Export Menu */}
+      {exportMenuVisible && (
+        <View style={styles.exportMenu}>
+          <View style={styles.exportHeader}>
+            <Text style={styles.exportTitle}>Export Report</Text>
+            <TouchableOpacity onPress={() => setExportMenuVisible(false)}>
+              <MaterialCommunityIcons name="close" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.exportSubtitle}>Current filters for this export</Text>
+          <View style={styles.exportChipRow}>
+            <View style={styles.exportChip}>
+              <MaterialCommunityIcons name="filter-variant" size={14} color={colors.primary} />
+              <Text style={styles.exportChipText}>{getExportFilterLabel()}</Text>
+            </View>
+            <View style={styles.exportChip}>
+              <MaterialCommunityIcons name="sort" size={14} color={colors.primary} />
+              <Text style={styles.exportChipText}>
+                {filterSort === 'newest' ? 'Newest First' : 'Oldest First'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.exportLabel}>Notes (optional)</Text>
+          <TextInput
+            value={exportNotes}
+            onChangeText={setExportNotes}
+            placeholder="Example: Weekly report for team review"
+            placeholderTextColor={colors.textLight}
+            multiline
+            numberOfLines={3}
+            maxLength={1000}
+            style={styles.exportNotesInput}
+            textAlignVertical="top"
+          />
+          <Text style={styles.exportCounter}>{exportNotes.length}/1000</Text>
+
+          <View style={styles.exportActionRow}>
+            <TouchableOpacity
+              style={[styles.exportActionBtn, exporting && { opacity: 0.6 }]}
+              onPress={handleExportPDF}
+              disabled={exporting}
+            >
+              <MaterialCommunityIcons name="file-pdf-box" size={18} color="#FFFFFF" />
+              <Text style={styles.exportActionBtnText}>{exporting ? 'Exporting...' : 'PDF'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.exportActionBtn,
+                styles.exportActionBtnSecondary,
+                exporting && { opacity: 0.6 }
+              ]}
+              onPress={handleExportWord}
+              disabled={exporting}
+            >
+              <MaterialCommunityIcons name="file-word-box" size={18} color="#FFFFFF" />
+              <Text style={styles.exportActionBtnText}>{exporting ? 'Exporting...' : 'Word'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Filter Toggle Button */}
       <View style={styles.filterHeaderContainer}>
+        <View style={styles.activeFilterMeta}>
+          <View style={styles.activeFilterChip}>
+            <MaterialCommunityIcons name="filter-variant" size={14} color={colors.primary} />
+            <Text style={styles.activeFilterChipText}>{getExportFilterLabel()}</Text>
+          </View>
+          <View style={styles.activeFilterChip}>
+            <MaterialCommunityIcons name="sort" size={14} color={colors.primary} />
+            <Text style={styles.activeFilterChipText}>
+              {filterSort === 'newest' ? 'Newest First' : 'Oldest First'}
+            </Text>
+          </View>
+        </View>
+
         <TouchableOpacity
           style={styles.filterToggleButton}
           onPress={() => setFilterExpanded(!filterExpanded)}
@@ -541,7 +774,7 @@ export default function RecentActivitiesScreen({ navigation }) {
           </Text>
           <View style={styles.filterBadge}>
             <Text style={styles.filterBadgeText}>
-              {activityFilter === 'all' ? 'All' : activityFilter.replace('_', ' ')}
+              {getFilterBadgeLabel()}
             </Text>
           </View>
         </TouchableOpacity>
@@ -588,12 +821,15 @@ export default function RecentActivitiesScreen({ navigation }) {
             <View style={[styles.filterToggleCircle, activityFilter === 'BUNGA_ANALYSIS' && styles.filterToggleCircleActive]}>
               {activityFilter === 'BUNGA_ANALYSIS' && <View style={styles.filterToggleDot} />}
             </View>
-            <Text style={[
-              styles.filterToggleLabel,
-              activityFilter === 'BUNGA_ANALYSIS' && styles.filterToggleLabelActive
-            ]}>
-              🍌 Bunga Analysis
-            </Text>
+            <View style={styles.filterToggleLabelRow}>
+              <Image source={bungaLogo} style={styles.filterToggleLogo} resizeMode="contain" />
+              <Text style={[
+                styles.filterToggleLabel,
+                activityFilter === 'BUNGA_ANALYSIS' && styles.filterToggleLabelActive
+              ]}>
+                Peppercorn Analysis
+              </Text>
+            </View>
           </TouchableOpacity>
 
           <View style={styles.filterDivider} />
@@ -680,9 +916,9 @@ export default function RecentActivitiesScreen({ navigation }) {
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loaderText}>Loading activities...</Text>
           </View>
-        ) : activities.length > 0 ? (
+        ) : filteredActivities.length > 0 ? (
           <>
-            {getFilteredActivities().map((activity, index) => (
+            {filteredActivities.map((activity, index) => (
               <ActivityCard key={index} activity={activity} />
             ))}
 
@@ -727,53 +963,276 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  backgroundDecor: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+    overflow: 'hidden',
+  },
+  decorCircleA: {
+    position: 'absolute',
+    top: -80,
+    left: -90,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(27, 77, 62, 0.08)',
+  },
+  decorCircleB: {
+    position: 'absolute',
+    top: -40,
+    right: -70,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(39, 174, 96, 0.10)',
+  },
   headerSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: colors.background,
+  },
+  heroCard: {
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  heroGlowTop: {
+    position: 'absolute',
+    top: -20,
+    right: -10,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  heroGlowBottom: {
+    position: 'absolute',
+    bottom: -35,
+    left: -20,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  pageEyebrow: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 6,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 4,
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 6,
   },
   pageSubtitle: {
     fontSize: 12,
-    color: colors.textLight,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  heroStatCard: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+  },
+  heroStatValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  heroStatLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 3,
+    textTransform: 'uppercase',
+  },
+  controlsRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 10,
   },
   sortButton: {
+    flex: 1,
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
     gap: 6,
+  },
+  sortButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   sortButtonText: {
     fontSize: 12,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'capitalize',
+  },
+  sortButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  exportButton: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.success,
+    borderWidth: 1,
+    borderColor: colors.success,
+    gap: 6,
+  },
+  exportButtonActive: {
+    backgroundColor: '#208A49',
+    borderColor: '#208A49',
+  },
+  exportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   sortMenu: {
     position: 'absolute',
-    top: 100,
+    top: 250,
     right: 16,
     backgroundColor: colors.cardBg,
-    borderRadius: 8,
+    borderRadius: 12,
+    minWidth: 170,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 100,
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 200,
+  },
+  exportMenu: {
+    position: 'absolute',
+    top: 250,
+    right: 16,
+    left: 16,
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 220,
+  },
+  exportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  exportTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  exportSubtitle: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginBottom: 12,
+  },
+  exportChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  exportChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECF8F2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D5EBDD',
+  },
+  exportChipText: {
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  exportLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 6,
+  },
+  exportNotesInput: {
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    color: colors.text,
+    fontSize: 13,
+    backgroundColor: '#F7FCF9',
+  },
+  exportCounter: {
+    textAlign: 'right',
+    fontSize: 11,
+    color: colors.textLight,
+    marginTop: 6,
+  },
+  exportActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  exportActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    backgroundColor: '#D9534F',
+    paddingVertical: 11,
+  },
+  exportActionBtnSecondary: {
+    backgroundColor: '#2B579A',
+  },
+  exportActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   sortOption: {
     paddingHorizontal: 14,
@@ -795,33 +1254,42 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 20,
   },
   activityCard: {
     backgroundColor: colors.cardBg,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: colors.primary,
+    overflow: 'hidden',
+    shadowColor: '#183E32',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.09,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
   },
   activityCardExpanded: {
     borderColor: colors.primary,
-    shadowOpacity: 0.15,
-    elevation: 4,
+    shadowOpacity: 0.16,
+    elevation: 6,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
-    paddingBottom: 12,
+    marginBottom: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#E8F1EC',
   },
   headerRight: {
     flexDirection: 'row',
@@ -832,12 +1300,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   iconContainer: {
-    width: 54,
-    height: 54,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   activityImage: {
     width: 32,
@@ -853,12 +1321,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: colors.primary,
-    marginBottom: 6,
+    marginBottom: 4,
     lineHeight: 20,
   },
   activityDesc: {
     fontSize: 13,
-    color: colors.textLight,
+    color: '#4D6A62',
     lineHeight: 18,
     paddingHorizontal: 4,
   },
@@ -872,19 +1340,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   activityBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 44,
+    backgroundColor: '#EAF4EF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    minWidth: 64,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D3E8DC',
   },
   activityType: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
     color: colors.primary,
     textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   expandedDetails: {
     marginTop: 8,
@@ -915,10 +1386,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   detailsGrid: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#F4FBF7',
     borderRadius: 12,
     padding: 14,
     gap: 12,
+    borderWidth: 1,
+    borderColor: '#DDEEE5',
   },
   detailItem: {
     flexDirection: 'row',
@@ -930,6 +1403,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginTop: 2,
     minWidth: 24,
+  },
+  detailIconImage: {
+    width: 22,
+    height: 22,
+    marginTop: 2,
   },
   detailContent: {
     flex: 1,
@@ -993,7 +1471,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 20,
+    marginTop: 10,
+    marginBottom: 24,
     paddingHorizontal: 8,
   },
   paginationButton: {
@@ -1001,10 +1480,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.primary,
     gap: 6,
+    backgroundColor: '#FFFFFF',
   },
   paginationButtonDisabled: {
     borderColor: colors.border,
@@ -1019,10 +1499,12 @@ const styles = StyleSheet.create({
     color: colors.border,
   },
   pageIndicator: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: '#EAF4EF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#D4E5DD',
   },
   pageIndicatorText: {
     fontSize: 12,
@@ -1039,18 +1521,41 @@ const styles = StyleSheet.create({
   },
   filterHeaderContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 6,
+    paddingBottom: 10,
+    backgroundColor: colors.background,
+  },
+  activeFilterMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#ECF8F2',
+    borderWidth: 1,
+    borderColor: '#D7EBDD',
+  },
+  activeFilterChipText: {
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: '700',
   },
   filterToggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 10,
+    paddingVertical: 11,
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
     gap: 10,
   },
   filterToggleText: {
@@ -1060,21 +1565,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterBadge: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#EAF4EF',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D4E5DD',
   },
   filterBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.primary,
   },
   filterPanelExpanded: {
     backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingVertical: 8,
+    marginBottom: 8,
   },
   filterToggle: {
     flexDirection: 'row',
@@ -1111,6 +1621,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
   },
+  filterToggleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  filterToggleLogo: {
+    width: 18,
+    height: 18,
+  },
   filterToggleLabelActive: {
     color: colors.primary,
     fontWeight: '700',
@@ -1142,3 +1662,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+
+

@@ -5,6 +5,13 @@ const { spawn } = require('child_process');
 const { uploadToCloudinary } = require('../utils/Cloudinary');
 const axios = require('axios');
 
+const shouldSaveResult = (req) => {
+  const raw = req.query?.save ?? req.body?.save ?? req.headers['x-save'];
+  if (raw === undefined || raw === null || raw === '') return true;
+  const normalized = String(raw).toLowerCase().trim();
+  return !['false', '0', 'no', 'off'].includes(normalized);
+};
+
 /**
  * Analyze Leaf Image
  * - Runs Python script
@@ -14,6 +21,7 @@ const axios = require('axios');
 exports.analyzeLeaf = async (req, res) => {
   const startTime = Date.now();
   const requestId = req.query.requestId || req.body.requestId || `leaf_${Date.now()}`;
+  const shouldSave = shouldSaveResult(req);
 
   console.log(`\n🟢 [${requestId}] NEW LEAF DISEASE PREDICTION REQUEST RECEIVED`);
 
@@ -117,7 +125,7 @@ exports.analyzeLeaf = async (req, res) => {
 
     // 3. If Valid Detection, Upload to Cloudinary & Save to DB
     let savedAnalysis = null;
-    if (result.success && result.disease) {
+    if (shouldSave && result.success && result.disease) {
       try {
         console.log(`☁️ [${requestId}] Uploading evidence to Cloudinary...`);
         
@@ -157,6 +165,7 @@ exports.analyzeLeaf = async (req, res) => {
       processingTime: duration,
       requestId,
       analysisId: savedAnalysis ? savedAnalysis._id : null,
+      saved: !!savedAnalysis,
       ...result
     });
 
@@ -178,6 +187,83 @@ exports.analyzeLeaf = async (req, res) => {
       error: error.message || 'Failed to analyze image. Please try again.',
       requestId,
       processingTime: duration
+    });
+  }
+};
+
+/**
+ * Save Leaf Analysis Result (no inference)
+ */
+exports.saveLeafAnalysis = async (req, res) => {
+  const startTime = Date.now();
+  const requestId = `leaf_save_${Date.now()}`;
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No image provided',
+        requestId
+      });
+    }
+
+    const disease = req.body?.disease;
+    const confidence = Number(req.body?.confidence) || 0;
+    const processingTime = Number(req.body?.processingTime) || 0;
+    let detections = [];
+
+    if (req.body?.detections) {
+      try {
+        detections = typeof req.body.detections === 'string'
+          ? JSON.parse(req.body.detections)
+          : req.body.detections;
+      } catch (e) {
+        detections = [];
+      }
+    }
+
+    if (!disease) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing disease',
+        requestId
+      });
+    }
+
+    console.log(`💾 [${requestId}] Saving leaf analysis without inference`);
+
+    const b64 = Buffer.from(req.file.buffer).toString('base64');
+    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+    const uploadResult = await uploadToCloudinary(dataURI, 'pipersmart/leaf_scans');
+
+    const savedAnalysis = await LeafAnalysis.create({
+      user: req.user._id,
+      image: {
+        public_id: uploadResult.public_id,
+        url: uploadResult.url
+      },
+      results: {
+        disease,
+        confidence,
+        detections: Array.isArray(detections) ? detections : []
+      },
+      processingTime
+    });
+
+    const duration = Date.now() - startTime;
+
+    res.status(200).json({
+      success: true,
+      analysisId: savedAnalysis._id,
+      processingTime: duration
+    });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`❌ [${requestId}] Save error (${duration}ms):`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to save analysis',
+      requestId
     });
   }
 };

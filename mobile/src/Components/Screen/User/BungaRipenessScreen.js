@@ -49,26 +49,27 @@ export default function BungaRipenessScreen({ navigation }) {
   }, []);
 
   const colors = {
-    primary: '#1B4D3E',
-    primaryDark: '#0D2818',
-    primaryLight: '#27AE60',
+    primary: '#0E3B2E',
+    primaryDark: '#0A2C23',
+    primaryLight: '#2BB673',
     secondary: '#FFFFFF',
-    background: '#F8FAF7',
-    text: '#1B4D3E',
-    textLight: '#5A7A73',
-    border: '#D4E5DD',
-    accent: '#D4AF37',
-    warning: '#F39C12',
-    danger: '#E74C3C',
-    success: '#27AE60',
+    background: '#F3F7F4',
+    text: '#0E3B2E',
+    textLight: '#5A6B63',
+    border: '#DDE7E1',
+    accent: '#C9A227',
+    accentSoft: '#F4E9C6',
+    warning: '#F2A93B',
+    danger: '#E2554D',
+    success: '#2BB673',
   };
 
   // Ripeness recommendations
   const ripenessRecommendations = {
     'Ripe': {
-      icon: '🟢',
-      title: 'Bunga is Ripe',
-      description: 'Your black pepper bunga has reached optimal ripeness for harvesting.',
+      iconName: 'check-circle',
+      title: 'Peppercorn is Ripe',
+      description: 'Your black pepper peppercorn has reached optimal ripeness for harvesting.',
       actions: [
         'Harvest immediately for best flavor',
         'Use sharp pruning shears to avoid damage',
@@ -78,9 +79,9 @@ export default function BungaRipenessScreen({ navigation }) {
       color: colors.success
     },
     'Unripe': {
-      icon: '🟡',
-      title: 'Bunga Not Yet Ripe',
-      description: 'The bunga requires more time to reach full ripeness.',
+      iconName: 'clock-outline',
+      title: 'Peppercorn Not Yet Ripe',
+      description: 'The peppercorn requires more time to reach full ripeness.',
       actions: [
         'Wait 5-7 more days before harvesting',
         'Ensure adequate water and nutrients',
@@ -90,9 +91,9 @@ export default function BungaRipenessScreen({ navigation }) {
       color: colors.warning
     },
     'Rotten': {
-      icon: '🔴',
-      title: 'Bunga is Rotten',
-      description: 'The bunga has deteriorated and is no longer usable.',
+      iconName: 'close-circle',
+      title: 'Peppercorn is Rotten',
+      description: 'The peppercorn has deteriorated and is no longer usable.',
       actions: [
         'Remove immediately to prevent disease spread',
         'Do not attempt to process or dry',
@@ -112,9 +113,9 @@ export default function BungaRipenessScreen({ navigation }) {
       return {
         grade: 'Reject',
         icon: '❌',
-        color: '#E74C3C',
+        color: '#E2554D',
         title: 'Reject Grade',
-        description: 'This bunga is rotten and should not be processed or sold. Remove immediately to prevent contamination.',
+        description: 'This peppercorn is rotten and should not be processed or sold. Remove immediately to prevent contamination.',
         actions: [
           'Remove from harvest immediately',
           'Do not process or dry',
@@ -135,9 +136,9 @@ export default function BungaRipenessScreen({ navigation }) {
       return {
         grade: 'Reject',
         icon: '❌',
-        color: '#E74C3C',
+        color: '#E2554D',
         title: 'Reject Grade',
-        description: 'This bunga is not suitable for processing. Quality is too low for any commercial use.',
+        description: 'This peppercorn is not suitable for processing. Quality is too low for any commercial use.',
         actions: [
           'Do not harvest or process',
           'Wait for better development',
@@ -170,7 +171,7 @@ export default function BungaRipenessScreen({ navigation }) {
       return {
         grade: 'Standard',
         icon: '✅',
-        color: '#27AE60',
+        color: '#2BB673',
         title: 'Standard Grade',
         description: 'Ready to dry and good for sale. Suitable for immediate drying and market distribution. Good quality for commercial sale.',
         actions: [
@@ -186,7 +187,7 @@ export default function BungaRipenessScreen({ navigation }) {
     return {
       grade: 'Commercial',
       icon: '📦',
-      color: '#F39C12',
+      color: '#F2A93B',
       title: 'Commercial Grade',
       description: ripeness === 'Ripe' 
         ? 'Ripe with maximum taste profile but lower health quality. Ready to dry but quality is reduced due to health issues.'
@@ -198,6 +199,13 @@ export default function BungaRipenessScreen({ navigation }) {
         'Suitable for industrial applications'
       ]
     };
+  };
+
+  const gradeIconMap = {
+    Reject: 'close-octagon',
+    Premium: 'star-circle',
+    Standard: 'check-decagram',
+    Commercial: 'package-variant',
   };
 
   // Get market grade for current result
@@ -387,6 +395,8 @@ export default function BungaRipenessScreen({ navigation }) {
         type: 'image/jpeg',
         name: filename,
       });
+      formData.append('platform', Platform.OS);
+      formData.append('device', Platform.OS);
 
       // LOG: Confirm image is being sent
       const timestamp = new Date().toISOString();
@@ -406,6 +416,8 @@ export default function BungaRipenessScreen({ navigation }) {
           headers: {
             'Authorization': token,
             'Content-Type': 'multipart/form-data',
+            'X-Platform': Platform.OS,
+            'X-Device': Platform.OS,
           },
           timeout: 120000, // 120s timeout (COCO model needs time to load into memory even after first run)
         }
@@ -508,7 +520,7 @@ export default function BungaRipenessScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       
       <MobileHeader
         navigation={navigation}
@@ -521,7 +533,7 @@ export default function BungaRipenessScreen({ navigation }) {
       />
 
       {/* Mode Selector */}
-      <View style={[styles.modeSelector, { backgroundColor: colors.primary }]}>
+      <View style={styles.modeSelector}>
         <TouchableOpacity
           style={[styles.modeButton, analysisMode === 'standard' && styles.modeButtonActive]}
           onPress={() => {
@@ -533,9 +545,9 @@ export default function BungaRipenessScreen({ navigation }) {
           <MaterialCommunityIcons 
             name="upload" 
             size={18} 
-            color={analysisMode === 'standard' ? colors.accent : '#FFFFFF'} 
+            color={analysisMode === 'standard' ? colors.primary : colors.textLight} 
           />
-          <Text style={[styles.modeButtonText, analysisMode === 'standard' && { color: colors.accent }]}>
+          <Text style={[styles.modeButtonText, analysisMode === 'standard' && styles.modeButtonTextActive]}>
             Standard
           </Text>
         </TouchableOpacity>
@@ -547,9 +559,9 @@ export default function BungaRipenessScreen({ navigation }) {
           <MaterialCommunityIcons 
             name="video" 
             size={18} 
-            color={analysisMode === 'realtime' ? colors.accent : '#FFFFFF'} 
+            color={analysisMode === 'realtime' ? colors.primary : colors.textLight} 
           />
-          <Text style={[styles.modeButtonText, analysisMode === 'realtime' && { color: colors.accent }]}>
+          <Text style={[styles.modeButtonText, analysisMode === 'realtime' && styles.modeButtonTextActive]}>
             Real-time
           </Text>
         </TouchableOpacity>
@@ -558,17 +570,26 @@ export default function BungaRipenessScreen({ navigation }) {
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={styles.contentContainer}
       >
-        <View style={[styles.headerSection, { backgroundColor: colors.primary }]}>
-          <Image 
-            source={require('../../../../picsbl/logowalangbg.png')} 
-            style={styles.logoImage}
-          />
-          <Text style={styles.headerTitle}>🔬 Bunga Analysis</Text>
-          <Text style={styles.headerSubtitle}>
-            Analyze the ripeness of your black pepper bunches for optimal harvest timing
-          </Text>
+        <View style={styles.heroWrap}>
+          <View style={styles.heroGlow} />
+          <View style={styles.heroRing} />
+          <View style={[styles.headerSection, { backgroundColor: colors.primary }]}>
+            <Image 
+              source={require('../../../../picsbl/logowalangbg.png')} 
+              style={styles.logoImage}
+            />
+            <Text style={styles.headerTitle}>PepperCorn Analysis</Text>
+            <Text style={styles.headerSubtitle}>
+              Analyze the ripeness of your black pepper bunches for optimal harvest timing
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionKicker}>Step 1</Text>
+          <Text style={styles.sectionTitle}>Upload Peppercorn Image</Text>
         </View>
 
         {/* Image Selection Section */}
@@ -593,7 +614,7 @@ export default function BungaRipenessScreen({ navigation }) {
                     bungaDetections={bungaDetections}
                     containerSize={{ 
                       width: width - 32, 
-                      height: 250 
+                      height: 260 
                     }}
                     colors={colors}
                   />
@@ -619,18 +640,23 @@ export default function BungaRipenessScreen({ navigation }) {
               <Text style={[styles.placeholderText, { color: colors.textLight }]}>
                 No image selected
               </Text>
-              <Text style={[styles.placeholderSubtext, { color: colors.border }]}>
-                Select an image of your black pepper bunga
+              <Text style={[styles.placeholderSubtext, { color: colors.textLight }]}>
+                Select an image of your black pepper peppercorn
               </Text>
             </View>
           )}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionKicker}>Step 2</Text>
+          <Text style={styles.sectionTitle}>Run Analysis</Text>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.buttonRow}>
           <TouchableOpacity 
             style={[styles.actionButton, { 
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primaryDark,
               flex: 1,
               marginRight: 8
             }]}
@@ -703,7 +729,7 @@ export default function BungaRipenessScreen({ navigation }) {
                   <Feather name="alert-triangle" size={24} color={colors.danger} />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={[styles.warningTitle, { color: colors.danger }]}>
-                      ❌ Invalid Image
+                      Invalid Image
                     </Text>
                     <Text style={[styles.warningText, { color: colors.text }]}>
                       {result.error || 'This does not appear to be a black pepper bunga.'}
@@ -720,9 +746,26 @@ export default function BungaRipenessScreen({ navigation }) {
             {result.is_black_pepper !== false && (
               <>
                 <View style={styles.resultHeader}>
-                  <Text style={styles.resultPrediction}>
-                    {(ripenessRecommendations[result.ripeness]?.icon || '?')} {(result.ripeness || 'Unknown')}
-                  </Text>
+                  <View style={styles.resultTitleRow}>
+                    <View
+                      style={[
+                        styles.resultBadge,
+                        {
+                          backgroundColor:
+                            (ripenessRecommendations[result.ripeness]?.color || colors.border) + '22',
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={ripenessRecommendations[result.ripeness]?.iconName || 'information'}
+                        size={18}
+                        color={ripenessRecommendations[result.ripeness]?.color || colors.textLight}
+                      />
+                    </View>
+                    <Text style={styles.resultPrediction}>
+                      {result.ripeness || 'Unknown'}
+                    </Text>
+                  </View>
                 </View>
                 
                 {result.ripeness && result.ripeness.toLowerCase() !== 'rotten' && (
@@ -775,9 +818,15 @@ export default function BungaRipenessScreen({ navigation }) {
                   const marketGrade = getMarketGrade(result.ripeness, result.health_class);
                   if (!marketGrade) return null;
                   return (
-                    <View style={[styles.gradeBox, { backgroundColor: marketGrade.color + '20', borderColor: marketGrade.color, borderWidth: 2 }]}>
+                    <View style={[styles.gradeBox, { backgroundColor: marketGrade.color + '12', borderColor: marketGrade.color }]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 32, marginRight: 12 }}>{marketGrade.icon}</Text>
+                        <View style={[styles.resultBadge, { backgroundColor: marketGrade.color + '24', marginRight: 12 }]}>
+                          <MaterialCommunityIcons
+                            name={gradeIconMap[marketGrade.grade] || 'information'}
+                            size={20}
+                            color={marketGrade.color}
+                          />
+                        </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.gradeTitle, { color: marketGrade.color }]}>
                             {marketGrade.grade}
@@ -884,26 +933,27 @@ export default function BungaRipenessScreen({ navigation }) {
         )}
 
         {/* Tips Section */}
-        <View style={[styles.tipsSection, { backgroundColor: colors.primaryLight + '10' }]}>
+        <View style={styles.tipsSection}>
           <View style={styles.tipsHeader}>
             <MaterialCommunityIcons name="lightbulb-on" size={24} color={colors.primaryLight} />
             <Text style={[styles.tipsTitle, { color: colors.primary }]}>
               Tips for Best Results
             </Text>
           </View>
-          
-          <Text style={[styles.tipItem, { color: colors.text }]}>
-            • Take clear photos in natural daylight
-          </Text>
-          <Text style={[styles.tipItem, { color: colors.text }]}>
-            • Ensure the entire bunga is visible in the frame
-          </Text>
-          <Text style={[styles.tipItem, { color: colors.text }]}>
-            • Avoid shadows and reflections
-          </Text>
-          <Text style={[styles.tipItem, { color: colors.text }]}>
-            • Keep the camera at a 45-degree angle to the bunga
-          </Text>
+
+          {[
+            'Take clear photos in natural daylight',
+            'Ensure the entire peppercorn is visible in the frame',
+            'Avoid shadows and reflections',
+            'Keep the camera at a 45-degree angle to the peppercorn',
+          ].map((tip, index) => (
+            <View key={index} style={styles.tipRow}>
+              <View style={[styles.tipDot, { backgroundColor: colors.primaryLight }]} />
+              <Text style={[styles.tipItem, { color: colors.text }]}>
+                {tip}
+              </Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -916,101 +966,157 @@ const styles = StyleSheet.create({
   },
   modeSelector: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
+    padding: 6,
     gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
   modeButton: {
     flex: 1,
     flexDirection: 'row',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   modeButtonActive: {
-    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    backgroundColor: '#F4E9C6',
+    borderWidth: 1,
+    borderColor: '#E6D9B0',
   },
   modeButtonText: {
-    color: '#FFFFFF',
+    color: '#5A6B63',
     fontWeight: '600',
     fontSize: 13,
+  },
+  modeButtonTextActive: {
+    color: '#0E3B2E',
   },
   content: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 28,
+    paddingTop: 16,
+  },
+  contentContainer: {
+    paddingBottom: 32,
+  },
+  heroWrap: {
+    paddingHorizontal: 4,
+    marginBottom: 16,
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(43, 182, 115, 0.22)',
+    top: -20,
+    right: -20,
+  },
+  heroRing: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
+    bottom: -30,
+    left: -10,
+  },
+  sectionHeader: {
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  sectionKicker: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1.6,
+    color: '#5A6B63',
+    marginBottom: 4,
+    fontWeight: '700',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0E3B2E',
   },
   headerSection: {
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
+    borderRadius: 20,
+    padding: 22,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 6,
   },
   logoImage: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
     resizeMode: 'contain',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
     marginTop: 0,
     textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#E0E0E0',
+    color: 'rgba(255,255,255,0.85)',
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 18,
   },
   imageSection: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: 16,
-    borderColor: '#27AE60',
-    padding: 24,
+    borderWidth: 1,
+    borderRadius: 18,
+    borderColor: '#DDE7E1',
+    padding: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    minHeight: 300,
-    backgroundColor: '#E8F5E9',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    marginBottom: 20,
+    minHeight: 280,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   selectedImage: {
     width: '100%',
-    height: 280,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#27AE60',
+    height: 260,
+    borderRadius: 16,
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 280,
-    borderRadius: 14,
+    height: 260,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   placeholderText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     marginTop: 12,
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   placeholderSubtext: {
     fontSize: 13,
@@ -1022,13 +1128,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 10,
-    marginTop: 12,
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    borderRadius: 12,
+    marginTop: 14,
   },
   clearButtonText: {
     color: '#FFFFFF',
@@ -1044,12 +1145,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 3 },
+    paddingVertical: 14,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowRadius: 10,
     elevation: 4,
   },
   actionButtonText: {
@@ -1063,12 +1164,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 18,
-    borderRadius: 12,
-    marginBottom: 24,
-    shadowColor: '#27AE60',
-    shadowOffset: { width: 0, height: 6 },
+    borderRadius: 16,
+    marginBottom: 22,
+    shadowColor: '#2BB673',
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
-    shadowRadius: 12,
+    shadowRadius: 14,
     elevation: 8,
   },
   analyzeButtonText: {
@@ -1080,15 +1181,11 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     marginBottom: 18,
     alignItems: 'center',
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
   },
   errorText: {
     fontSize: 14,
@@ -1099,15 +1196,15 @@ const styles = StyleSheet.create({
   warningBox: {
     flexDirection: 'row',
     padding: 18,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 2,
     marginBottom: 24,
     alignItems: 'flex-start',
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 3,
   },
   warningTitle: {
     fontSize: 17,
@@ -1130,39 +1227,48 @@ const styles = StyleSheet.create({
   },
   resultSection: {
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: 22,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 3,
   },
   resultHeader: {
-    paddingBottom: 16,
-    marginBottom: 16,
+    paddingBottom: 12,
+    marginBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#E6ECE8',
+  },
+  resultTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  resultBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   resultPrediction: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   confidenceBox: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
-    backgroundColor: '#F8FAF7',
+    backgroundColor: '#F3F7F4',
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     borderLeftWidth: 4,
-    borderLeftColor: '#F39C12',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    borderLeftColor: '#F2A93B',
   },
   confidenceLabel: {
     fontSize: 13,
@@ -1170,16 +1276,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   confidenceBar: {
-    height: 16,
+    height: 12,
     borderRadius: 8,
     backgroundColor: '#E0E0E0',
     overflow: 'hidden',
     marginBottom: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
   confidenceBarFill: {
     height: '100%',
@@ -1189,17 +1290,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     textAlign: 'right',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   gradeBox: {
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 18,
     marginBottom: 20,
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   gradeTitle: {
     fontSize: 17,
@@ -1217,17 +1315,14 @@ const styles = StyleSheet.create({
   recommendationBox: {
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#27AE60',
+    borderLeftColor: '#2BB673',
     paddingLeft: 16,
     paddingRight: 16,
     paddingVertical: 16,
-    backgroundColor: '#F0F9F6',
-    borderRadius: 12,
-    shadowColor: '#27AE60',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: '#EAF6F0',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   recommendationTitle: {
     fontSize: 17,
@@ -1268,12 +1363,9 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'flex-start',
     marginBottom: 16,
-    backgroundColor: '#F8FAF7',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: '#F3F7F4',
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   infoText: {
     fontSize: 13,
@@ -1301,9 +1393,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tipsSection: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
   },
   tipsHeader: {
     flexDirection: 'row',
@@ -1315,9 +1415,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 8,
   },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  tipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+    marginRight: 10,
+  },
   tipItem: {
     fontSize: 12,
     lineHeight: 16,
-    marginBottom: 6,
+    flex: 1,
   },
 });
+
+

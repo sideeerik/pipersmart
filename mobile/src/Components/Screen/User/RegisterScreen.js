@@ -18,12 +18,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { authenticate } from '../../utils/helpers';
-import { BACKEND_URL, GOOGLE_WEB_CLIENT_ID } from 'react-native-dotenv';
+import { BACKEND_URL } from 'react-native-dotenv';
+// import { GOOGLE_WEB_CLIENT_ID } from 'react-native-dotenv';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import auth from '@react-native-firebase/auth';
+// import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// import auth from '@react-native-firebase/auth';
 
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
@@ -56,22 +57,22 @@ export default function RegisterScreen({ navigation }) {
 
   useEffect(() => {
     // Initialize GoogleSignin
-    const initGoogleSignIn = async () => {
-      try {
-        if (GOOGLE_WEB_CLIENT_ID) {
-          GoogleSignin.configure({
-            webClientId: GOOGLE_WEB_CLIENT_ID,
-            scopes: ['email', 'profile'],
-          });
-          console.log('✅ GoogleSignin configured in RegisterScreen');
-        } else {
-          console.warn('⚠️ GOOGLE_WEB_CLIENT_ID not found in .env');
-        }
-      } catch (err) {
-        console.error('❌ Failed to configure GoogleSignin:', err);
-      }
-    };
-    initGoogleSignIn();
+    // const initGoogleSignIn = async () => {
+    //   try {
+    //     if (GOOGLE_WEB_CLIENT_ID) {
+    //       GoogleSignin.configure({
+    //         webClientId: GOOGLE_WEB_CLIENT_ID,
+    //         scopes: ['email', 'profile'],
+    //       });
+    //       console.log('✅ GoogleSignin configured in RegisterScreen');
+    //     } else {
+    //       console.warn('⚠️ GOOGLE_WEB_CLIENT_ID not found in .env');
+    //     }
+    //   } catch (err) {
+    //     console.error('❌ Failed to configure GoogleSignin:', err);
+    //   }
+    // };
+    // initGoogleSignIn();
     
     // Start carousel timer
     carouselTimerRef.current = setInterval(() => {
@@ -142,92 +143,92 @@ export default function RegisterScreen({ navigation }) {
     });
   };
 
-  const onGoogleButtonPress = async () => {
-    setLoading(true);
-    try {
-      console.log('🔥 Starting Google Sign-Up...');
-      
-      // Check if GoogleSignin is configured
-      if (!GOOGLE_WEB_CLIENT_ID) {
-        throw new Error('🔴 GOOGLE_WEB_CLIENT_ID not configured in .env file');
-      }
-      
-      // Sign out first to avoid cached sessions
-      try {
-        await GoogleSignin.signOut();
-        console.log('✅ Previous session cleared');
-      } catch (e) {
-        console.log('ℹ️ No previous session to clear');
-      }
-      
-      // Check Play Services
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      console.log('✅ Play Services available');
-      
-      // Sign in
-      const response = await GoogleSignin.signIn();
-      console.log('✅ Google Sign-Up successful:', response.user.email);
-      
-      // Get ID token
-      const idToken = response.idToken;
-      if (!idToken) {
-        throw new Error('No ID token received from Google');
-      }
-      console.log('🔑 ID Token received (length: ' + idToken.length + ')');
-      
-      // Send to backend
-      console.log('📨 Sending to backend...');
-      const res = await axios.post(
-        `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
-        { idToken },
-        { timeout: 10000 }
-      );
-      
-      console.log('✅ Backend verified:', res.data?.user?.email);
-      
-      await authenticate(res.data, () => {
-        setTimeout(() => {
-          Alert.alert(
-            'Welcome! 🌿',
-            `Account created for ${res.data.user?.name || res.data.user?.email}`,
-            [
-              { 
-                text: 'Continue', 
-                onPress: () => {
-                  if (res.data.user?.role === 'admin') {
-                    navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
-                  } else {
-                    navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
-                  }
-                }
-              }
-            ]
-          );
-        }, 300);
-      });
+  // const onGoogleButtonPress = async () => {
+  //   setLoading(true);
+  //   try {
+  //     console.log('🔥 Starting Google Sign-Up...');
+  //     
+  //     // Check if GoogleSignin is configured
+  //     if (!GOOGLE_WEB_CLIENT_ID) {
+  //       throw new Error('🔴 GOOGLE_WEB_CLIENT_ID not configured in .env file');
+  //     }
+  //     
+  //     // Sign out first to avoid cached sessions
+  //     try {
+  //       await GoogleSignin.signOut();
+  //       console.log('✅ Previous session cleared');
+  //     } catch (e) {
+  //       console.log('ℹ️ No previous session to clear');
+  //     }
+  //     
+  //     // Check Play Services
+  //     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  //     console.log('✅ Play Services available');
+  //     
+  //     // Sign in
+  //     const response = await GoogleSignin.signIn();
+  //     console.log('✅ Google Sign-Up successful:', response.user.email);
+  //     
+  //     // Get ID token
+  //     const idToken = response.idToken;
+  //     if (!idToken) {
+  //       throw new Error('No ID token received from Google');
+  //     }
+  //     console.log('🔑 ID Token received (length: ' + idToken.length + ')');
+  //     
+  //     // Send to backend
+  //     console.log('📨 Sending to backend...');
+  //     const res = await axios.post(
+  //       `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
+  //       { idToken },
+  //       { timeout: 10000 }
+  //     );
+  //     
+  //     console.log('✅ Backend verified:', res.data?.user?.email);
+  //     
+  //     await authenticate(res.data, () => {
+  //       setTimeout(() => {
+  //         Alert.alert(
+  //           'Welcome! 🌿',
+  //           `Account created for ${res.data.user?.name || res.data.user?.email}`,
+  //           [
+  //             { 
+  //               text: 'Continue', 
+  //               onPress: () => {
+  //                 if (res.data.user?.role === 'admin') {
+  //                   navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
+  //                 } else {
+  //                   navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
+  //                 }
+  //               }
+  //             }
+  //           ]
+  //         );
+  //       }, 300);
+  //     });
 
-    } catch (error) {
-      console.error('❌ Google Sign-Up error:', error);
-      let errorMessage = 'Google Sign-Up failed';
-      
-      // Handle specific error types
-      if (error.message?.includes('DEVELOPER_ERROR')) {
-        errorMessage = '🔴 DEVELOPER_ERROR: Check your Google Cloud Console configuration.\n\nEnsure:\n1. SHA-1 fingerprint matches\n2. Package name is correct\n3. Web Client ID is correct';
-      } else if (error.code === -1 || error.code === 'DEVELOPER_ERROR') {
-        errorMessage = 'Google configuration error. Please check your .env file and Google Cloud Console setup.';
-      } else if (error.message?.includes('Network')) {
-        errorMessage = 'Network error. Check your internet connection.';
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert('Google Sign-Up Failed', errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('❌ Google Sign-Up error:', error);
+  //     let errorMessage = 'Google Sign-Up failed';
+  //     
+  //     // Handle specific error types
+  //     if (error.message?.includes('DEVELOPER_ERROR')) {
+  //       errorMessage = '🔴 DEVELOPER_ERROR: Check your Google Cloud Console configuration.\n\nEnsure:\n1. SHA-1 fingerprint matches\n2. Package name is correct\n3. Web Client ID is correct';
+  //     } else if (error.code === -1 || error.code === 'DEVELOPER_ERROR') {
+  //       errorMessage = 'Google configuration error. Please check your .env file and Google Cloud Console setup.';
+  //     } else if (error.message?.includes('Network')) {
+  //       errorMessage = 'Network error. Check your internet connection.';
+  //     } else if (error.response?.data?.message) {
+  //       errorMessage = error.response.data.message;
+  //     } else if (error.message) {
+  //       errorMessage = error.message;
+  //     }
+  //     
+  //     Alert.alert('Google Sign-Up Failed', errorMessage);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   // Animation Values
   const nameFocusAnim = useRef(new Animated.Value(0)).current;
@@ -725,21 +726,21 @@ export default function RegisterScreen({ navigation }) {
               </Animated.View>
 
               {/* Divider */}
-              <View style={styles.divider}>
+              {/* <View style={styles.divider}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>or</Text>
                 <View style={styles.dividerLine} />
-              </View>
+              </View> */}
 
               {/* Social Login */}
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 style={styles.googleButton}
                 onPress={onGoogleButtonPress}
                 disabled={loading}
               >
                 <Feather name="chrome" size={20} color="#1B4D3E" />
                 <Text style={styles.googleButtonText}>Continue with Google</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
               {/* Login Link */}
               <View style={styles.loginContainer}>

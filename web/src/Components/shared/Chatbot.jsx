@@ -195,7 +195,7 @@ const Chatbot = () => {
           aria-label="Open chat"
           title="Chat with PiperSmart Assistant"
         >
-          💬
+          🌱
         </button>
       )}
     </>

@@ -1,395 +1,362 @@
-/* ============ CONTACT PAGE MAIN CONTAINER ============ */
+/* ============ CONTACT PAGE - PREMIUM DARK MODE DESIGN ============ */
+
+/* Page Container with Wave Background */
 .contact-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 20px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  min-height: 100vh;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-/* ============ CONTACT HEADER ============ */
-.contact-header {
-  text-align: center;
-  margin-bottom: 60px;
-  padding: 50px 30px;
-  background: linear-gradient(135deg, #1a1a1a 0%, #22c55e 100%);
-  color: white;
-  border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
   position: relative;
-  overflow: hidden;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  min-height: 100vh;
+  padding: 0;
+  background: #0a0a0a;
+  overflow-x: hidden;
 }
 
-.contact-header::before {
+/* Wave Pattern Background */
+.contact-container::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  height: 5px;
-  background: linear-gradient(90deg, #ffd700, #ff8c00, #ff4500);
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: 
+    linear-gradient(135deg, rgba(10, 10, 10, 0.97) 0%, rgba(20, 20, 20, 0.95) 100%),
+    url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwMCIgaGVpZ2h0PSI4MDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idHJhbnNwYXJlbnQiLz48cGF0aCBkPSJNMCAwIEwxNjAwIEwwIDgwMCBaIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMCwgMjU1LCAxMzYsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3N2Zz4=');
+  background-size: cover;
+  background-position: center;
+}
+
+/* ============ HEADER SECTION ============ */
+.contact-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: 60px;
+  padding: 120px 40px 60px;
+  background: linear-gradient(180deg, rgba(0, 255, 136, 0.05) 0%, transparent 100%);
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: absolute;
+  top: 100px;
+  left: 40px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: #00FF88;
 }
 
 .contact-header h1 {
   margin: 0 0 15px;
-  font-size: 48px;
+  font-size: 3.5rem;
   font-weight: 800;
-  letter-spacing: -0.5px;
-  position: relative;
-  z-index: 1;
+  letter-spacing: 1px;
+  color: #ffffff;
+  text-shadow: 0 2px 20px rgba(0, 255, 136, 0.3);
 }
 
 .contact-header p {
   margin: 0;
-  font-size: 20px;
-  opacity: 0.95;
-  max-width: 700px;
-  margin: 0 auto;
-  line-height: 1.6;
+  font-size: 1.25rem;
+  opacity: 0.9;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============ MAIN CONTENT ============ */
+.contact-content {
   position: relative;
   z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px 60px;
 }
 
-/* ============ CONTENT SECTION ============ */
-.contact-content {
-  display: flex;
-  flex-direction: column;
-  gap: 60px;
-}
-
-/* ============ CONTACT SECTIONS ============ */
+/* Section Styles */
 .contact-section {
-  background-color: white;
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
   padding: 45px;
-  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
-  border-left: 6px solid #22c55e;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin-bottom: 30px;
+  transition: all 0.3s ease;
 }
 
 .contact-section:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(0, 255, 136, 0.15);
 }
 
 .contact-section h2 {
-  color: #1a1a1a;
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 700;
-  margin: 0 0 35px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #f0f0f0;
+  color: #ffffff;
+  margin: 0 0 25px 0;
+  position: relative;
+  display: inline-block;
+}
+
+.contact-section h2::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #00FF88, transparent);
+  border-radius: 2px;
 }
 
 .contact-section p {
-  color: #444;
-  font-size: 18px;
-  line-height: 1.7;
-  margin-bottom: 20px;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 15px 0;
 }
 
-/* ============ CONTACT DETAILS ============ */
-.contact-details {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
+/* Contact Grid */
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 25px;
-  padding: 25px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
-  cursor: pointer;
 }
 
-.contact-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.15);
-  border-color: #22c55e;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f9f4 100%);
+.contact-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 30px 25px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.contact-card:hover {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.25);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 .contact-icon {
-  font-size: 52px;
-  min-width: 60px;
-  text-align: center;
-  padding: 15px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
-}
-
-.contact-info h3 {
-  margin: 0 0 8px;
-  color: #1a1a1a;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.contact-info p {
-  margin: 0;
-  color: #555;
-  font-size: 18px;
-  font-weight: 500;
-}
-
-/* ============ TEAM SECTION ============ */
-.team-section {
-  background-color: white;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 255, 136, 0.05));
   border-radius: 16px;
-  padding: 45px;
-  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
-  border-left: 6px solid #3b82f6;
-}
-
-.team-section h2 {
-  color: #1a1a1a;
-  font-size: 32px;
-  font-weight: 700;
-  margin: 0 0 35px;
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #f0f0f0;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 1.5rem;
+  color: #00FF88;
+}
+
+.contact-card h3 {
+  color: #ffffff;
+  font-size: 1.25rem;
+  margin: 0 0 10px 0;
+  font-weight: 600;
+}
+
+.contact-card p {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* Team Section */
+.team-subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 30px !important;
 }
 
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 30px;
-  margin-top: 25px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 25px;
 }
 
-.team-member {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  border-radius: 12px;
-  padding: 25px;
+.team-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 35px 25px;
   text-align: center;
   transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
 
-.team-member:hover {
+.team-card:hover {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.25);
   transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
-  border-color: #3b82f6;
 }
 
-.member-avatar {
+.team-avatar {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #22c55e, #3b82f6);
+  background: linear-gradient(135deg, #00FF88 0%, #00cc6a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 32px;
-  font-weight: bold;
-  margin-bottom: 20px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
+  overflow: hidden;
 }
 
-.member-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 5px;
+.team-avatar span {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0a0a0a;
 }
 
-.member-role {
-  font-size: 16px;
-  color: #22c55e;
+.team-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-card h3 {
+  font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 15px;
+  color: #ffffff;
+  margin: 0 0 8px 0;
 }
 
-.facebook-link {
+.team-role {
+  font-size: 0.9rem;
+  color: #00FF88 !important;
+  margin-bottom: 20px !important;
+}
+
+.facebook-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background-color: #1877f2;
+  background: linear-gradient(135deg, #1877f2, #0d65d9);
   color: white;
   text-decoration: none;
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: 25px;
+  font-size: 0.85rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  font-size: 15px;
 }
 
-.facebook-link:hover {
-  background-color: #166fe5;
+.facebook-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(24, 119, 242, 0.3);
+  box-shadow: 0 8px 20px rgba(24, 119, 242, 0.4);
 }
 
-/* ============ BACK BUTTON ============ */
-.back-button {
-  position: absolute;
-  top: 25px;
-  right: 25px;
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 10px 18px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 2;
-}
-
-.back-button:hover {
-  background-color: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
+/* Office Information */
+.office-hours {
+  color: #00FF88 !important;
+  font-weight: 600 !important;
+  margin-top: 10px !important;
 }
 
 /* ============ RESPONSIVE DESIGN ============ */
-@media (max-width: 1400px) {
-  .team-grid {
-    grid-template-columns: repeat(4, 1fr);
+@media (max-width: 1024px) {
+  .contact-header {
+    padding: 100px 30px 50px;
   }
-}
 
-@media (max-width: 992px) {
-  .team-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .contact-header h1 {
+    font-size: 2.75rem;
+  }
+
+  .contact-content {
+    padding: 0 30px 50px;
+  }
+
+  .back-button {
+    left: 30px;
   }
 }
 
 @media (max-width: 768px) {
-  .contact-container {
-    padding: 20px 15px;
-  }
-
   .contact-header {
-    padding: 40px 20px;
-    margin-bottom: 40px;
+    padding: 80px 20px 40px;
   }
 
   .contact-header h1 {
-    font-size: 36px;
+    font-size: 2rem;
   }
 
   .contact-header p {
-    font-size: 18px;
+    font-size: 1rem;
   }
 
-  .contact-section, .team-section {
-    padding: 30px 25px;
-  }
-
-  .contact-section h2, .team-section h2 {
-    font-size: 28px;
-  }
-
-  .contact-item {
-    flex-direction: column;
-    text-align: center;
-    gap: 20px;
-    padding: 20px;
-  }
-
-  .contact-icon {
-    font-size: 44px;
-    padding: 12px;
-  }
-
-  .contact-info h3 {
-    font-size: 20px;
-  }
-
-  .contact-info p {
-    font-size: 17px;
-  }
-
-  .team-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
-  
   .back-button {
-    top: 15px;
-    right: 15px;
-    padding: 8px 14px;
-    font-size: 14px;
-  }
-}
-
-@media (max-width: 480px) {
-  .contact-container {
-    padding: 20px 10px;
+    position: relative;
+    top: 0;
+    left: 0;
+    margin-bottom: 30px;
   }
 
-  .contact-header {
+  .contact-content {
+    padding: 0 20px 40px;
+  }
+
+  .contact-section {
     padding: 30px 20px;
+    border-radius: 16px;
   }
 
-  .contact-header h1 {
-    font-size: 28px;
+  .contact-section h2 {
+    font-size: 1.5rem;
   }
 
-  .contact-header p {
-    font-size: 16px;
-  }
-
-  .contact-section,
-  .team-section {
-    padding: 25px;
-  }
-
-  .contact-section h2,
-  .team-section h2 {
-    font-size: 24px;
-  }
-
-  .contact-item {
-    flex-direction: column;
-    text-align: center;
-    gap: 15px;
-  }
-
-  .contact-icon {
-    font-size: 36px;
-  }
-
-  .contact-info h3 {
-    font-size: 18px;
-  }
-
-  .contact-info p {
-    font-size: 16px;
-  }
-
-  .team-grid {
+  .contact-grid {
     grid-template-columns: 1fr;
     gap: 15px;
   }
 
-  .back-button {
-    top: 15px;
-    right: 15px;
-    padding: 8px 12px;
-    font-size: 14px;
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+
+  .team-card {
+    padding: 25px 15px;
+  }
+
+  .team-avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+  .team-avatar span {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .contact-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .team-grid {
+    grid-template-columns: 1fr;
   }
 }

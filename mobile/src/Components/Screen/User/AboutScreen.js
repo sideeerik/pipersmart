@@ -9,10 +9,12 @@ import {
   StatusBar,
   Animated,
   Image,
+  Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import MobileHeader from '../../shared/MobileHeader';
-import { getUser } from '../../utils/helpers';
+import { getUser, logout } from '../../utils/helpers';
 
 const devTeamImages = [
   require('../../../../picsbl/prof1.png'), // Even Lloyd S. Billoned
@@ -37,10 +39,12 @@ export default function AboutScreen({ navigation }) {
 
   const colors = {
     primary: '#1B4D3E',
-    background: '#F8FAF7',
+    background: '#EEF4F0',
     text: '#1B4D3E',
     border: '#D4E5DD',
     accent: '#22c55e',
+    cardBg: '#FFFFFF',
+    textLight: '#5E7B74',
   };
 
   const openDrawer = () => {
@@ -48,7 +52,7 @@ export default function AboutScreen({ navigation }) {
     Animated.timing(drawerSlideAnim, {
       toValue: 0,
       duration: 300,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   };
 
@@ -56,8 +60,19 @@ export default function AboutScreen({ navigation }) {
     Animated.timing(drawerSlideAnim, {
       toValue: -280,
       duration: 300,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start(() => setDrawerOpen(false));
+  };
+
+  const handleLogout = async () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => logout(navigation),
+      },
+    ]);
   };
 
   const pepperStats = [
@@ -143,6 +158,12 @@ export default function AboutScreen({ navigation }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
+
+      <View pointerEvents="none" style={styles.backgroundDecor}>
+        <View style={styles.decorOrbOne} />
+        <View style={styles.decorOrbTwo} />
+      </View>
+
       <MobileHeader
         navigation={navigation}
         user={user}
@@ -150,23 +171,52 @@ export default function AboutScreen({ navigation }) {
         openDrawer={openDrawer}
         closeDrawer={closeDrawer}
         drawerSlideAnim={drawerSlideAnim}
+        onLogout={handleLogout}
       />
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-        
+
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.primary }]}>
-          <Image 
-            source={require('../../../../picsbl/logowalangbg.png')} 
+        <LinearGradient
+          colors={['#103328', '#1B4D3E', '#2A6A56']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.headerGlowTop} />
+          <View style={styles.headerGlowBottom} />
+
+          <Image
+            source={require('../../../../picsbl/logowalangbg.png')}
             style={styles.headerLogo}
           />
-          <Text style={styles.headerTitle}>About PiperSmart</Text>
+          <Text style={styles.headerEyebrow}>About</Text>
+          <Text style={styles.headerTitle}>PiperSmart</Text>
           <Text style={styles.tagline}>
             Revolutionizing Black Pepper Agriculture Through Intelligent Technology
           </Text>
           <View style={styles.visionBadge}>
-            <Text style={styles.visionText}>🎯 Empowering Farmers, Sustaining Excellence</Text>
+            <Text style={styles.visionText}>Empowering Farmers, Sustaining Excellence</Text>
           </View>
-        </View>
+
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue}>{features.length}</Text>
+              <Text style={styles.heroStatLabel}>Features</Text>
+            </View>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue}>{coreValues.length}</Text>
+              <Text style={styles.heroStatLabel}>Core Values</Text>
+            </View>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue}>{developers.length}</Text>
+              <Text style={styles.heroStatLabel}>Team Members</Text>
+            </View>
+          </View>
+        </LinearGradient>
 
         {/* Tabs */}
         <View style={styles.tabContainer}>
@@ -347,114 +397,221 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 28,
+  },
+  backgroundDecor: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 280,
+    overflow: 'hidden',
+  },
+  decorOrbOne: {
+    position: 'absolute',
+    top: -90,
+    right: -50,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(27,77,62,0.10)',
+  },
+  decorOrbTwo: {
+    position: 'absolute',
+    top: -30,
+    left: -80,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(39,174,96,0.12)',
+  },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 35,
-    alignItems: 'center',
     marginTop: 8,
     marginHorizontal: 12,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 26,
+    paddingBottom: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    shadowColor: '#0d2b20',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 6,
+    alignItems: 'center',
+  },
+  headerGlowTop: {
+    position: 'absolute',
+    top: -30,
+    right: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  headerGlowBottom: {
+    position: 'absolute',
+    bottom: -40,
+    left: -30,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   headerLogo: {
-    width: 80,
-    height: 80,
+    width: 82,
+    height: 82,
     resizeMode: 'contain',
-    marginBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: 'white',
     marginBottom: 10,
   },
+  headerEyebrow: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 4,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
   tagline: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.95)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.94)',
     textAlign: 'center',
     marginBottom: 12,
     lineHeight: 21,
   },
   visionBadge: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.25)',
+    marginBottom: 14,
   },
   visionText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  heroStatsRow: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  heroStat: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  heroStatValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  heroStatLabel: {
+    marginTop: 2,
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.84)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    fontWeight: '700',
   },
   tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 10,
-    paddingVertical: 15,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    marginHorizontal: 12,
+    marginTop: 10,
+    marginBottom: 4,
+    padding: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D8E7DF',
+    shadowColor: '#123227',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tabBtn: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    borderRadius: 12,
   },
   tabBtnActive: {
-    borderBottomColor: '#1B4D3E',
+    backgroundColor: '#1B4D3E',
   },
   tabBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#999',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6F8A80',
   },
   tabBtnTextActive: {
-    color: '#1B4D3E',
+    color: '#FFFFFF',
   },
   section: {
     paddingHorizontal: 18,
     paddingVertical: 18,
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 12,
-    marginVertical: 10,
-    borderRadius: 12,
+    marginVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DCEAE3',
+    shadowColor: '#123227',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 9,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1B4D3E',
-    marginBottom: 15,
+    marginBottom: 13,
   },
   titleWithLogo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   sectionLogo: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     resizeMode: 'contain',
-    marginRight: 12,
+    marginRight: 11,
   },
   sectionText: {
-    fontSize: 15,
-    color: '#555',
+    fontSize: 14,
+    color: '#4F6961',
     lineHeight: 22,
     marginBottom: 10,
     textAlign: 'justify',
   },
   missionText: {
-    fontSize: 15,
-    color: '#555',
+    fontSize: 14,
+    color: '#4F6961',
     lineHeight: 22,
     marginBottom: 12,
     textAlign: 'justify',
   },
   bulletPoint: {
     fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
+    color: '#4F6961',
+    lineHeight: 21,
     marginBottom: 10,
     textAlign: 'justify',
   },
@@ -464,137 +621,94 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     flexDirection: 'row',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    backgroundColor: '#F4FAF7',
+    borderRadius: 13,
+    marginBottom: 10,
     alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#DDEDE4',
   },
   featureIcon: {
-    fontSize: 28,
-    marginRight: 12,
-    marginTop: 2,
+    fontSize: 24,
+    marginRight: 10,
+    marginTop: 1,
   },
   featureContent: {
     flex: 1,
   },
   featureTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1B4D3E',
     marginBottom: 4,
   },
   featureDesc: {
     fontSize: 13,
-    color: '#666',
+    color: '#55716A',
     textAlign: 'justify',
-  },
-  statCard: {
-    flexDirection: 'row',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  statIcon: {
-    fontSize: 28,
-    marginRight: 15,
-  },
-  statContent: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1B4D3E',
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
+    lineHeight: 18,
   },
   benefitCard: {
-    paddingHorizontal: 15,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
-    marginBottom: 12,
+    backgroundColor: '#F4FAF7',
+    borderRadius: 12,
+    marginBottom: 10,
     borderLeftWidth: 4,
     borderLeftColor: '#22c55e',
+    borderWidth: 1,
+    borderColor: '#DDEDE4',
   },
   benefitTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1B4D3E',
     marginBottom: 4,
   },
   benefitDesc: {
     fontSize: 13,
-    color: '#666',
+    color: '#55716A',
     textAlign: 'justify',
-  },
-  valueCard: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  valueTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1B4D3E',
-    marginBottom: 3,
-  },
-  valueDesc: {
-    fontSize: 13,
-    color: '#666',
+    lineHeight: 18,
   },
   developerCard: {
     flexDirection: 'row',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    backgroundColor: '#F4FAF7',
+    borderRadius: 12,
     marginBottom: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DDEDE4',
   },
   devProfileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    marginRight: 12,
     resizeMode: 'cover',
+    borderWidth: 2,
+    borderColor: '#D7E7DF',
   },
   devInfo: {
     flex: 1,
   },
   devName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1B4D3E',
   },
   devRole: {
     fontSize: 12,
-    color: '#999',
+    color: '#6D8880',
     marginTop: 2,
-  },
-  devAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#22c55e',
-    color: 'white',
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    marginRight: 12,
+    fontWeight: '600',
   },
   spacer: {
-    height: 30,
+    height: 28,
   },
 });
+

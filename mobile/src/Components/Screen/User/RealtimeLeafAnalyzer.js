@@ -31,18 +31,21 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
   const [error, setError] = useState(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [diseaseInfo, setDiseaseInfo] = useState(null);
+  const [latestPhoto, setLatestPhoto] = useState(null);
+  const [saving, setSaving] = useState(false);
   const cameraRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
 
   const colors = {
-    primary: '#1B4D3E',
-    primaryLight: '#27AE60',
-    background: '#F8FAF7',
-    text: '#1B4D3E',
-    textLight: '#5A7A73',
-    danger: '#E74C3C',
-    success: '#27AE60',
-    warning: '#F39C12',
+    primary: '#0E3B2E',
+    primaryLight: '#2BB673',
+    background: '#F3F7F4',
+    text: '#0E3B2E',
+    textLight: '#5A6B63',
+    danger: '#E2554D',
+    success: '#2BB673',
+    warning: '#F2A93B',
+    accent: '#C9A227',
   };
 
   const diseaseColors = {
@@ -57,42 +60,42 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
   // Disease recommendations
   const diseaseRecommendations = {
     'Healthy': {
-      icon: '✅',
+      iconName: 'check-circle',
       title: 'Plant is Healthy',
       description: 'Your pepper plant shows no signs of disease.',
       actions: ['Continue regular watering', 'Monitor weekly', 'Maintain proper spacing'],
       color: colors.success
     },
     'Footrot': {
-      icon: '⚠️',
+      iconName: 'alert-circle',
       title: 'Footrot Disease Detected',
       description: 'This is a fungal disease affecting the base of the plant.',
       actions: ['Remove infected plant parts', 'Improve soil drainage', 'Apply fungicide treatment', 'Avoid waterlogging'],
       color: colors.danger
     },
     'Pollu_Disease': {
-      icon: '🚨',
+      iconName: 'alert',
       title: 'Pollu Disease Detected',
       description: 'Viral infection causing leaf curling and discoloration.',
       actions: ['Isolate affected plant', 'Remove diseased leaves', 'Control aphid vectors', 'Use insecticide if needed'],
       color: colors.warning
     },
     'Slow_Decline': {
-      icon: '📉',
+      iconName: 'chart-line',
       title: 'Slow Decline Detected',
       description: 'Progressive weakening of plant vigor.',
       actions: ['Check soil moisture', 'Test soil pH and nutrients', 'Improve fertilization', 'Ensure proper drainage'],
       color: colors.warning
     },
     'Leaf_Blight': {
-      icon: '🍂',
+      iconName: 'leaf',
       title: 'Leaf Blight Detected',
       description: 'Fungal infection causing leaf spots and browning.',
       actions: ['Remove affected leaves', 'Improve air circulation', 'Reduce leaf wetness', 'Apply copper fungicide'],
       color: colors.danger
     },
     'Yellow_Mottle_Virus': {
-      icon: '💛',
+      iconName: 'virus',
       title: 'Yellow Mottle Virus Detected',
       description: 'Viral infection causing yellow patterns on leaves.',
       actions: ['Remove infected plant if severe', 'Control insect vectors', 'Sanitize tools', 'Avoid spreading to other plants'],
@@ -123,7 +126,7 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
       normalizedName = diseaseMapping[lowerName];
     }
     return diseaseRecommendations[normalizedName] || {
-      icon: '🔬',
+      iconName: 'leaf',
       title: `${diseaseName || 'Unknown'} Disease`,
       description: 'Unable to identify the disease.',
       actions: ['Consult agricultural expert', 'Get professional diagnosis'],
@@ -171,12 +174,17 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
       }
 
       // Create FormData with image
-      const formData = new FormData();
-      formData.append('image', {
+      const photoName = `realtime_${Date.now()}.jpg`;
+      const photoPayload = {
         uri: photo.uri,
         type: 'image/jpeg',
-        name: `realtime_${Date.now()}.jpg`,
-      });
+        name: photoName,
+      };
+      setLatestPhoto(photoPayload);
+
+      const formData = new FormData();
+      formData.append('image', photoPayload);
+      formData.append('save', 'false');
 
       const token = axios.defaults.headers.common['Authorization'];
 
@@ -215,6 +223,7 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
     setIsActive(true);
     setError(null);
     setResult(null);
+    setLatestPhoto(null);
     
     // Capture ONE frame only
     await captureAndAnalyze();
@@ -226,18 +235,59 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
       clearInterval(analyzeIntervalRef.current);
       analyzeIntervalRef.current = null;
     }
+    setLatestPhoto(null);
   };
 
-  const handleSaveResult = () => {
-    setShowResultModal(false);
-    setResult(null);
-    setDiseaseInfo(null);
+  const handleSaveResult = async () => {
+    if (!result || !latestPhoto || saving) return;
+
+    try {
+      setSaving(true);
+      const token = axios.defaults.headers.common['Authorization'];
+      if (!token) {
+        Alert.alert('Authentication Required', 'Please login first before saving');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('image', latestPhoto);
+      formData.append('disease', result.disease);
+      formData.append('confidence', String(result.confidence || 0));
+      formData.append('processingTime', String(result.processingTime || 0));
+      if (result.detections) {
+        formData.append('detections', JSON.stringify(result.detections));
+      }
+
+      await axios.post(
+        `${BACKEND_URL}/api/v1/predict/leaf-save`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': token,
+          },
+          timeout: 60000,
+        }
+      );
+
+      setShowResultModal(false);
+      setResult(null);
+      setDiseaseInfo(null);
+      setLatestPhoto(null);
+      console.log('Analysis saved successfully');
+    } catch (err) {
+      console.error('Save error:', err.message);
+      Alert.alert('Save Failed', 'Unable to save this result. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancelResult = () => {
     setShowResultModal(false);
     setResult(null);
     setDiseaseInfo(null);
+    setLatestPhoto(null);
   };
 
   // Handle permission request with dialog
@@ -273,7 +323,7 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
     // Permission request screen
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         
         <View style={[styles.permissionHeader, { backgroundColor: colors.primary }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -311,8 +361,8 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
 
           <Text style={[styles.platformNote, { color: colors.textLight }]}>
             {Platform.OS === 'android' 
-              ? '📱 Android: Camera permission required from Settings'
-              : '📱 iOS: Camera access required to use this feature'}
+              ? 'Android: Camera permission required from Settings'
+              : 'iOS: Camera access required to use this feature'}
           </Text>
         </View>
 
@@ -394,7 +444,7 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="chevron-left" size={28} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>🎥 Real-time Analysis</Text>
+        <Text style={styles.headerTitle}>Real-time Analysis</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -428,7 +478,7 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
       <View style={[styles.controlsContainer, { backgroundColor: `${colors.primary}F2` }]}>
         {isActive ? (
           <>
-            <Text style={styles.statusText}>� Please wait - Analyzing...</Text>
+            <Text style={styles.statusText}>Please wait - Analyzing...</Text>
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: colors.danger }]}
               onPress={stopRealTimeAnalysis}
@@ -441,7 +491,7 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
         ) : (
           <>
             <Text style={styles.instructionText}>Place camera on the leaf before clicking start</Text>
-            <Text style={styles.statusText}>📷 Ready for analysis</Text>
+            <Text style={styles.statusText}>Ready for analysis</Text>
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: colors.primaryLight }]}
               onPress={startRealTimeAnalysis}
@@ -458,20 +508,21 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
         visible={showResultModal}
         transparent
         animationType="slide"
-        onRequestClose={() => {
-          setShowResultModal(false);
-          setResult(null);
-          setDiseaseInfo(null);
-        }}
+        onRequestClose={handleCancelResult}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+          <View style={styles.modalContent}>
             <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
               {/* Result Header */}
               <View style={[styles.resultModalHeader, { 
                 backgroundColor: `${diseaseInfo?.color || colors.primary}15`,
               }]}>
-                <Text style={styles.resultModalIcon}>{diseaseInfo?.icon || '🔬'}</Text>
+                <MaterialCommunityIcons
+                  name={diseaseInfo?.iconName || 'leaf'}
+                  size={46}
+                  color={diseaseInfo?.color || colors.primary}
+                  style={styles.resultModalIcon}
+                />
                 <Text style={[styles.resultModalTitle, { color: diseaseInfo?.color || colors.primary }]}>
                   {diseaseInfo?.title || 'Analysis Result'}
                 </Text>
@@ -481,18 +532,23 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
               </View>
 
               {/* Description */}
-              <Text style={[styles.resultModalDescription, { color: colors.textLight }]}>
+              <Text style={styles.resultModalDescription}>
                 {diseaseInfo?.description}
               </Text>
 
               {/* Recommendations */}
               {diseaseInfo?.actions && (
                 <View style={styles.resultModalRecommendations}>
-                  <Text style={styles.resultModalRecommendationsTitle}>📋 Recommended Actions</Text>
+                  <Text style={styles.resultModalRecommendationsTitle}>Recommended Actions</Text>
                   {diseaseInfo.actions.map((action, idx) => (
                     <View key={idx} style={styles.resultModalActionItem}>
-                      <Text style={[styles.resultModalActionCheck, { color: diseaseInfo.color }]}>✓</Text>
-                      <Text style={[styles.resultModalActionText, { color: colors.text }]}>
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={16}
+                        color={diseaseInfo.color}
+                        style={styles.resultModalActionCheck}
+                      />
+                      <Text style={styles.resultModalActionText}>
                         {action}
                       </Text>
                     </View>
@@ -517,15 +573,22 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
                 <Text style={[styles.resultModalButtonText, { color: colors.danger }]}>Cancel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.resultModalButton, { 
-                  backgroundColor: colors.primaryLight
-                }]}
-                onPress={handleSaveResult}
-              >
-                <Feather name="check" size={20} color="#FFFFFF" />
-                <Text style={[styles.resultModalButtonText, { color: '#FFFFFF' }]}>Save Result</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.resultModalButton, { 
+                    backgroundColor: colors.primaryLight
+                  }]}
+                  onPress={handleSaveResult}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Feather name="check" size={20} color="#FFFFFF" />
+                  )}
+                  <Text style={[styles.resultModalButtonText, { color: '#FFFFFF' }]}>
+                    {saving ? 'Saving...' : 'Save Result'}
+                  </Text>
+                </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -642,7 +705,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#5A7A73',
+    color: '#5A6B63',
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -687,8 +750,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderTopWidth: 3,
     borderLeftWidth: 3,
-    borderTopColor: '#27AE60',
-    borderLeftColor: '#27AE60',
+    borderTopColor: '#2BB673',
+    borderLeftColor: '#2BB673',
     borderTopLeftRadius: 8,
   },
   cornerTopRight: {
@@ -699,8 +762,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderTopWidth: 3,
     borderRightWidth: 3,
-    borderTopColor: '#27AE60',
-    borderRightColor: '#27AE60',
+    borderTopColor: '#2BB673',
+    borderRightColor: '#2BB673',
     borderTopRightRadius: 8,
   },
   cornerBottomLeft: {
@@ -711,8 +774,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderBottomWidth: 3,
     borderLeftWidth: 3,
-    borderBottomColor: '#27AE60',
-    borderLeftColor: '#27AE60',
+    borderBottomColor: '#2BB673',
+    borderLeftColor: '#2BB673',
     borderBottomLeftRadius: 8,
   },
   cornerBottomRight: {
@@ -723,12 +786,12 @@ const styles = StyleSheet.create({
     height: 40,
     borderBottomWidth: 3,
     borderRightWidth: 3,
-    borderBottomColor: '#27AE60',
-    borderRightColor: '#27AE60',
+    borderBottomColor: '#2BB673',
+    borderRightColor: '#2BB673',
     borderBottomRightRadius: 8,
   },
   frameGuideText: {
-    color: 'rgba(39, 174, 96, 0.7)',
+    color: 'rgba(43, 182, 115, 0.7)',
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
@@ -747,7 +810,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     zIndex: 10,
-    backgroundColor: '#1B4D3EF0',
+    backgroundColor: '#0E3B2EF0',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     shadowColor: '#000000',
@@ -765,15 +828,14 @@ const styles = StyleSheet.create({
   resultOverlay: {
     position: 'absolute',
     top: 90,
-    left: '50%',
-    transform: [{ translateX: -150 }],
+    left: 16,
+    right: 16,
     backgroundColor: '#000000F0',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 16,
     borderLeftWidth: 6,
     zIndex: 5,
-    width: 300,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
@@ -798,7 +860,7 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     flexDirection: 'row',
-    backgroundColor: '#E74C3CF2',
+    backgroundColor: '#E2554DF2',
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 12,
@@ -807,7 +869,7 @@ const styles = StyleSheet.create({
     zIndex: 5,
     borderLeftWidth: 5,
     borderLeftColor: '#FFFFFF',
-    shadowColor: '#E74C3C',
+    shadowColor: '#E2554D',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -852,8 +914,11 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
     gap: 14,
+    backgroundColor: '#0E3B2EF0',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   statusText: {
     color: '#FFFFFF',
@@ -901,6 +966,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 24,
     paddingBottom: 20,
+    backgroundColor: '#0F1A16',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.25,
@@ -915,7 +981,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   resultModalIcon: {
-    fontSize: 64,
     marginBottom: 12,
   },
   resultModalTitle: {
@@ -932,20 +997,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: 'left',
+    color: '#9CB3A8',
   },
   resultModalRecommendations: {
-    backgroundColor: '#F0F9F6',
+    backgroundColor: '#14221C',
     borderRadius: 14,
     padding: 18,
     marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#27AE60',
+    borderWidth: 1,
+    borderColor: '#1E3027',
   },
   resultModalRecommendationsTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#F3F7F4',
     marginBottom: 14,
   },
   resultModalActionItem: {
@@ -954,9 +1020,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   resultModalActionCheck: {
-    fontWeight: '800',
     marginRight: 12,
-    fontSize: 16,
     marginTop: 2,
   },
   resultModalActionText: {
@@ -964,6 +1028,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
     lineHeight: 20,
+    color: '#F3F7F4',
   },
   resultModalButtons: {
     flexDirection: 'row',
@@ -984,3 +1049,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
+
+
+
+
+
+
+
+
+
+
+
+

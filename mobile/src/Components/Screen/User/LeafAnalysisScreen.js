@@ -36,59 +36,60 @@ export default function LeafAnalysisScreen({ navigation }) {
   const drawerSlideAnim = useRef(new Animated.Value(-280)).current;
 
   const colors = {
-    primary: '#1B4D3E',
-    primaryDark: '#0D2818',
-    primaryLight: '#27AE60',
+    primary: '#0E3B2E',
+    primaryDark: '#0A2C23',
+    primaryLight: '#2BB673',
     secondary: '#FFFFFF',
-    background: '#F8FAF7',
-    text: '#1B4D3E',
-    textLight: '#5A7A73',
-    border: '#D4E5DD',
-    accent: '#D4AF37',
-    warning: '#F39C12',
-    danger: '#E74C3C',
-    success: '#27AE60',
+    background: '#F3F7F4',
+    text: '#0E3B2E',
+    textLight: '#5A6B63',
+    border: '#DDE7E1',
+    accent: '#C9A227',
+    accentSoft: '#F4E9C6',
+    warning: '#F2A93B',
+    danger: '#E2554D',
+    success: '#2BB673',
   };
 
   // Disease recommendations
   const diseaseRecommendations = {
     'Healthy': {
-      icon: '✅',
+      iconName: 'check-circle',
       title: 'Plant is Healthy',
       description: 'Your pepper plant shows no signs of disease.',
       actions: ['Continue regular watering', 'Monitor weekly', 'Maintain proper spacing'],
       color: colors.success
     },
     'Footrot': {
-      icon: '⚠️',
+      iconName: 'alert-circle',
       title: 'Footrot Disease Detected',
       description: 'This is a fungal disease affecting the base of the plant.',
       actions: ['Remove infected plant parts', 'Improve soil drainage', 'Apply fungicide treatment', 'Avoid waterlogging'],
       color: colors.danger
     },
     'Pollu_Disease': {
-      icon: '🚨',
+      iconName: 'alert',
       title: 'Pollu Disease Detected',
       description: 'Viral infection causing leaf curling and discoloration.',
       actions: ['Isolate affected plant', 'Remove diseased leaves', 'Control aphid vectors', 'Use insecticide if needed'],
       color: colors.warning
     },
     'Slow_Decline': {
-      icon: '📉',
+      iconName: 'chart-line',
       title: 'Slow Decline Detected',
       description: 'Progressive weakening of plant vigor.',
       actions: ['Check soil moisture', 'Test soil pH and nutrients', 'Improve fertilization', 'Ensure proper drainage'],
       color: colors.warning
     },
     'Leaf_Blight': {
-      icon: '🍂',
+      iconName: 'leaf',
       title: 'Leaf Blight Detected',
       description: 'Fungal infection causing leaf spots and browning.',
       actions: ['Remove affected leaves', 'Improve air circulation', 'Reduce leaf wetness', 'Apply copper fungicide'],
       color: colors.danger
     },
     'Yellow_Mottle_Virus': {
-      icon: '💛',
+      iconName: 'virus',
       title: 'Yellow Mottle Virus Detected',
       description: 'Viral infection causing yellow patterns on leaves.',
       actions: ['Remove infected plant if severe', 'Control insect vectors', 'Sanitize tools', 'Avoid spreading to other plants'],
@@ -281,7 +282,7 @@ export default function LeafAnalysisScreen({ navigation }) {
     console.log(`🔍 Disease name mapping: "${diseaseName}" -> "${normalizedName}"`);
     
     return diseaseRecommendations[normalizedName] || {
-      icon: '🔬',
+      iconName: 'leaf',
       title: `${diseaseName || 'Unknown'} Disease`,
       description: 'Unable to identify the disease. The model returned: ' + diseaseName,
       actions: ['Consult agricultural expert', 'Get professional diagnosis', 'Check backend logs for model output'],
@@ -307,7 +308,7 @@ export default function LeafAnalysisScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <MobileHeader
         navigation={navigation}
         drawerOpen={drawerOpen}
@@ -322,7 +323,7 @@ export default function LeafAnalysisScreen({ navigation }) {
       />
 
       {/* Mode Selector */}
-      <View style={[styles.modeSelector, { backgroundColor: colors.primary }]}>
+      <View style={styles.modeSelector}>
         <TouchableOpacity
           style={[styles.modeButton, analysisMode === 'standard' && styles.modeButtonActive]}
           onPress={() => {
@@ -334,9 +335,9 @@ export default function LeafAnalysisScreen({ navigation }) {
           <MaterialCommunityIcons 
             name="upload" 
             size={18} 
-            color={analysisMode === 'standard' ? colors.accent : '#FFFFFF'} 
+            color={analysisMode === 'standard' ? colors.primary : colors.textLight} 
           />
-          <Text style={[styles.modeButtonText, analysisMode === 'standard' && { color: colors.accent }]}>
+          <Text style={[styles.modeButtonText, analysisMode === 'standard' && styles.modeButtonTextActive]}>
             Standard
           </Text>
         </TouchableOpacity>
@@ -348,9 +349,9 @@ export default function LeafAnalysisScreen({ navigation }) {
           <MaterialCommunityIcons 
             name="video" 
             size={18} 
-            color={analysisMode === 'realtime' ? colors.accent : '#FFFFFF'} 
+            color={analysisMode === 'realtime' ? colors.primary : colors.textLight} 
           />
-          <Text style={[styles.modeButtonText, analysisMode === 'realtime' && { color: colors.accent }]}>
+          <Text style={[styles.modeButtonText, analysisMode === 'realtime' && styles.modeButtonTextActive]}>
             Real-time
           </Text>
         </TouchableOpacity>
@@ -361,13 +362,29 @@ export default function LeafAnalysisScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
-        <View style={styles.titleContainer}>
-          <Image 
-            source={require('../../../../picsbl/logowalangbg.png')} 
-            style={styles.logoImage}
-          />
-          <Text style={styles.title}>🔬 Leaf Analysis</Text>
-          <Text style={styles.subtitle}>Detect pepper diseases using AI</Text>
+        <View style={styles.heroWrap}>
+          <View style={styles.heroGlow} />
+          <View style={styles.heroRing} />
+          <View style={[styles.titleContainer, { backgroundColor: colors.primary }]}>
+            <Image 
+              source={require('../../../../picsbl/logowalangbg.png')} 
+              style={styles.logoImage}
+            />
+            <Text style={styles.title}>Leaf Analysis</Text>
+            <Text style={styles.subtitle}>Detect pepper diseases using AI</Text>
+            <View style={styles.heroChips}>
+              {['AI Vision', 'Pepper Leaf', 'Fast Scan'].map((chip) => (
+                <View key={chip} style={styles.heroChip}>
+                  <Text style={styles.heroChipText}>{chip}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionKicker}>Step 1</Text>
+          <Text style={styles.sectionTitle}>Upload Leaf Image</Text>
         </View>
 
         {/* Image Selection Section */}
@@ -389,22 +406,28 @@ export default function LeafAnalysisScreen({ navigation }) {
               </TouchableOpacity>
             </>
           ) : (
-            <>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialCommunityIcons name="image-plus" size={48} color={colors.textLight} />
               <Text style={[styles.placeholderText, { color: colors.textLight }]}>
                 No image selected
               </Text>
-              <Text style={[styles.placeholderSubtext, { color: colors.border }]}>
+              <Text style={[styles.placeholderSubtext, { color: colors.textLight }]}>
                 Select an image of your pepper leaf
               </Text>
-            </>
+            </View>
           )}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionKicker}>Step 2</Text>
+          <Text style={styles.sectionTitle}>Run Analysis</Text>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.buttonRow}>
           <TouchableOpacity 
             style={[styles.actionButton, { 
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primaryDark,
               flex: 1,
               marginRight: 8
             }]}
@@ -461,6 +484,13 @@ export default function LeafAnalysisScreen({ navigation }) {
           )}
         </TouchableOpacity>
 
+        {result && (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionKicker}>Results</Text>
+            <Text style={styles.sectionTitle}>Health Insights</Text>
+          </View>
+        )}
+
         {/* Result Section */}
         {result && (
           <View style={[styles.card, { 
@@ -473,19 +503,29 @@ export default function LeafAnalysisScreen({ navigation }) {
             elevation: 6,
           }]}>
             {/* Result Header */}
-            <View style={[styles.resultHeader, { 
-              backgroundColor: `${resultInfo?.color || colors.primary}12`,
-              borderRadius: 12,
-              marginBottom: 20,
-              paddingBottom: 16,
-            }]}>
-              <Text style={styles.resultIcon}>{resultInfo?.icon || '🔬'}</Text>
-              <Text style={[styles.resultTitle, { color: resultInfo?.color || colors.primary }]}>
-                {resultInfo?.title || result.disease || 'Analysis Complete'}
-              </Text>
-              <Text style={[styles.confidence, { color: resultInfo?.color || colors.primary, fontWeight: '700' }]}>
-                {result.confidence}% Confidence
-              </Text>
+            <View style={styles.resultHeader}>
+              <View style={styles.resultTitleRow}>
+                <View
+                  style={[
+                    styles.resultBadge,
+                    { backgroundColor: (resultInfo?.color || colors.primary) + '22' },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={resultInfo?.iconName || 'leaf'}
+                    size={20}
+                    color={resultInfo?.color || colors.primary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.resultTitle, { color: resultInfo?.color || colors.primary }]}>
+                    {resultInfo?.title || result.disease || 'Analysis Complete'}
+                  </Text>
+                  <Text style={[styles.confidence, { color: colors.textLight }]}>
+                    {result.confidence}% Confidence
+                  </Text>
+                </View>
+              </View>
             </View>
 
             {/* Description */}
@@ -496,10 +536,15 @@ export default function LeafAnalysisScreen({ navigation }) {
             {/* Recommendations */}
             {resultInfo?.actions && (
               <View style={styles.recommendationsBox}>
-                <Text style={styles.recommendationsTitle}>📋 Recommended Actions</Text>
+                <Text style={styles.recommendationsTitle}>Recommended Actions</Text>
                 {resultInfo.actions.map((action, idx) => (
                   <View key={idx} style={styles.actionItem}>
-                    <Text style={[styles.actionCheck, { color: resultInfo.color, fontWeight: '800' }]}>✓</Text>
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={16}
+                      color={resultInfo.color}
+                      style={styles.actionCheck}
+                    />
                     <Text style={[styles.actionText, { color: colors.text }]}>
                       {action}
                     </Text>
@@ -511,7 +556,7 @@ export default function LeafAnalysisScreen({ navigation }) {
             {/* Detection Details */}
             {result.confidence && (
               <View style={styles.confidenceBox}>
-                <Text style={styles.confidenceTitle}>📊 Analysis Confidence</Text>
+                <Text style={styles.confidenceTitle}>Analysis Confidence</Text>
                 <View style={styles.confidenceBar}>
                   <View
                     style={[
@@ -562,92 +607,167 @@ const styles = StyleSheet.create({
   },
   modeSelector: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
+    padding: 6,
     gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
   modeButton: {
     flex: 1,
     flexDirection: 'row',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   modeButtonActive: {
-    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    backgroundColor: '#F4E9C6',
+    borderWidth: 1,
+    borderColor: '#E6D9B0',
   },
   modeButtonText: {
-    color: '#FFFFFF',
+    color: '#5A6B63',
     fontWeight: '600',
     fontSize: 13,
   },
+  modeButtonTextActive: {
+    color: '#0E3B2E',
+  },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  heroWrap: {
+    paddingHorizontal: 4,
+    marginBottom: 18,
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(43, 182, 115, 0.22)',
+    top: -20,
+    right: -20,
+  },
+  heroRing: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
+    bottom: -30,
+    left: -10,
   },
   titleContainer: {
-    marginBottom: 24,
     alignItems: 'center',
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  heroChips: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  heroChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  heroChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   logoImage: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
     resizeMode: 'contain',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#FFFFFF',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#5A7A73',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '500',
     textAlign: 'center',
   },
+  sectionHeader: {
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  sectionKicker: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1.6,
+    color: '#5A6B63',
+    marginBottom: 4,
+    fontWeight: '700',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0E3B2E',
+  },
   imageSection: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: 16,
-    borderColor: '#27AE60',
-    padding: 24,
+    borderWidth: 1,
+    borderRadius: 18,
+    borderColor: '#DDE7E1',
+    padding: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    minHeight: 300,
-    backgroundColor: '#E8F5E9',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    marginBottom: 20,
+    minHeight: 280,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   selectedImage: {
     width: '100%',
-    height: 280,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#27AE60',
+    height: 260,
+    borderRadius: 16,
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 280,
-    borderRadius: 14,
+    height: 260,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   clearButton: {
     flexDirection: 'row',
@@ -655,13 +775,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 12,
     marginTop: 14,
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   clearButtonText: {
     color: '#FFFFFF',
@@ -670,15 +785,15 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   placeholderText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     marginTop: 12,
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   placeholderSubtext: {
     fontSize: 13,
-    marginTop: 8,
-    color: '#27AE60',
+    marginTop: 6,
+    color: '#5A6B63',
     fontWeight: '500',
   },
   buttonRow: {
@@ -691,13 +806,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 14,
     gap: 8,
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowRadius: 10,
     elevation: 4,
   },
   buttonText: {
@@ -707,18 +822,13 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     flexDirection: 'row',
-    backgroundColor: '#FFEBEE',
-    borderLeftWidth: 6,
     borderRadius: 12,
+    borderWidth: 1,
     padding: 14,
     marginBottom: 16,
     gap: 12,
     alignItems: 'center',
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
   },
   errorText: {
     flex: 1,
@@ -734,10 +844,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginTop: 8,
-    shadowColor: '#27AE60',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#2BB673',
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
-    shadowRadius: 12,
+    shadowRadius: 14,
     elevation: 8,
   },
   analyzeButtonText: {
@@ -746,47 +856,49 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   resultHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6ECE8',
   },
-  resultIcon: {
-    fontSize: 64,
-    marginBottom: 12,
+  resultTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  resultBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   resultTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-    marginBottom: 10,
-    textAlign: 'center',
   },
   confidence: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1B4D3E',
+    fontSize: 13,
+    fontWeight: '600',
   },
   description: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   recommendationsBox: {
-    backgroundColor: '#F0F9F6',
+    backgroundColor: '#EAF6F0',
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
     marginBottom: 18,
-    borderLeftWidth: 4,
-    borderLeftColor: '#27AE60',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   recommendationsTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     marginBottom: 14,
   },
   actionItem: {
@@ -795,9 +907,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   actionCheck: {
-    fontWeight: '800',
-    marginRight: 12,
-    fontSize: 16,
+    marginRight: 10,
     marginTop: 2,
   },
   actionText: {
@@ -807,7 +917,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   predictionsBox: {
-    backgroundColor: '#F8FAF7',
+    backgroundColor: '#F3F7F4',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -815,39 +925,31 @@ const styles = StyleSheet.create({
   predictionsTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     marginBottom: 12,
   },
   confidenceBox: {
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#F3F7F4',
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
     marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     borderLeftWidth: 4,
-    borderLeftColor: '#F39C12',
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderLeftColor: '#F2A93B',
   },
   confidenceTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     marginBottom: 14,
   },
   confidenceBar: {
-    height: 16,
+    height: 12,
     backgroundColor: '#E0E0E0',
     borderRadius: 8,
     overflow: 'hidden',
     marginBottom: 12,
-    shadowColor: '#1B4D3E',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 1,
   },
   confidenceFill: {
     height: '100%',
@@ -856,7 +958,7 @@ const styles = StyleSheet.create({
   confidencePercent: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     textAlign: 'center',
   },
   detectionItem: {
@@ -864,18 +966,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#1B4D3E',
+    borderLeftColor: '#0E3B2E',
   },
   detectionLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#5A7A73',
+    color: '#5A6B63',
     marginBottom: 4,
   },
   detectionValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   predictionRow: {
     marginBottom: 12,
@@ -883,12 +985,12 @@ const styles = StyleSheet.create({
   diseaseName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     marginBottom: 4,
   },
   predictionBar: {
     height: 8,
-    backgroundColor: '#D4E5DD',
+    backgroundColor: '#DDE7E1',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 4,
@@ -900,7 +1002,7 @@ const styles = StyleSheet.create({
   confidenceValue: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     textAlign: 'right',
   },
   analyzeAgainButton: {
@@ -919,13 +1021,18 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
 });
+
+
+

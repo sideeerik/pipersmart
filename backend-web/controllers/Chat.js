@@ -93,7 +93,14 @@ exports.getAllChats = async (req, res) => {
       const currentUser = await User.findById(userId);
 
       if (otherUser) {
-        chats.push({
+        // count unread messages within this chat for the current user
+      const unreadCount = await Message.countDocuments({
+        chatId: chatKey,
+        sender: { $ne: userId },
+        isRead: false
+      });
+
+      chats.push({
           _id: chatKey,
           participants: [
             { _id: userId, name: currentUser.name, email: currentUser.email, avatar: currentUser.avatar },
@@ -101,7 +108,8 @@ exports.getAllChats = async (req, res) => {
           ],
           lastMessage: lastMsg.content,
           lastMessageBy: lastMsg.sender,
-          lastMessageTime: lastMsg.createdAt
+          lastMessageTime: lastMsg.createdAt,
+          unreadCount // added so client can style individual conversations
         });
       }
     }
@@ -196,6 +204,7 @@ exports.getMessages = async (req, res) => {
 exports.markMessageAsRead = async (req, res) => {
   try {
     const { messageId } = req.params;
+    console.log(`🔁 markMessageAsRead called for ${messageId}`);
 
     const message = await Message.findByIdAndUpdate(
       messageId,
@@ -204,9 +213,11 @@ exports.markMessageAsRead = async (req, res) => {
     );
 
     if (!message) {
+      console.log(`❌ message not found for id ${messageId}`);
       return res.status(404).json({ success: false, message: 'Message not found' });
     }
 
+    console.log(`✅ message marked read: ${messageId}`);
     res.status(200).json({
       success: true,
       data: message,
@@ -312,6 +323,54 @@ exports.searchUsers = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error searching users:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get unread messages count
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find all messages where user is the recipient (not the sender) and isRead is false
+    const unreadCount = await Message.countDocuments({
+      sender: { $ne: userId },
+      isRead: false
+    });
+
+    console.log(`✅ Unread messages count: ${unreadCount}`);
+    res.status(200).json({
+      success: true,
+      data: { unreadCount }
+    });
+  } catch (error) {
+    console.error('❌ Error getting unread count:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Mark all unread messages for the current user as read
+exports.markAllMessagesRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const result = await Message.updateMany(
+      { sender: { $ne: userId }, isRead: false },
+      { isRead: true, readAt: new Date() }
+    );
+    console.log(`✅ Marked ${result.modifiedCount || result.nModified || 0} messages read`);
+
+    // return new count (should be zero)
+    const unreadCount = await Message.countDocuments({
+      sender: { $ne: userId },
+      isRead: false
+    });
+
+    res.status(200).json({
+      success: true,
+      data: { unreadCount }
+    });
+  } catch (error) {
+    console.error('❌ Error marking all messages read:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

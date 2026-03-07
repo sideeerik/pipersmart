@@ -34,20 +34,23 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
   const [imageSize, setImageSize] = useState(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [modalResult, setModalResult] = useState(null);
+  const [latestPhoto, setLatestPhoto] = useState(null);
+  const [saving, setSaving] = useState(false);
   const cameraRef = useRef(null);
   const analyzeIntervalRef = useRef(null);
   const isFirstLoadRef = useRef(true);
   const { width: screenWidth } = Dimensions.get('window');
 
   const colors = {
-    primary: '#1B4D3E',
-    primaryLight: '#27AE60',
-    background: '#F8FAF7',
-    text: '#1B4D3E',
-    textLight: '#5A7A73',
-    danger: '#E74C3C',
-    success: '#27AE60',
-    warning: '#F39C12',
+    primary: '#0E3B2E',
+    primaryLight: '#2BB673',
+    background: '#F3F7F4',
+    text: '#0E3B2E',
+    textLight: '#5A6B63',
+    danger: '#E2554D',
+    success: '#2BB673',
+    warning: '#F2A93B',
+    accent: '#C9A227',
   };
 
   const ripenessColors = {
@@ -106,12 +109,17 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
         return;
       }
 
-      const formData = new FormData();
-      formData.append('image', {
+      const photoName = `bunga_${Date.now()}.jpg`;
+      const photoPayload = {
         uri: photo.uri,
         type: 'image/jpeg',
-        name: `bunga_${Date.now()}.jpg`,
-      });
+        name: photoName,
+      };
+      setLatestPhoto(photoPayload);
+
+      const formData = new FormData();
+      formData.append('image', photoPayload);
+      formData.append('save', 'false');
 
       const response = await axios.post(
         `${BACKEND_URL}/api/v1/predict/bunga-with-objects`,
@@ -168,6 +176,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
           bunga_detections: response.data.bunga_detections,
           analysisId: response.data.analysisId,
           market_grade: response.data.market_grade,
+          processingTime: response.data.processingTime || 0,
         };
         
         setResult(resultData);
@@ -224,12 +233,13 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
     setIsActive(true);
     setError(null);
     setResult(null);
-    
-    console.log('🎥 Starting real-time analysis with token:', token.substring(0, 20) + '...');
-    
+    setLatestPhoto(null);
+
+    console.log('Starting real-time analysis with token:', token.substring(0, 20) + '...');
+
     // Start first capture immediately
     await captureAndAnalyze();
-    
+
     // Then continue capturing with 1.5s minimum interval between captures
     analyzeIntervalRef.current = setInterval(async () => {
       if (isActive) {
@@ -245,11 +255,12 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
       analyzeIntervalRef.current = null;
     }
     // Clear results after stopping
-    setResult(null);
-    setBungaDetections([]);
-    setOtherObjects([]);
-    setImageSize(null);
-  };
+      setResult(null);
+      setBungaDetections([]);
+      setOtherObjects([]);
+      setImageSize(null);
+      setLatestPhoto(null);
+    };
 
   // Handle permission request with dialog
   const handlePermissionRequest = async () => {
@@ -281,14 +292,51 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
   };
 
   const handleSaveResult = async () => {
-    // Result already saved by backend during prediction
-    setShowResultModal(false);
-    setResult(null);
-    setModalResult(null);
-    setIsActive(false);
-    setBungaDetections([]);
-    setImageSize(null);
-    console.log('✅ Analysis saved successfully');
+    if (!modalResult || !latestPhoto || saving) return;
+
+    try {
+      setSaving(true);
+      const token = axios.defaults.headers.common['Authorization'];
+      if (!token) {
+        Alert.alert('Authentication Required', 'Please login first before saving');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('image', latestPhoto);
+      formData.append('ripeness', modalResult.ripeness);
+      formData.append('ripeness_percentage', String(modalResult.ripeness_percentage || 0));
+      formData.append('health_class', modalResult.health_class || '');
+      formData.append('health_percentage', String(modalResult.health_percentage || 0));
+      formData.append('confidence', String(modalResult.confidence || 0));
+      formData.append('processingTime', String(modalResult.processingTime || 0));
+
+      await axios.post(
+        `${BACKEND_URL}/api/v1/predict/bunga-save`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': token,
+          },
+          timeout: 60000,
+        }
+      );
+
+      setShowResultModal(false);
+      setResult(null);
+      setModalResult(null);
+      setIsActive(false);
+      setBungaDetections([]);
+      setImageSize(null);
+      setLatestPhoto(null);
+      console.log('Analysis saved successfully');
+    } catch (err) {
+      console.error('Save error:', err.message);
+      Alert.alert('Save Failed', 'Unable to save this result. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancelResult = () => {
@@ -298,13 +346,14 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
     setIsActive(false);
     setBungaDetections([]);
     setImageSize(null);
+    setLatestPhoto(null);
   };
 
   if (!permissionRequested) {
     // Permission request screen
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         
         <View style={[styles.permissionHeader, { backgroundColor: colors.primary }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -342,8 +391,8 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
 
           <Text style={[styles.platformNote, { color: colors.textLight }]}>
             {Platform.OS === 'android' 
-              ? '📱 Android: Camera permission required from Settings'
-              : '📱 iOS: Camera access required to use this feature'}
+              ? 'Android: Camera permission required from Settings'
+              : 'iOS: Camera access required to use this feature'}
           </Text>
         </View>
 
@@ -420,6 +469,14 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
             colors={colors}
           />
         )}
+        {/* Camera Frame Guide */}
+        <View style={styles.frameGuide}>
+          <View style={styles.cornerTopLeft} />
+          <View style={styles.cornerTopRight} />
+          <View style={styles.cornerBottomLeft} />
+          <View style={styles.cornerBottomRight} />
+          <Text style={styles.frameGuideText}>Position peppercorn here</Text>
+        </View>
       </View>
 
       {/* Top Header */}
@@ -427,7 +484,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="chevron-left" size={28} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>🎥 Real-time Bunga Analysis</Text>
+        <Text style={styles.headerTitle}>Real-time Bunga Analysis</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -471,15 +528,18 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
         {/* Status Indicator */}
         <View style={styles.statusSection}>
           {isActive ? (
-            <View style={[styles.statusBadge, { backgroundColor: colors.danger + '40' }]}>
-              <Text style={styles.statusDot}>🔴</Text>
-              <Text style={[styles.statusText, { color: colors.danger }]}>🔴 LIVE - Analyzing every 1.5s</Text>
+            <View style={[styles.statusBadge, { backgroundColor: colors.danger + '26' }]}>
+              <View style={[styles.statusDot, { backgroundColor: colors.danger }]} />
+              <Text style={[styles.statusText, { color: colors.danger }]}>LIVE - Analyzing every 1.5s</Text>
             </View>
           ) : (
-            <View style={[styles.statusBadge, { backgroundColor: colors.primaryLight + '40' }]}>
-              <Text style={styles.statusDot}>📷</Text>
-              <Text style={[styles.statusText, { color: colors.primaryLight }]}> Ready for real-time analysis</Text>
+            <View style={[styles.statusBadge, { backgroundColor: colors.primaryLight + '26' }]}>
+              <View style={[styles.statusDot, { backgroundColor: colors.primaryLight }]} />
+              <Text style={[styles.statusText, { color: colors.primaryLight }]}>Ready for real-time analysis</Text>
             </View>
+          )}
+          {!isActive && (
+            <Text style={styles.instructionText}>Place camera on the peppercorn before clicking start</Text>
           )}
         </View>
 
@@ -490,7 +550,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
             {result.ripeness && (
               <View style={[styles.resultCard, { backgroundColor: colors.primaryLight + '20', borderLeftColor: colors.primaryLight }]}>
                 <View style={styles.resultCardHeader}>
-                  <Text style={[styles.resultCardTitle, { color: colors.primaryLight }]}>◉ RIPENESS</Text>
+                  <Text style={[styles.resultCardTitle, { color: colors.primaryLight }]}>RIPENESS</Text>
                 </View>
                 <Text style={[styles.resultCardValue, { color: colors.primaryLight }]}>
                   {result.ripeness}{result.ripeness_percentage ? ` (${result.ripeness_percentage}%)` : ''}
@@ -505,7 +565,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
             <View style={[styles.resultCard, { backgroundColor: '#2196F3' + '20', borderLeftColor: '#2196F3' }]}>
               <View style={styles.resultCardHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[styles.resultCardTitle, { color: '#2196F3' }]}>💚 HEALTH CLASS</Text>
+                  <Text style={[styles.resultCardTitle, { color: '#2196F3' }]}>HEALTH CLASS</Text>
                   {!result.health_class && isActive && (
                     <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />
                   )}
@@ -559,14 +619,28 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
 
       {/* Result Confirmation Modal */}
       {showResultModal && modalResult && (
-        <Modal visible={showResultModal} transparent animationType="slide">
+        <Modal
+          visible={showResultModal}
+          transparent
+          animationType="slide"
+          onRequestClose={handleCancelResult}
+        >
           <View style={styles.modalOverlay}>
             <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Modal Header */}
               <View style={[styles.resultModalHeader, { backgroundColor: ripenessColors[modalResult.ripeness] + '20' }]}>
-                <Text style={[styles.resultModalIcon, { color: ripenessColors[modalResult.ripeness] }]}>
-                  {modalResult.ripeness === 'Ripe' ? '🟢' : modalResult.ripeness === 'Unripe' ? '🟡' : '🔴'}
-                </Text>
+                <MaterialCommunityIcons
+                  name={
+                    modalResult.ripeness === 'Ripe'
+                      ? 'check-circle'
+                      : modalResult.ripeness === 'Unripe'
+                        ? 'clock-outline'
+                        : 'close-circle'
+                  }
+                  size={46}
+                  color={ripenessColors[modalResult.ripeness]}
+                  style={styles.resultModalIcon}
+                />
                 <Text style={[styles.resultModalTitle, { color: ripenessColors[modalResult.ripeness] }]}>
                   {modalResult.ripeness}
                 </Text>
@@ -605,19 +679,26 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
               {/* Action Buttons */}
               <View style={styles.resultModalButtons}>
                 <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: '#E74C3C20', borderColor: '#E74C3C', borderWidth: 1.5 }]}
+                  style={[styles.modalButton, { backgroundColor: '#E2554D20', borderColor: '#E2554D', borderWidth: 1.5 }]}
                   onPress={handleCancelResult}
                 >
-                  <Feather name="x" size={20} color="#E74C3C" />
-                  <Text style={[styles.modalButtonText, { color: '#E74C3C' }]}>Cancel</Text>
+                  <Feather name="x" size={20} color="#E2554D" />
+                  <Text style={[styles.modalButtonText, { color: '#E2554D' }]}>Cancel</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: '#27AE60' }]}
+                  style={[styles.modalButton, { backgroundColor: '#2BB673' }]}
                   onPress={handleSaveResult}
+                  disabled={saving}
                 >
-                  <Feather name="check" size={20} color="#FFFFFF" />
-                  <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>Save Result</Text>
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Feather name="check" size={20} color="#FFFFFF" />
+                  )}
+                  <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                    {saving ? 'Saving...' : 'Save Result'}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -646,7 +727,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     zIndex: 10,
-    shadowColor: '#1B4D3E',
+    shadowColor: '#0E3B2E',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -672,14 +753,14 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 14,
     textAlign: 'center',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   permissionDescription: {
     fontSize: 15,
     lineHeight: 23,
     textAlign: 'center',
     marginBottom: 32,
-    color: '#5A7A73',
+    color: '#5A6B63',
   },
   featuresList: {
     width: '100%',
@@ -701,7 +782,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
     fontStyle: 'italic',
-    color: '#5A7A73',
+    color: '#5A6B63',
   },
   permissionButtons: {
     flexDirection: 'row',
@@ -715,7 +796,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#1B4D3E',
+    shadowColor: '#0E3B2E',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -738,7 +819,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#5A7A73',
+    color: '#5A6B63',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -750,7 +831,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 10,
-    shadowColor: '#1B4D3E',
+    shadowColor: '#0E3B2E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
@@ -764,6 +845,74 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
+  frameGuide: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -120 }, { translateY: -120 }],
+    width: 240,
+    height: 240,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 4,
+  },
+  cornerTopLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopColor: '#2BB673',
+    borderLeftColor: '#2BB673',
+    borderTopLeftRadius: 8,
+  },
+  cornerTopRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderTopColor: '#2BB673',
+    borderRightColor: '#2BB673',
+    borderTopRightRadius: 8,
+  },
+  cornerBottomLeft: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderBottomColor: '#2BB673',
+    borderLeftColor: '#2BB673',
+    borderBottomLeftRadius: 8,
+  },
+  cornerBottomRight: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomColor: '#2BB673',
+    borderRightColor: '#2BB673',
+    borderBottomRightRadius: 8,
+  },
+  frameGuideText: {
+    color: 'rgba(43, 182, 115, 0.7)',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    position: 'absolute',
+    bottom: -40,
+    letterSpacing: 0.5,
+  },
   header: {
     position: 'absolute',
     top: 0,
@@ -775,7 +924,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     zIndex: 10,
-    backgroundColor: `#1B4D3EE6`,
+    backgroundColor: `#0E3B2EE6`,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
@@ -792,9 +941,8 @@ const styles = StyleSheet.create({
   resultOverlay: {
     position: 'absolute',
     top: 80,
-    left: '50%',
-    transform: [{ translateX: -150 }],
-    width: 300,
+    left: 16,
+    right: 16,
     backgroundColor: '#000000E6',
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -823,14 +971,14 @@ const styles = StyleSheet.create({
     left: 14,
     right: 14,
     flexDirection: 'row',
-    backgroundColor: '#E74C3CE6',
+    backgroundColor: '#E2554DE6',
     paddingHorizontal: 14,
     paddingVertical: 13,
     borderRadius: 12,
     alignItems: 'center',
     gap: 10,
     zIndex: 5,
-    shadowColor: '#E74C3C',
+    shadowColor: '#E2554D',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -875,7 +1023,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
     maxHeight: 300,
-    backgroundColor: '#1B4D3EF2',
+    backgroundColor: '#0E3B2EF2',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.2,
@@ -883,10 +1031,20 @@ const styles = StyleSheet.create({
     elevation: 8,
     borderTopWidth: 1,
     borderTopColor: '#FFFFFF10',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   statusSection: {
     paddingVertical: 10,
     paddingHorizontal: 10,
+  },
+  instructionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    opacity: 0.8,
+    marginTop: 10,
   },
   statusText: {
     color: '#FFFFFF',
@@ -902,7 +1060,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   statusDot: {
-    fontSize: 16,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   resultsSection: {
     gap: 10,
@@ -1009,7 +1169,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#0F1A16',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
@@ -1024,7 +1184,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   resultModalIcon: {
-    fontSize: 48,
     marginBottom: 8,
   },
   resultModalTitle: {
@@ -1047,12 +1206,12 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#5A7A73',
+    color: '#9CB3A8',
   },
   detailValue: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#F3F7F4',
   },
   resultModalButtons: {
     flexDirection: 'row',
@@ -1079,3 +1238,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
+
+
+
+
+
+

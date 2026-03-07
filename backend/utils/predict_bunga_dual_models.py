@@ -59,13 +59,13 @@ def predict_bunga_unified(image_path, unified_model_path):
             unified_model = YOLO(unified_model_path)
             print(f"✅ Model loaded successfully", file=sys.stderr)
             
-            print(f"🎯 Running inference with conf=0.25, imgsz=640...", file=sys.stderr)
+            print(f"🎯 Running inference with conf=0.10, imgsz=1024...", file=sys.stderr)
             unified_results = unified_model.predict(
                 image_path, 
-                conf=0.25,      # Lowered from 0.5 to catch weaker detections
-                imgsz=640,      # Increased from 512 for better detail
+                conf=0.10,      # Lowered to catch weaker detections
+                imgsz=1024,     # Higher resolution for small objects
                 verbose=False, 
-                half=True
+                half=False
             )
             print(f"✅ Inference completed", file=sys.stderr)
             
@@ -174,6 +174,15 @@ def predict_bunga_unified(image_path, unified_model_path):
                 # No bunga detected in the image
                 error_msg = "No black pepper bunga detected in image"
                 print(f"⚠️ NO DETECTIONS FOUND - No bunga detected in image", file=sys.stderr)
+
+            # Save debug image with boxes (even if none) for inspection
+            try:
+                debug_img = unified_data.plot()
+                debug_path = str(Path(image_path).with_suffix('')) + "_debug.jpg"
+                cv2.imwrite(debug_path, debug_img)
+                print(f"🧪 Debug image saved: {debug_path}", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠️ Failed to save debug image: {e}", file=sys.stderr)
         
         except Exception as e:
             error_msg = f"Detection error: {str(e)}"

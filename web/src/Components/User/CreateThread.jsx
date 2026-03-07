@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { validateContent } from '../../utils/contentValidation';
+import { validateContent } from '../utils/contentValidation';
+import Header from '../shared/Header';
 import './Forum.css';
 
 const CATEGORIES = [
@@ -236,13 +237,18 @@ export default function CreateThread() {
         userId: userId
       };
 
+      const token = localStorage.getItem('token');
+
       if (isDraft && threadId) {
         // Update draft to published
         await axios.put(
           `${import.meta.env.VITE_BACKEND_URL}/api/v1/forum/threads/${threadId}`,
           postData,
           {
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            }
           }
         );
       } else {
@@ -251,7 +257,10 @@ export default function CreateThread() {
           `${import.meta.env.VITE_BACKEND_URL}/api/v1/forum/threads`,
           postData,
           {
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            }
           }
         );
       }
@@ -276,150 +285,153 @@ export default function CreateThread() {
   };
 
   return (
-    <div className="create-thread-container">
-      <div className="create-thread-card">
-        <h1>✍️ Create New Discussion</h1>
+    <>
+      <Header />
+      <div className="create-thread-container">
+        <div className="create-thread-card">
+          <h1>✍️ Create New Discussion</h1>
 
-        {isDraft && (
-          <div className="draft-badge">
-            📝 Editing saved draft
-          </div>
-        )}
-
-        {saveMessage && (
-          <div className="save-message">
-            {saveMessage}
-          </div>
-        )}
-
-        {/* Validation Message Banner */}
-        {!validation.isValid && (
-          <div style={{
-            padding: '16px',
-            marginBottom: '20px',
-            borderRadius: '8px',
-            backgroundColor: validation.severity === 'BLOCK' ? '#fee' : '#fef3cd',
-            border: `2px solid ${validation.severity === 'BLOCK' ? '#f88' : '#ffc107'}`,
-            color: validation.severity === 'BLOCK' ? '#c33' : '#856404',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}>
-            {validation.message}
-          </div>
-        )}
-
-        {/* Title Input */}
-        <div className="form-group">
-          <label>Title</label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleInputChange}
-            placeholder="What's your question or topic?"
-            className="form-input"
-            maxLength={200}
-          />
-          <p className="char-count">{formData.title.length}/200</p>
-        </div>
-
-        {/* Category Dropdown */}
-        <div className="form-group">
-          <label>Category</label>
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleInputChange}
-            className="form-select"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Description Textarea */}
-        <div className="form-group">
-          <label>Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            placeholder="Provide more details about your discussion..."
-            className="form-textarea"
-            rows={8}
-          />
-          <p className="char-count">{formData.description.length} characters</p>
-        </div>
-
-        {/* Image Upload Section */}
-        <div className="form-group">
-          <label>📸 Add Pictures</label>
-          <div className="image-upload-area">
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="image-input"
-              id="image-input"
-            />
-            <label htmlFor="image-input" className="image-upload-label">
-              + Click to upload images or drag and drop
-            </label>
-          </div>
-
-          {/* Image Previews */}
-          {imagePreviews.length > 0 && (
-            <div className="image-previews">
-              <p className="preview-title">
-                {imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} attached
-              </p>
-              <div className="preview-grid">
-                {imagePreviews.map((image, index) => (
-                  <div key={index} className="preview-item">
-                    <img src={image.url} alt={`Preview ${index + 1}`} />
-                    <button
-                      type="button"
-                      className="remove-image-btn"
-                      onClick={() => handleRemoveImage(index)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
+          {isDraft && (
+            <div className="draft-badge">
+              📝 Editing saved draft
             </div>
           )}
-        </div>
 
-        {/* Action Buttons */}
-        <div className="action-buttons">
-          <button
-            className="btn btn-draft"
-            onClick={handleSaveDraft}
-            disabled={loading}
-          >
-            📝 Save Draft
-          </button>
-          <button
-            className="btn btn-post"
-            onClick={handlePostDiscussion}
-            disabled={loading}
-          >
-            {loading ? 'Posting...' : '✉️ Post Discussion'}
-          </button>
-          <button
-            className="btn btn-cancel"
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            Cancel
-          </button>
+          {saveMessage && (
+            <div className="save-message">
+              {saveMessage}
+            </div>
+          )}
+
+          {/* Validation Message Banner */}
+          {!validation.isValid && (
+            <div style={{
+              padding: '16px',
+              marginBottom: '20px',
+              borderRadius: '8px',
+              backgroundColor: validation.severity === 'BLOCK' ? '#fee' : '#fef3cd',
+              border: `2px solid ${validation.severity === 'BLOCK' ? '#f88' : '#ffc107'}`,
+              color: validation.severity === 'BLOCK' ? '#c33' : '#856404',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>
+              {validation.message}
+            </div>
+          )}
+
+          {/* Title Input */}
+          <div className="form-group">
+            <label>Title</label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              placeholder="What's your question or topic?"
+              className="form-input"
+              maxLength={200}
+            />
+            <p className="char-count">{formData.title.length}/200</p>
+          </div>
+
+          {/* Category Dropdown */}
+          <div className="form-group">
+            <label>Category</label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="form-select"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description Textarea */}
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder="Provide more details about your discussion..."
+              className="form-textarea"
+              rows={8}
+            />
+            <p className="char-count">{formData.description.length} characters</p>
+          </div>
+
+          {/* Image Upload Section */}
+          <div className="form-group">
+            <label>📸 Add Pictures</label>
+            <div className="image-upload-area">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="image-input"
+                id="image-input"
+              />
+              <label htmlFor="image-input" className="image-upload-label">
+                + Click to upload images or drag and drop
+              </label>
+            </div>
+
+            {/* Image Previews */}
+            {imagePreviews.length > 0 && (
+              <div className="image-previews">
+                <p className="preview-title">
+                  {imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} attached
+                </p>
+                <div className="preview-grid">
+                  {imagePreviews.map((image, index) => (
+                    <div key={index} className="preview-item">
+                      <img src={image.url} alt={`Preview ${index + 1}`} />
+                      <button
+                        type="button"
+                        className="remove-image-btn"
+                        onClick={() => handleRemoveImage(index)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="action-buttons">
+            <button
+              className="btn btn-draft"
+              onClick={handleSaveDraft}
+              disabled={loading}
+            >
+              📝 Save Draft
+            </button>
+            <button
+              className="btn btn-post"
+              onClick={handlePostDiscussion}
+              disabled={loading}
+            >
+              {loading ? 'Posting...' : '✉️ Post Discussion'}
+            </button>
+            <button
+              className="btn btn-cancel"
+              onClick={handleCancel}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

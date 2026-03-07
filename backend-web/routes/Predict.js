@@ -60,7 +60,7 @@ router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req,
       // Python script path - Use NEW CPU-Optimized Web Script
       const pythonScriptPath = path.join(__dirname, '../utils/predict_disease_yolov8.py');
       const modelPath = path.join(__dirname, '../ml_models/leaf/train/weights/best.pt');
-      const pythonExe = process.env.PYTHON_EXE || 'C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+      const pythonExe = process.env.PYTHON_EXE || 'python';
       
       console.log(`🐍 [${requestId}] Spawning Python (CPU-Optimized)...`);
       console.log(`🐍 [${requestId}] Script: ${pythonScriptPath}`);
@@ -200,7 +200,7 @@ router.post('/bunga-with-objects', isAuthenticatedUser, upload.single('image'), 
       // Python script path - Use NEW CPU-Optimized Web Script
       const pythonScriptPath = path.join(__dirname, '../utils/predict_bunga_web_cpu.py');
       const bungaModelPath = path.join(__dirname, '../ml_models/bunga/train/weights/best.pt');
-      const pythonExe = process.env.PYTHON_EXE || 'C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+      const pythonExe = process.env.PYTHON_EXE || 'python';
       
       console.log(`🐍 [${requestId}] Spawning Python (CPU-Optimized)...`);
       console.log(`🐍 [${requestId}] Script: ${pythonScriptPath}`);

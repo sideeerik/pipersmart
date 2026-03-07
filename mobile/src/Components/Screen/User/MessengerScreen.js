@@ -47,9 +47,13 @@ export default function MessengerScreen({ navigation }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showEmojiReaction, setShowEmojiReaction] = useState(null); // messageId of message to react to
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSlideAnim] = useState(new Animated.Value(-300));
   const flatListRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const shouldScrollToLatestRef = useRef(false);
+  const firstScrollDoneRef = useRef(false);
 
   const openDrawer = () => {
     setDrawerOpen(true);
@@ -77,8 +81,23 @@ export default function MessengerScreen({ navigation }) {
     border: '#D4E5DD',
     success: '#27AE60',
     danger: '#E74C3C',
-    message: '#E3F2FD',
-    messageSent: '#C8E6C9',
+    message: '#EEF4FF',
+    messageSent: '#DCFCE7',
+  };
+
+  const sortMessagesAsc = (items = []) => {
+    if (!Array.isArray(items)) return [];
+    return [...items].sort((a, b) => {
+      const ta = new Date(a?.createdAt).getTime() || 0;
+      const tb = new Date(b?.createdAt).getTime() || 0;
+      return ta - tb;
+    });
+  };
+
+  const scrollToLatest = (animated = true) => {
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToEnd({ animated });
+    });
   };
 
   useEffect(() => {
@@ -101,11 +120,28 @@ export default function MessengerScreen({ navigation }) {
 
   useEffect(() => {
     if (selectedChat) {
+      setMessages([]);
+      setLoadingMessages(true);
+      setShowJumpToLatest(false);
+      isAtBottomRef.current = true;
+      shouldScrollToLatestRef.current = true;
+      firstScrollDoneRef.current = false;
+
       fetchMessages(selectedChat._id);
       const interval = setInterval(() => fetchMessages(selectedChat._id), 3000); // Refresh messages every 3 seconds
       return () => clearInterval(interval);
     }
   }, [selectedChat]);
+
+  useEffect(() => {
+    if (!selectedChat || messages.length === 0) return;
+    if (shouldScrollToLatestRef.current || isAtBottomRef.current) {
+      scrollToLatest(firstScrollDoneRef.current);
+      shouldScrollToLatestRef.current = false;
+      firstScrollDoneRef.current = true;
+      setShowJumpToLatest(false);
+    }
+  }, [messages, selectedChat?._id]);
 
   const fetchChats = async () => {
     try {
@@ -147,7 +183,7 @@ export default function MessengerScreen({ navigation }) {
       });
 
       if (response.data?.data) {
-        setMessages(response.data.data);
+        setMessages(sortMessagesAsc(response.data.data));
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -191,15 +227,16 @@ export default function MessengerScreen({ navigation }) {
 
       if (response.data?.data) {
         console.log(`✅ Message sent with ${selectedImage ? 'image' : 'text'}`);
-        setMessages([...messages, response.data.data]);
+        setMessages((prev) => sortMessagesAsc([...prev, response.data.data]));
         setMessageInput('');
         setSelectedImage(null);
+        shouldScrollToLatestRef.current = true;
         
         // Refresh chats list to show updated lastMessage
         fetchChats();
         
         setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
+          scrollToLatest(true);
         }, 100);
       }
     } catch (error) {
@@ -240,7 +277,6 @@ export default function MessengerScreen({ navigation }) {
           friend: friend,
         };
         setSelectedChat(chatData);
-        fetchMessages(response.data.data._id);
       }
     } catch (error) {
       console.error('Error starting chat:', error);
@@ -327,6 +363,25 @@ export default function MessengerScreen({ navigation }) {
     }
   };
 
+  const handleMessageListScroll = (event) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    const nearBottom = distanceFromBottom <= 90;
+
+    isAtBottomRef.current = nearBottom;
+    if (nearBottom) {
+      setShowJumpToLatest(false);
+    } else if (messages.length > 0) {
+      setShowJumpToLatest(true);
+    }
+  };
+
+  const jumpToLatest = () => {
+    isAtBottomRef.current = true;
+    setShowJumpToLatest(false);
+    scrollToLatest(true);
+  };
+
   // Merge friends with existing chats
   const mergedList = friends.map(friend => {
     const existingChat = chats.find(chat => 
@@ -383,16 +438,14 @@ export default function MessengerScreen({ navigation }) {
               const friend = item.friend;
               return (
                 <TouchableOpacity
-                  style={[styles.chatItem, { borderBottomColor: colors.border }]}
+                  style={[
+                    styles.chatItem,
+                    { borderColor: colors.border, backgroundColor: '#FFFFFF' },
+                    item.unreadCount > 0 && styles.chatItemUnread,
+                  ]}
                   onPress={() => {
                     if (item.lastMessage) {
                       setSelectedChat(item);
-                      // Mark all messages as read when entering chat
-                      messages.forEach(msg => {
-                        if (!msg.isRead && msg.sender?._id?.toString() !== currentUserId?.toString()) {
-                          markMessageAsRead(msg._id);
-                        }
-                      });
                     } else {
                       startChat(friend._id);
                     }
@@ -469,11 +522,16 @@ export default function MessengerScreen({ navigation }) {
         {loadingMessages ? (
           <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
         ) : (
-          <View style={{ flex: 1 }}>
+          <View style={styles.messagesArea}>
             <FlatList
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item._id}
+            contentContainerStyle={styles.messagesListContent}
+            onScroll={handleMessageListScroll}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const isSent = item.sender?._id?.toString() === currentUserId?.toString();
               
@@ -631,6 +689,12 @@ export default function MessengerScreen({ navigation }) {
             }}
             scrollEnabled={true}
           />
+          {showJumpToLatest && (
+            <TouchableOpacity style={styles.jumpToLatestBtn} onPress={jumpToLatest} activeOpacity={0.9}>
+              <Feather name="arrow-down" size={16} color="#FFFFFF" />
+              <Text style={styles.jumpToLatestText}>Latest</Text>
+            </TouchableOpacity>
+          )}
           </View>
         )}
 
@@ -705,11 +769,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 12,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    marginVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
     borderWidth: 1,
     backgroundColor: '#FFFFFF',
+    shadowColor: '#0D2818',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
@@ -747,22 +816,34 @@ const styles = StyleSheet.create({
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    marginHorizontal: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderRadius: 16,
+    shadowColor: '#0D2818',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  chatItemUnread: {
+    borderColor: '#A6D5C0',
+    backgroundColor: '#F4FBF8',
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     marginRight: 12,
   },
   chatName: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
   chatMessage: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 4,
   },
   chatTime: {
@@ -787,9 +868,11 @@ const styles = StyleSheet.create({
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   chatHeaderName: {
     fontSize: 16,
@@ -802,13 +885,47 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  messagesArea: {
+    flex: 1,
+    backgroundColor: '#F1F6F4',
+    position: 'relative',
+  },
+  messagesListContent: {
+    paddingTop: 10,
+    paddingBottom: 14,
+  },
+  jumpToLatestBtn: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 14,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 22,
+    backgroundColor: '#1B4D3E',
+    shadowColor: '#0D2818',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  jumpToLatestText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   messageContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   messageWrapper: {
     flexDirection: 'row',
@@ -828,9 +945,11 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: width * 0.75,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
   },
   messageContent: {
     fontSize: 14,
@@ -942,16 +1061,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderTopWidth: 1,
     gap: 8,
+    backgroundColor: '#FFFFFF',
   },
   attachButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#ECF5F1',
   },
   messageInput: {
     flex: 1,
@@ -963,10 +1084,15 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#0D2818',
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
 });

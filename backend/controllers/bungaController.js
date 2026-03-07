@@ -40,6 +40,22 @@ const getMarketGrade = (classStr) => {
   return 'Commercial';
 };
 
+const shouldSaveResult = (req) => {
+  const raw = req.query?.save ?? req.body?.save ?? req.headers['x-save'];
+  if (raw === undefined || raw === null || raw === '') return true;
+  const normalized = String(raw).toLowerCase().trim();
+  return !['false', '0', 'no', 'off'].includes(normalized);
+};
+
+const computeMarketGrade = (ripeness, healthClass) => {
+  if (!ripeness) return 'Unknown';
+  if (ripeness === 'Rotten') return 'Reject';
+  if (ripeness === 'Ripe' && healthClass === 'a') return 'Premium';
+  if (ripeness === 'Ripe' && (healthClass === 'b' || healthClass === 'a')) return 'Standard';
+  if (ripeness === 'Unripe' || ripeness === 'Ripe') return 'Commercial';
+  return 'Unknown';
+};
+
 /**
  * Analyze Bunga Image
  * - Runs Python script
@@ -49,6 +65,7 @@ const getMarketGrade = (classStr) => {
 exports.analyzeBunga = async (req, res) => {
   const startTime = Date.now();
   const requestId = `bunga_${Date.now()}`;
+  const shouldSave = shouldSaveResult(req);
 
   try {
     if (!req.file) {
@@ -61,9 +78,20 @@ exports.analyzeBunga = async (req, res) => {
     }
 
     // ✅ CONFIRM IMAGE RECEIVED
+    const platformHeader =
+      req.headers['x-platform'] ||
+      req.headers['x-device-platform'] ||
+      req.headers['x-device'] ||
+      req.body?.platform ||
+      req.body?.device;
     const userAgent = req.headers['user-agent'] || 'unknown';
-    const platform = userAgent.toLowerCase().includes('android') ? 'Android' : 
-                     userAgent.toLowerCase().includes('iphone') ? 'iOS' : 'Unknown';
+    const uaLower = userAgent.toLowerCase();
+    const platform =
+      (platformHeader && String(platformHeader)) ||
+      (uaLower.includes('android') ? 'Android' :
+       uaLower.includes('iphone') ? 'iOS' :
+       uaLower.includes('ipad') ? 'iOS' :
+       'Android');
     
     console.log(`\n🟢 [${requestId}] NEW BUNGA RIPENESS PREDICTION REQUEST RECEIVED`);
     console.log(`   ⏰ Timestamp: ${new Date().toISOString()}`);
@@ -146,9 +174,13 @@ exports.analyzeBunga = async (req, res) => {
 
     const duration = Date.now() - startTime;
 
+    const computedMarketGrade = (result.success && result.ripeness)
+      ? computeMarketGrade(result.ripeness, result.health_class)
+      : null;
+
     // 3. If Valid Detection, Upload to Cloudinary & Save to DB
     let savedAnalysis = null;
-    if (result.success && result.ripeness) {
+    if (shouldSave && result.success && result.ripeness) {
       try {
         console.log(`☁️ [${requestId}] UPLOADING TO CLOUDINARY...`);
         
@@ -164,18 +196,7 @@ exports.analyzeBunga = async (req, res) => {
         console.log(`   📍 URL: ${uploadResult.url}`);
 
         // Determine market grade based on ripeness and health_class
-        let marketGrade = 'Unknown';
-        
-        if (result.ripeness === 'Rotten') {
-          marketGrade = 'Reject';
-        } else if (result.ripeness === 'Ripe' && result.health_class === 'a') {
-          marketGrade = 'Premium';
-        } else if ((result.ripeness === 'Ripe' && result.health_class === 'b') || 
-                   (result.ripeness === 'Ripe' && result.health_class === 'a')) {
-          marketGrade = 'Standard';
-        } else {
-          marketGrade = 'Commercial';
-        }
+        const marketGrade = computedMarketGrade || 'Unknown';
 
         savedAnalysis = await BungaAnalysis.create({
           user: req.user._id,
@@ -217,7 +238,8 @@ exports.analyzeBunga = async (req, res) => {
       success: true,
       ...result,
       analysisId: savedAnalysis ? savedAnalysis._id : null,
-      market_grade: savedAnalysis ? savedAnalysis.results.market_grade : null,
+      market_grade: savedAnalysis ? savedAnalysis.results.market_grade : computedMarketGrade,
+      saved: !!savedAnalysis,
       processingTime: duration
     });
 
@@ -227,6 +249,82 @@ exports.analyzeBunga = async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Analysis failed',
+      requestId
+    });
+  }
+};
+
+/**
+ * Save Bunga Analysis Result (no inference)
+ */
+exports.saveBungaAnalysis = async (req, res) => {
+  const startTime = Date.now();
+  const requestId = `bunga_save_${Date.now()}`;
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No image provided',
+        requestId
+      });
+    }
+
+    const ripeness = req.body?.ripeness;
+    const rawHealthClass = req.body?.health_class;
+    const healthClass = rawHealthClass === '' ? null : (rawHealthClass ?? null);
+    const ripenessPercentage = Number(req.body?.ripeness_percentage) || 0;
+    const healthPercentage = Number(req.body?.health_percentage) || 0;
+    const confidence = Number(req.body?.confidence) || 0;
+    const processingTime = Number(req.body?.processingTime) || 0;
+
+    if (!ripeness) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing ripeness',
+        requestId
+      });
+    }
+
+    console.log(`💾 [${requestId}] Saving bunga analysis without inference`);
+
+    const b64 = Buffer.from(req.file.buffer).toString('base64');
+    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+    const uploadResult = await uploadToCloudinary(dataURI, 'pipersmart/bunga_scans');
+
+    const marketGrade = computeMarketGrade(ripeness, healthClass);
+
+    const savedAnalysis = await BungaAnalysis.create({
+      user: req.user._id,
+      image: {
+        public_id: uploadResult.public_id,
+        url: uploadResult.url
+      },
+      results: {
+        ripeness,
+        ripeness_percentage: ripenessPercentage,
+        health_class: healthClass,
+        health_percentage: healthPercentage,
+        confidence,
+        market_grade: marketGrade
+      },
+      processingTime
+    });
+
+    const duration = Date.now() - startTime;
+
+    res.status(200).json({
+      success: true,
+      analysisId: savedAnalysis._id,
+      market_grade: marketGrade,
+      processingTime: duration
+    });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`❌ [${requestId}] Save error (${duration}ms):`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to save analysis',
       requestId
     });
   }

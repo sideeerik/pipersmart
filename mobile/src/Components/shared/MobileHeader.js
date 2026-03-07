@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
     primary: '#1B4D3E',
     background: '#F8FAF7',
     text: '#1B4D3E',
+    textLight: '#5A7A73',
     border: '#D4E5DD',
     danger: '#E74C3C',
   };
@@ -43,7 +44,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
       if (!token) {
         setIsLoggedIn(false);
         setCurrentUser(null);
-        console.log('🚪 MobileHeader: No token found - user logged out');
+        console.log('MobileHeader: No token found - user logged out');
         return;
       }
 
@@ -63,14 +64,14 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         if (userData) {
           setIsLoggedIn(true);
           setCurrentUser(userData);
-          console.log('✅ MobileHeader: User loaded from AsyncStorage -', userData.name);
+          console.log('MobileHeader: User loaded from AsyncStorage -', userData.name);
         } else {
           setIsLoggedIn(false);
           setCurrentUser(null);
         }
       }
     } catch (error) {
-      console.error('❌ Error checking auth status:', error);
+      console.error('Error checking auth status:', error);
       setIsLoggedIn(false);
       setCurrentUser(null);
     }
@@ -82,7 +83,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
     
     // Subscribe to auth changes from anywhere in the app
     const unsubscribe = onAuthChange((userData) => {
-      console.log('📡 MobileHeader: Auth change detected -', userData?.name || 'logged out');
+      console.log('MobileHeader: Auth change detected -', userData?.name || 'logged out');
       if (userData) {
         setIsLoggedIn(true);
         setCurrentUser(userData);
@@ -128,7 +129,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
     try {
       // SAFETY CHECK: Don't fetch if user is not logged in
       if (!isLoggedIn) {
-        console.log('⚠️ fetchNotifications: User not logged in - skipping API call');
+        console.log('fetchNotifications: User not logged in - skipping API call');
         return;
       }
 
@@ -147,14 +148,65 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
       setNotifications(response.data.data.notifications);
       setUnreadCount(response.data.data.unreadCount);
     } catch (error) {
-      // Silently fail on timeout - don't block UI
-      if (error.name !== 'AbortError') {
+      const isCanceled =
+        error?.name === 'AbortError' ||
+        error?.name === 'CanceledError' ||
+        error?.code === 'ERR_CANCELED' ||
+        error?.message === 'canceled';
+      // Silently fail on canceled requests - don't block UI
+      if (!isCanceled) {
         console.error('⚠️ Notification fetch timeout (will retry):', error.message);
       }
       // Keep existing notifications instead of clearing
     }
   };
+  const parseForumActionUrl = (actionUrl) => {
+    if (!actionUrl || typeof actionUrl !== 'string') return null;
 
+    const threadMatch =
+      actionUrl.match(/\/forum\/thread\/([^\/?#]+)/i) ||
+      actionUrl.match(/^forum\/thread\/([^\/?#]+)/i);
+    const postMatch = actionUrl.match(/#post-([^\/?#]+)/i);
+
+    if (!threadMatch?.[1]) return null;
+
+    return {
+      threadId: threadMatch[1],
+      postId: postMatch?.[1] || null,
+    };
+  };
+
+  const normalizeScreenName = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+
+    const cleaned = raw.replace(/^\/+/, '').split(/[?#]/)[0].trim().toLowerCase();
+    if (!cleaned) return null;
+
+    const screenMap = {
+      index: 'Index',
+      login: 'Login',
+      register: 'Register',
+      userhome: 'UserHome',
+      about: 'About',
+      contact: 'Contact',
+      piperknowledge: 'PiperKnowledge',
+      profile: 'Profile',
+      updateprofile: 'UpdateProfile',
+      forgotpassword: 'ForgotPassword',
+      changepassword: 'ChangePassword',
+      weather: 'Weather',
+      pipebot: 'Pipebot',
+      piperbot: 'Pipebot',
+      macromapping: 'Macromapping',
+      leafanalysis: 'LeafAnalysis',
+      bungaripeness: 'BungaRipeness',
+      forum: 'Forum',
+      messenger: 'Messenger',
+      recentactivities: 'RecentActivities',
+    };
+
+    return screenMap[cleaned] || null;
+  };
   const markAsRead = async (notificationId) => {
     try {
       await axios.put(`${BACKEND_URL}/api/v1/notifications/${notificationId}/read`, {}, {
@@ -185,30 +237,45 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
       if (!notification.read) {
         markAsRead(notification._id);
       }
-      
-      // Handle Forum notifications with threadId
-      if (notification.actionUrl === 'Forum' || notification.type === 'forum') {
-        const threadId = notification.data?.threadId || notification.threadId;
-        
+
+      const actionUrl = notification.actionUrl;
+      const forumUrlData = parseForumActionUrl(actionUrl);
+      const threadId = notification.data?.threadId || notification.threadId || forumUrlData?.threadId;
+      const isForumType =
+        String(notification.type || '').toLowerCase() === 'forum' ||
+        String(actionUrl || '').toLowerCase() === 'forum' ||
+        !!forumUrlData;
+
+      setNotificationsOpen(false);
+
+      if (isForumType) {
         if (threadId) {
           console.log('🔗 Navigating to Forum thread:', threadId);
-          setNotificationsOpen(false);
-          // Navigate to Forum screen with threadId param to trigger deep linking
-          navigation.navigate('Forum', { threadId });
-        } else {
-          console.warn('⚠️ Forum notification missing threadId, navigating to Forum feed');
-          setNotificationsOpen(false);
-          navigation.navigate('Forum');
+          navigation.navigate('Forum', {
+            threadId,
+            postId: forumUrlData?.postId || null,
+          });
+          return;
         }
-      } else if (notification.actionUrl) {
-        // Handle other notification types
-        console.log('🔗 Navigating to:', notification.actionUrl);
-        setNotificationsOpen(false);
-        navigation.navigate(notification.actionUrl);
+
+        console.warn('⚠️ Forum notification missing threadId, navigating to Forum feed');
+        navigation.navigate('Forum');
+        return;
+      }
+
+      const mappedScreen = normalizeScreenName(actionUrl);
+      if (mappedScreen) {
+        console.log('🔗 Navigating to screen:', mappedScreen);
+        navigation.navigate(mappedScreen);
+        return;
+      }
+
+      if (actionUrl) {
+        console.warn('⚠️ Unknown notification actionUrl:', actionUrl, '- fallback to UserHome');
       } else {
         console.warn('⚠️ Notification has no actionUrl or type');
-        setNotificationsOpen(false);
       }
+      navigation.navigate('UserHome');
     } catch (error) {
       console.error('❌ Error handling notification press:', error);
       setNotificationsOpen(false);
@@ -253,6 +320,10 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
       navigation.navigate(screenName);
     }
   };
+
+  const filteredNotifications = notificationFilter === 'unread'
+    ? notifications.filter((n) => !n.read)
+    : notifications;
 
   const navigationView = (
     <View style={[styles.drawer, { backgroundColor: colors.background }]}> 
@@ -313,7 +384,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         onPress={() => handleProtectedNavigation('BungaRipeness')}
       >
         <Feather name="aperture" size={20} color={colors.primary} />
-        <Text style={[styles.drawerItemText, { color: colors.text }]}>Bunga Ripeness</Text>
+        <Text style={[styles.drawerItemText, { color: colors.text }]}>PepperCorn Ripeness</Text>
       </TouchableOpacity>
 
       {/* FARMING & COMMUNITY */}
@@ -449,39 +520,56 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
         animationType="fade"
         onRequestClose={() => setNotificationsOpen(false)}
       >
-        <TouchableOpacity
-          style={styles.notificationOverlay}
-          activeOpacity={1}
-          onPress={() => setNotificationsOpen(false)}
-        >
-          <View style={[styles.notificationDropdown, { backgroundColor: '#FFFFFF' }]}>
+        <View style={styles.notificationOverlay}>
+          <TouchableOpacity
+            style={styles.notificationBackdrop}
+            activeOpacity={1}
+            onPress={() => setNotificationsOpen(false)}
+          />
+
+          <View style={styles.notificationDropdown}>
             <View style={[styles.notificationHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.notificationTitle, { color: colors.text }]}>Notifications</Text>
-              <TouchableOpacity onPress={() => setNotificationsOpen(false)}>
+              <View>
+                <Text style={[styles.notificationTitle, { color: colors.text }]}>Notifications</Text>
+                <Text style={[styles.notificationSubtitle, { color: colors.textLight }]}>
+                  {unreadCount} unread
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setNotificationsOpen(false)} style={styles.notificationCloseBtn}>
                 <Feather name="x" size={18} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            {/* Filter Buttons */}
             <View style={styles.filterContainer}>
               <TouchableOpacity
                 style={[
                   styles.filterButton,
-                  notificationFilter === 'all' && [styles.filterButtonActive, { backgroundColor: colors.primary }]
+                  notificationFilter === 'all' && [styles.filterButtonActive, { backgroundColor: colors.primary }],
                 ]}
                 onPress={() => setNotificationFilter('all')}
               >
+                <Feather
+                  name="list"
+                  size={12}
+                  color={notificationFilter === 'all' ? '#FFFFFF' : colors.textLight}
+                />
                 <Text style={[styles.filterButtonText, notificationFilter === 'all' && styles.filterButtonTextActive]}>
                   All
                 </Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={[
                   styles.filterButton,
-                  notificationFilter === 'unread' && [styles.filterButtonActive, { backgroundColor: colors.primary }]
+                  notificationFilter === 'unread' && [styles.filterButtonActive, { backgroundColor: colors.primary }],
                 ]}
                 onPress={() => setNotificationFilter('unread')}
               >
+                <Feather
+                  name="bell"
+                  size={12}
+                  color={notificationFilter === 'unread' ? '#FFFFFF' : colors.textLight}
+                />
                 <Text style={[styles.filterButtonText, notificationFilter === 'unread' && styles.filterButtonTextActive]}>
                   Unread
                 </Text>
@@ -489,42 +577,48 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
             </View>
 
             {loading ? (
-              <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
-            ) : (notificationFilter === 'unread' ? notifications.filter(n => !n.read) : notifications).length === 0 ? (
+              <ActivityIndicator size="large" color={colors.primary} style={styles.notificationLoader} />
+            ) : filteredNotifications.length === 0 ? (
               <View style={styles.emptyNotifications}>
                 <Feather name="bell-off" size={32} color={colors.border} />
                 <Text style={[styles.emptyText, { color: colors.textLight }]}>No notifications</Text>
               </View>
             ) : (
-              <ScrollView style={styles.notificationsList}>
-                {(notificationFilter === 'unread' ? notifications.filter(n => !n.read) : notifications).map((notification) => (
+              <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
+                {filteredNotifications.map((notification) => (
                   <View
                     key={notification._id}
                     style={[
                       styles.notificationItem,
                       {
-                        backgroundColor: notification.read ? '#F8FAF7' : '#E8F5E9',
+                        backgroundColor: notification.read ? '#F9FCFA' : '#EDF8F2',
                         borderLeftColor: getSeverityColor(notification.severity),
                       },
                     ]}
                   >
+                    <View style={styles.notificationDotCol}>
+                      {!notification.read ? (
+                        <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
+                      ) : (
+                        <View style={styles.readDot} />
+                      )}
+                    </View>
+
                     <TouchableOpacity
-                      style={{ flex: 1 }}
+                      style={styles.notificationBody}
                       onPress={() => handleNotificationPress(notification)}
                     >
-                      <Text style={[styles.notificationItemTitle, { color: colors.text }]}>
+                      <Text style={[styles.notificationItemTitle, { color: colors.text }]} numberOfLines={2}>
                         {notification.title}
-                        {!notification.read && (
-                          <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
-                        )}
                       </Text>
-                      <Text style={[styles.notificationItemMessage, { color: colors.textLight }]}>
+                      <Text style={[styles.notificationItemMessage, { color: colors.textLight }]} numberOfLines={3}>
                         {notification.message}
                       </Text>
                       <Text style={[styles.notificationTime, { color: colors.textLight }]}>
                         {new Date(notification.createdAt).toLocaleDateString()}
                       </Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity
                       onPress={() => deleteNotification(notification._id)}
                       style={styles.deleteButton}
@@ -536,7 +630,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
               </ScrollView>
             )}
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       <View style={[styles.topNav, { backgroundColor: colors.primary }]}> 
@@ -546,9 +640,9 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
 
         <Text style={styles.navTitle}>PiperSmart</Text>
 
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={styles.navActions}>
           <TouchableOpacity
-            style={styles.navButton}
+            style={[styles.navButton, styles.navButtonSoft]}
             onPress={async () => {
               if (!user) {
                 Alert.alert(
@@ -576,7 +670,7 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.navButton}
+            style={[styles.navButton, styles.navButtonSoft]}
             onPress={async () => {
               if (isLoggedIn && currentUser) {
                 navigation.navigate('Profile');
@@ -616,8 +710,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    paddingTop: 35,
+    paddingVertical: 10,
+    paddingTop: 34,
   },
   navTitle: {
     fontSize: 20,
@@ -625,15 +719,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
+  navActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   navButton: {
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     position: 'relative',
+  },
+  navButtonSoft: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   badge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: -2,
+    right: -2,
     backgroundColor: '#E74C3C',
     borderRadius: 10,
     minWidth: 20,
@@ -649,43 +752,72 @@ const styles = StyleSheet.create({
   },
   notificationOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.38)',
     justifyContent: 'flex-start',
-    paddingTop: 60,
-    paddingHorizontal: 8,
+    paddingTop: 68,
+    paddingHorizontal: 10,
+  },
+  notificationBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   notificationDropdown: {
-    borderRadius: 12,
-    maxHeight: '50%',
-    elevation: 5,
+    borderRadius: 16,
+    maxHeight: '58%',
+    elevation: 8,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
   notificationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
+    backgroundColor: '#F7FBF9',
   },
   notificationTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  notificationSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  notificationCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EEF6F2',
   },
   filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: '#FCFEFD',
   },
   filterButton: {
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 13,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: '#D4E3DC',
+    backgroundColor: '#FFFFFF',
   },
   filterButtonActive: {
     borderColor: 'transparent',
@@ -698,46 +830,74 @@ const styles = StyleSheet.create({
   filterButtonTextActive: {
     color: '#FFFFFF',
   },
+  notificationLoader: {
+    marginTop: 24,
+  },
   notificationsList: {
-    maxHeight: 300,
+    maxHeight: 340,
+    paddingVertical: 6,
   },
   notificationItem: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
+    marginHorizontal: 10,
+    marginBottom: 8,
+    borderRadius: 12,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     borderLeftWidth: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  notificationDotCol: {
+    width: 12,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 4,
+    marginRight: 6,
+  },
+  notificationBody: {
+    flex: 1,
   },
   notificationItemTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 3,
-    flexDirection: 'row',
-    alignItems: 'center',
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 4,
   },
   unreadDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginLeft: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  readDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D8E5DF',
   },
   notificationItemMessage: {
-    fontSize: 10,
+    fontSize: 11,
     marginBottom: 4,
-    lineHeight: 14,
+    lineHeight: 16,
   },
   notificationTime: {
-    fontSize: 8,
+    fontSize: 9,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   deleteButton: {
-    padding: 6,
-    marginLeft: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(231,76,60,0.08)',
+    marginLeft: 8,
+    marginTop: 2,
   },
   emptyNotifications: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 30,
+    paddingVertical: 42,
   },
   emptyText: {
     fontSize: 11,
@@ -835,4 +995,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
 

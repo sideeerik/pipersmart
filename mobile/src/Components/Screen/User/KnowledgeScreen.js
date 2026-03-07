@@ -98,38 +98,38 @@ export default function KnowledgeScreen({ navigation }) {
 
   const pepperGuide = [
     {
-      icon: '🌿',
+      icon: 'leaf',
       title: 'Botanical Profile',
       heading: 'Scientific Name: Piper nigrum',
       highlights: ['Member of Piperaceae family', 'Perennial woody vine', 'Native to Malabar Coast, India'],
-      details: 'A perennial, woody, climbing vine that can reach heights of 10 meters or more if left unsupported. Produces "spikes" with 50-150 tiny flowers that develop into peppercorn drupes. The same plant produces black, white, green, and red pepper—the difference lies in berry maturity and processing.',
+      details: 'A perennial, woody, climbing vine that can reach heights of 10 meters or more if left unsupported. Produces spikes with 50-150 tiny flowers that develop into peppercorn drupes. The same plant produces black, white, green, and red pepper - the difference lies in berry maturity and processing.',
       bgColor: '#E8F5E9',
       accent: '#2E7D32',
     },
     {
-      icon: '☀️',
+      icon: 'weather-sunny',
       title: 'Temperature & Climate',
-      heading: 'Optimal: 24–30°C',
-      highlights: ['Tropical plant requirement', 'Humidity above 75% ideal', 'Chill injury below 10°C'],
-      details: 'While it thrives at 28°C, it can tolerate a range between 10°C and 40°C. Requires hot and humid environment. High humidity is essential for pollination, as pollen is washed down the spike by dew or light rain to reach female flowers.',
+      heading: 'Optimal: 24-30 C',
+      highlights: ['Tropical plant requirement', 'Humidity above 75% ideal', 'Chill injury below 10 C'],
+      details: 'While it thrives at around 28 C, it can tolerate a range between 10 C and 40 C. Requires a hot and humid environment. High humidity is essential for pollination, as pollen is washed down the spike by dew or light rain to reach female flowers.',
       bgColor: '#FFF3E0',
       accent: '#EF6C00',
     },
     {
-      icon: '🌧️',
+      icon: 'weather-rainy',
       title: 'Rainfall & Irrigation',
-      heading: '2000–3000 mm/year',
+      heading: '2000-3000 mm/year',
       highlights: ['Well-distributed rain essential', 'Drought sensitive (>30 days)', 'Pre-flowering dry period beneficial'],
-      details: 'Distribution is more important than total amount—requires frequent, well-distributed rain throughout the year. Highly sensitive to long dry spells; if drought exceeds 30 days, supplemental irrigation is required. A short dry period of 20–30 days before flowering triggers massive flower flush.',
+      details: 'Distribution is more important than total amount - requires frequent, well-distributed rain throughout the year. Highly sensitive to long dry spells; if drought exceeds 30 days, supplemental irrigation is required. A short dry period of 20-30 days before flowering triggers a massive flower flush.',
       bgColor: '#E3F2FD',
       accent: '#1565C0',
     },
     {
-      icon: '🏔️',
+      icon: 'shovel',
       title: 'Soil Requirements',
-      heading: 'Loamy, pH 5.5–6.3',
+      heading: 'Loamy, pH 5.5-6.3',
       highlights: ['Deep, well-drained loam', 'Rich in organic matter', 'Avoid waterlogging >24-48 hrs'],
-      details: 'Best soils are deep, friable, and well-drained loams (Red Latosols or Alluvial soils). Must be rich in organic matter and high in Nitrogen, Phosphorus, and Potassium. Prefers slightly acidic conditions. Waterlogging is the plant\'s "Achilles\' heel"—causes Quick Wilt (Phytophthora capsici), a fungus that kills plantations in days.',
+      details: 'Best soils are deep, friable, and well-drained loams (Red Latosols or Alluvial soils). Must be rich in organic matter and high in Nitrogen, Phosphorus, and Potassium. Prefers slightly acidic conditions. Waterlogging is the plant\'s Achilles heel - causes Quick Wilt (Phytophthora capsici), a fungus that can damage plantations quickly.',
       bgColor: '#F3E5F5',
       accent: '#7B1FA2',
     },
@@ -326,12 +326,13 @@ export default function KnowledgeScreen({ navigation }) {
   ];
 
   const colors = {
-    primary: '#1B4D3E',
-    background: '#F8FAF7',
-    text: '#1B4D3E',
-    textLight: '#6b7280',
-    border: '#D4E5DD',
-    accent: '#22c55e',
+    primary: '#0E3B2E',
+    background: '#F3F7F4',
+    text: '#0E3B2E',
+    textLight: '#62736C',
+    border: '#DDE7E1',
+    accent: '#2BB673',
+    accentSoft: '#E1F4EA',
     card: '#FFFFFF',
   };
 
@@ -353,11 +354,23 @@ export default function KnowledgeScreen({ navigation }) {
 
   const Hero = () => {
     return (
-      <View style={[styles.hero, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.heroTitle, { color: colors.text }]}>Piper Knowledge</Text>
-        <Text style={[styles.heroSubtitle, { color: colors.textLight }]}>
-          Your comprehensive guide to black pepper cultivation and management
-        </Text>
+      <View style={styles.heroWrap}>
+        <View style={styles.heroGlow} />
+        <View style={styles.heroRing} />
+        <View style={[styles.heroCard, { backgroundColor: colors.primary }]}>
+          <Text style={styles.heroEyebrow}>Learning Hub</Text>
+          <Text style={styles.heroTitle}>Piper Knowledge</Text>
+          <Text style={styles.heroSubtitle}>
+            Your comprehensive guide to black pepper cultivation and management.
+          </Text>
+          <View style={styles.heroPills}>
+            {['Botanical', 'Disease Care', 'Benefits'].map((item) => (
+              <View key={item} style={[styles.heroPill, { backgroundColor: colors.accentSoft }]}>
+                <Text style={styles.heroPillText}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </View>
     );
   };
@@ -380,7 +393,7 @@ export default function KnowledgeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <MobileHeader
         navigation={navigation}
         user={user}
@@ -391,7 +404,10 @@ export default function KnowledgeScreen({ navigation }) {
       />
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        contentContainerStyle={styles.screenContent}
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[1]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
         <Hero />
 
@@ -425,7 +441,7 @@ export default function KnowledgeScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
           ))}
-          <Animated.View style={[styles.tabIndicator, { backgroundColor: colors.accent, left: indicatorX, width: indicatorW }]} />
+          <Animated.View style={[styles.tabIndicator, { backgroundColor: colors.accentSoft, left: indicatorX, width: indicatorW }]} />
         </ScrollView>
 
         <ScrollView
@@ -494,7 +510,7 @@ export default function KnowledgeScreen({ navigation }) {
                       {/* Card Header */}
                       <View style={styles.guideCardHeader}>
                         <View style={styles.guideIconContainer}>
-                          <Text style={styles.guideIcon}>{guide.icon}</Text>
+                          <MaterialCommunityIcons name={guide.icon} size={30} color={guide.accent} />
                         </View>
                         <View style={styles.guideTitleContainer}>
                           <Text style={[styles.guideCardTitle, { color: colors.text }]}>{guide.title}</Text>
@@ -502,9 +518,11 @@ export default function KnowledgeScreen({ navigation }) {
                             {guide.heading}
                           </Text>
                         </View>
-                        <Text style={[styles.expandIcon, { color: guide.accent }]}>
-                          {expandedGuide === index ? '▼' : '▶'}
-                        </Text>
+                        <MaterialCommunityIcons
+                          name={expandedGuide === index ? 'chevron-down' : 'chevron-right'}
+                          size={18}
+                          color={guide.accent}
+                        />
                       </View>
 
                       {/* Highlights (always visible) */}
@@ -512,7 +530,7 @@ export default function KnowledgeScreen({ navigation }) {
                         {guide.highlights.map((highlight, hIdx) => (
                           <View key={hIdx} style={[styles.highlightBadge, { backgroundColor: 'rgba(255,255,255,0.6)' }]}>
                             <Text style={[styles.highlightText, { color: guide.accent }]}>
-                              • {highlight}
+                              - {highlight}
                             </Text>
                           </View>
                         ))}
@@ -851,7 +869,7 @@ export default function KnowledgeScreen({ navigation }) {
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                       {issue.symptoms.map((sym, i) => (
                         <View key={i} style={[styles.symptomTag, { borderColor: colors.border, backgroundColor: colors.background }]}>
-                          <Text style={[styles.symptomText, { color: colors.textLight }]}>• {sym}</Text>
+                          <Text style={[styles.symptomText, { color: colors.textLight }]}>- {sym}</Text>
                         </View>
                       ))}
                     </View>
@@ -907,7 +925,7 @@ export default function KnowledgeScreen({ navigation }) {
               </View>
               {benefitsTab === 'nutrition' && (
                 <View>
-                  <View style={[styles.card, { borderColor: colors.border, backgroundColor: '#F0FDF4', borderLeftWidth: 5, borderLeftColor: colors.accent }]}>
+                  <View style={[styles.card, { borderColor: colors.border, backgroundColor: '#E1F4EA', borderLeftWidth: 5, borderLeftColor: colors.accent }]}>
                     <View style={styles.benefitRow}>
                       <View style={{ backgroundColor: colors.accent, width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
                         <MaterialCommunityIcons name="heart-pulse" size={26} color="#FFFFFF" />
@@ -1161,7 +1179,7 @@ export default function KnowledgeScreen({ navigation }) {
                           {item.title}
                         </Text>
                         <Text style={[styles.newsMeta, { color: colors.textLight }]}>
-                          {item.source} • {item.date}
+                          {item.source} - {item.date}
                         </Text>
                         <Text
                           style={[styles.newsDesc, { color: colors.textLight }]}
@@ -1201,11 +1219,11 @@ export default function KnowledgeScreen({ navigation }) {
               'Choose what to analyze',
               [
                 {
-                  text: '🍃 Leaf Analysis - Detect diseases',
+                  text: 'Leaf Analysis - Detect diseases',
                   onPress: () => navigation.navigate('LeafAnalysis'),
                 },
                 {
-                  text: '🌸 Bunga Fruit - Check ripeness',
+                  text: 'Bunga Fruit - Check ripeness',
                   onPress: () => navigation.navigate('BungaRipeness'),
                 },
                 {
@@ -1228,61 +1246,146 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  hero: {
+  screenContent: {
+    paddingBottom: 40,
+  },
+  heroWrap: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
-    borderBottomWidth: 2,
+    paddingTop: 14,
+    marginBottom: 8,
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(43, 182, 115, 0.25)',
+    top: -24,
+    right: -24,
+  },
+  heroRing: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+    bottom: -40,
+    left: -10,
+  },
+  heroCard: {
+    borderRadius: 22,
+    padding: 22,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  heroEyebrow: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1.8,
+    color: 'rgba(255,255,255,0.75)',
+    marginBottom: 8,
   },
   heroTitle: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    color: '#FFFFFF',
+    marginBottom: 8,
   },
   heroSubtitle: {
-    fontSize: 14,
-    marginTop: 6,
-    fontWeight: '500',
+    fontSize: 14.5,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 21,
+  },
+  heroPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  heroPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  heroPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0E3B2E',
   },
   tabsWrapper: {
     flexDirection: 'row',
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    marginHorizontal: 16,
+    marginTop: 6,
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    minHeight: 44,
     position: 'relative',
+    overflow: 'hidden',
+    zIndex: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  tabsContent: {
+    alignItems: 'center',
+    paddingRight: 8,
   },
   tabButton: {
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    paddingVertical: 6,
+    borderRadius: 14,
+    zIndex: 1,
   },
-  tabButtonActive: {
-    borderBottomColor: '#22c55e',
-  },
+  tabButtonActive: {},
   tabIndicator: {
     position: 'absolute',
-    height: 3,
-    bottom: 0,
-    borderRadius: 2,
+    top: 6,
+    height: 32,
+    borderRadius: 16,
+    zIndex: 0,
   },
   tabButtonText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: '#6b7280',
+    color: '#62736C',
   },
   tabButtonTextActive: {
-    color: '#22c55e',
+    color: '#0E3B2E',
   },
   section: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    marginBottom: 16,
-    color: '#1B4D3E',
-    letterSpacing: 0.3,
+    marginBottom: 14,
+    color: '#0E3B2E',
+    letterSpacing: 0.2,
   },
   sectionSubtitle: {
     fontSize: 16,
@@ -1291,17 +1394,18 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    borderRadius: 16,
     padding: 16,
-    elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   paragraph: {
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 22,
     marginBottom: 10,
     fontWeight: '500',
@@ -1328,14 +1432,22 @@ const styles = StyleSheet.create({
   },
   listDesc: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#62736C',
     textAlign: 'justify',
   },
   newsItem: {
-    borderWidth: 2,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 14,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   newsHeader: {
     marginBottom: 6,
@@ -1349,20 +1461,22 @@ const styles = StyleSheet.create({
   },
   newsDesc: {
     fontSize: 13,
+    lineHeight: 19,
   },
   searchInput: {
-    borderWidth: 2,
-    borderColor: '#D4E5DD',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 13,
-    color: '#1B4D3E',
+    color: '#0E3B2E',
+    backgroundColor: '#FFFFFF',
   },
   skeletonItem: {
     height: 84,
-    borderWidth: 2,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderRadius: 14,
     marginBottom: 12,
   },
   factsGrid: {
@@ -1374,37 +1488,44 @@ const styles = StyleSheet.create({
   },
   factCard: {
     width: '48%',
-    borderWidth: 2,
-    borderColor: '#D4E5DD',
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    borderRadius: 14,
     padding: 12,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   factIconBox: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#E1F4EA',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
   factTitle: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#62736C',
     fontWeight: '600',
   },
   factValue: {
     fontSize: 14,
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     fontWeight: '700',
   },
   illustrationBox: {
     height: 160,
-    backgroundColor: '#F8FAF7',
-    borderRadius: 12,
+    backgroundColor: '#F3F7F4',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     position: 'relative',
   },
   hotspot: {
@@ -1412,7 +1533,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#2BB673',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1429,15 +1550,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   tooltipTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   tooltipText: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#62736C',
   },
   actionsRow: {
     paddingVertical: 6,
@@ -1445,12 +1571,17 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     width: 220,
-    borderWidth: 2,
-    borderColor: '#D4E5DD',
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    padding: 12,
+    padding: 14,
     marginRight: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   actionHeader: {
     flexDirection: 'row',
@@ -1461,7 +1592,7 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   actionBody: {
     flexDirection: 'row',
@@ -1470,7 +1601,7 @@ const styles = StyleSheet.create({
   },
   actionDesc: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#62736C',
   },
   subtabs: {
     flexDirection: 'row',
@@ -1480,22 +1611,22 @@ const styles = StyleSheet.create({
   subtabBtn: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderWidth: 2,
-    borderColor: '#D4E5DD',
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
   },
   subtabBtnActive: {
-    borderColor: '#22c55e',
-    backgroundColor: '#F0FDF4',
+    borderColor: '#2BB673',
+    backgroundColor: '#E1F4EA',
   },
   subtabText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#62736C',
     fontWeight: '700',
   },
   subtabTextActive: {
-    color: '#22c55e',
+    color: '#2BB673',
   },
   timelineRow: {
     gap: 18,
@@ -1508,22 +1639,22 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#2BB673',
     marginBottom: 6,
   },
   timelineLabel: {
     fontSize: 12,
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     fontWeight: '600',
   },
   progressWrap: {
     marginTop: 20,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    backgroundColor: '#F8FAF7',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#D4E5DD',
+    backgroundColor: '#F3F7F4',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   progressHeader: {
     flexDirection: 'row',
@@ -1534,12 +1665,12 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   progressPct: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#22c55e',
+    color: '#2BB673',
   },
   progressBar: {
     width: '100%',
@@ -1550,7 +1681,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: 10,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#2BB673',
     borderRadius: 5,
   },
   chipsRow: {
@@ -1561,30 +1692,35 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderWidth: 2,
-    borderColor: '#D4E5DD',
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
   },
   chipActive: {
-    borderColor: '#22c55e',
-    backgroundColor: '#F0FDF4',
+    borderColor: '#2BB673',
+    backgroundColor: '#E1F4EA',
   },
   chipText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#62736C',
     fontWeight: '700',
   },
   chipTextActive: {
-    color: '#22c55e',
+    color: '#2BB673',
   },
   issueCard: {
-    borderWidth: 2,
-    borderRadius: 12,
-    padding: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 12,
     backgroundColor: '#FFFFFF',
     borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   issueHeader: {
     flexDirection: 'row',
@@ -1604,7 +1740,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 8,
     borderWidth: 2,
-    borderColor: '#D4E5DD',
+    borderColor: '#DDE7E1',
     borderRadius: 10,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -1612,7 +1748,7 @@ const styles = StyleSheet.create({
   issueBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   benefitRow: {
     flexDirection: 'row',
@@ -1621,12 +1757,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   diseaseCard: {
-    borderWidth: 2,
-    borderRadius: 12,
-    padding: 14,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 14,
     backgroundColor: '#FFFFFF',
     borderLeftWidth: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   diseaseHeader: {
     flexDirection: 'row',
@@ -1673,10 +1814,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   preventionBox: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: 10,
+    backgroundColor: '#E1F4EA',
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     marginBottom: 10,
   },
   preventionTitle: {
@@ -1690,10 +1833,11 @@ const styles = StyleSheet.create({
   },
   treatmentBox: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: '#FFFBEB',
+    borderColor: '#F2E4BF',
   },
   treatmentTitle: {
     fontSize: 13,
@@ -1710,8 +1854,8 @@ const styles = StyleSheet.create({
   stepCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: 14,
+    borderWidth: 1,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     backgroundColor: '#FFFFFF',
@@ -1719,19 +1863,19 @@ const styles = StyleSheet.create({
     elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   stepNumberBox: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#2BB673',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
     elevation: 2,
-    shadowColor: '#22c55e',
+    shadowColor: '#2BB673',
     shadowOpacity: 0.3,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -1763,7 +1907,7 @@ const styles = StyleSheet.create({
   plantPartsList: {
     marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#D4E5DD',
+    borderTopColor: '#DDE7E1',
     paddingTop: 12,
   },
   partItem: {
@@ -1781,9 +1925,9 @@ const styles = StyleSheet.create({
   },
   newsImage: {
     width: '100%',
-    height: 160,
-    borderRadius: 8,
-    marginBottom: 10,
+    height: 170,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   newsContent: {
     flex: 1,
@@ -1810,17 +1954,17 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 31,
-    backgroundColor: 'rgba(34,197,94,0.35)',
+    backgroundColor: 'rgba(43,182,115,0.35)',
   },
   fab: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#2BB673',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
-    shadowColor: '#22c55e',
+    shadowColor: '#2BB673',
     shadowOpacity: 0.6,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -1828,10 +1972,10 @@ const styles = StyleSheet.create({
   // Carousel Styles
   carouselContainer: {
     height: 200,
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    marginVertical: 20,
-    borderWidth: 2,
+    marginVertical: 18,
+    borderWidth: 1,
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.15,
@@ -1879,7 +2023,8 @@ const styles = StyleSheet.create({
   guideCard: {
     borderRadius: 18,
     padding: 16,
-    borderWidth: 2,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.06,
@@ -1904,9 +2049,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  guideIcon: {
-    fontSize: 32,
-  },
   guideTitleContainer: {
     flex: 1,
   },
@@ -1918,11 +2060,6 @@ const styles = StyleSheet.create({
   guideHeading: {
     fontSize: 13,
     fontWeight: '700',
-  },
-  expandIcon: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 4,
   },
   highlightsContainer: {
     gap: 8,
@@ -1953,4 +2090,10 @@ const styles = StyleSheet.create({
     textAlign: 'justify',
   },
 });
+
+
+
+
+
+
 

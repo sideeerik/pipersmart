@@ -7,7 +7,9 @@ const {
   markMessageAsRead,
   deleteMessage,
   editMessage,
-  searchUsers
+  searchUsers,
+  getUnreadCount,
+  markAllMessagesRead
 } = require('../controllers/Chat');
 const { isAuthenticatedUser } = require('../middlewares/auth');
 
@@ -27,5 +29,10 @@ router.put('/chat/messages/:messageId', editMessage);
 
 // User search for starting chat
 router.get('/chat/search/users', searchUsers);
+
+// Unread messages count
+router.get('/chat/unread-count', getUnreadCount);
+// mark all as read
+router.post('/chat/mark-all-read', markAllMessagesRead);
 
 module.exports = router;

@@ -1,12 +1,8 @@
-import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { setupAxiosInterceptor } from './config/axiosConfig';
 import Index from './Components/User/Index.jsx';
-import Login from './Components/user/Login';
-import Register from './Components/user/Register';
+import Login from './Components/User/Login.jsx';
+import Register from './Components/user/Register.jsx';
 import Dashboard from './Components/Admin/Dashboard.jsx';
-import ReportsAdmin from './Components/Admin/ReportsAdmin.jsx';
-import PostReported from './Components/Admin/PostReported.jsx';
 import Profile from './Components/User/Profile.jsx';
 import AdminProfile from './Components/Admin/AdminProfile.jsx';
 import EditProfile from './Components/User/EditProfile.jsx';
@@ -25,15 +21,10 @@ import CreateThread from './Components/User/CreateThread.jsx';
 import ThreadView from './Components/User/ThreadView.jsx';
 import About from './Components/User/About.jsx';
 import Contact from './Components/User/Contact.jsx';
-import Chat from './Components/Chat/Chat.jsx';
-
-
+import HowItWorks from './Components/User/HowItWorks.jsx';
+import FriendRequests from './Components/User/FriendRequests.jsx';
 
 function App() {
-  useEffect(() => {
-    setupAxiosInterceptor();
-  }, []);
-
   return (
     <Router>
       <Routes>
@@ -51,10 +42,9 @@ function App() {
         <Route path="/weather" element={<WeatherPage />} />
         <Route path="/macro-mapping" element={<MacromappingPage />} />
         <Route path="/admin/dashboard" element={<Dashboard />} />
-        <Route path="/admin/reports" element={<ReportsAdmin />} />
-        <Route path="/admin/reported-posts" element={<PostReported />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/edit" element={<EditProfile />} />
+        <Route path="/profile/:userId" element={<Profile />} />
         <Route path="/admin/profile" element={<AdminProfile />} />
         <Route path="/admin/profile/edit" element={<AdminEditProfile />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -62,17 +52,17 @@ function App() {
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/about" element={<About />} />
         <Route path="/Contact" element={<Contact />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
 
         {/* Forum routes */}
         <Route path="/forum" element={<Forum />} />
+        <Route path="/forum/Forum" element={<Navigate to="/forum" replace />} />
         <Route path="/forum/create" element={<CreateThread />} />
         <Route path="/forum/thread/:threadId" element={<ThreadView />} />
         <Route path="/forum/edit/:threadId" element={<CreateThread />} />
-
-        {/* Chat route */}
-        <Route path="/chat" element={<Chat />} />
         
-
+        {/* Friend routes */}
+        <Route path="/friend-requests" element={<FriendRequests />} />
       </Routes>
       <Chatbot />
     </Router>

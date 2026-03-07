@@ -89,7 +89,7 @@ const validateContent = (content) => {
   if (foundBadWords.length > 0) {
     return {
       isValid: false,
-      message: `⚠️ Inappropriate language detected. Please keep discussions respectful.`
+      message: `âš ï¸ Inappropriate language detected. Please keep discussions respectful.`
     };
   }
 
@@ -100,11 +100,11 @@ const validateContent = (content) => {
   if (!hasKeywords) {
     return {
       isValid: false,
-      message: '⚠️ Post should be related to black pepper farming. Include topics like diseases, practices, harvest, pests, or soil.'
+      message: 'âš ï¸ Post should be related to black pepper farming. Include topics like diseases, practices, harvest, pests, or soil.'
     };
   }
 
-  return { isValid: true, message: '✅ Content looks good!' };
+  return { isValid: true, message: 'âœ… Content looks good!' };
 };
 
 export default function ForumScreen({ navigation, route }) {
@@ -139,11 +139,14 @@ export default function ForumScreen({ navigation, route }) {
     saved: false,
     users: false
   });
+  const [likedThreadOverrides, setLikedThreadOverrides] = useState({});
+  const [likedPostOverrides, setLikedPostOverrides] = useState({});
   const [allUsers, setAllUsers] = useState([]);
   const [sendingFriendRequest, setSendingFriendRequest] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const fabAnimation = useRef(new Animated.Value(0)).current;
+  const hasLoadedFeedRef = useRef(false);
   
   // Restore Main Menu Drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -178,6 +181,18 @@ export default function ForumScreen({ navigation, route }) {
     danger: '#E74C3C',
   };
 
+  const getTimestamp = (item) => {
+    if (!item) return 0;
+    const raw = item.createdAt || item.updatedAt || item.date || item.timestamp;
+    const ts = new Date(raw).getTime();
+    return Number.isFinite(ts) ? ts : 0;
+  };
+
+  const sortByNewest = (list) => {
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  };
+
   useEffect(() => {
     initializeScreen();
   }, []);
@@ -185,7 +200,7 @@ export default function ForumScreen({ navigation, route }) {
   useEffect(() => {
     if (route?.params?.threadId) {
       const { threadId } = route.params;
-      console.log('🔗 Deep linking to thread:', threadId);
+      console.log('ðŸ”— Deep linking to thread:', threadId);
       setThreadDetailVisible(true);
       fetchThreadDetail(threadId);
       navigation.setParams({ threadId: null });
@@ -250,9 +265,12 @@ export default function ForumScreen({ navigation, route }) {
     }
   };
 
-  const fetchFeed = async () => {
+  const fetchFeed = async (options = {}) => {
+    const { showLoader = !hasLoadedFeedRef.current } = options;
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
       console.log('📱 Fetching feed (filterType: ' + filterType + ')');
       
       const response = await axios.get('/api/v1/forum/feed', {
@@ -261,36 +279,39 @@ export default function ForumScreen({ navigation, route }) {
       });
       
       console.log('✅ Feed loaded:', response.data?.data?.length, 'items');
-      setFeed(response.data?.data || []);
+      setFeed(sortByNewest(response.data?.data || []));
+      hasLoadedFeedRef.current = true;
     } catch (error) {
       console.error('❌ Error fetching feed:', error.message);
       if (user) {
         Alert.alert('Error', 'Failed to load feed');
       }
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   };
 
   const fetchThreadDetail = async (threadId, retryCount = 0) => {
     try {
       setLoadingPosts(true);
-      console.log('📖 Fetching thread details:', threadId);
+      console.log('ðŸ“– Fetching thread details:', threadId);
       const response = await axios.get(`/api/v1/forum/threads/${threadId}`, { 
         timeout: 30000
       });
-      console.log('✅ Thread loaded successfully with', response.data?.data?.posts?.length, 'posts');
+      console.log('âœ… Thread loaded successfully with', response.data?.data?.posts?.length, 'posts');
       
       if (response.data?.data) {
         setSelectedThread(response.data.data.thread);
-        setThreadPosts(response.data.data.posts || []);
+        setThreadPosts(sortByNewest(response.data.data.posts || []));
       }
     } catch (error) {
-      console.error('❌ Error fetching thread:', error.message);
+      console.error('âŒ Error fetching thread:', error.message);
       
       // Retry logic
       if ((error.code === 'ECONNABORTED' || error.message.includes('timeout')) && retryCount < 1) {
-        console.warn('⚠️ Timeout - Retrying... (Attempt ' + (retryCount + 2) + '/2)');
+        console.warn('âš ï¸ Timeout - Retrying... (Attempt ' + (retryCount + 2) + '/2)');
         setTimeout(() => {
           fetchThreadDetail(threadId, retryCount + 1);
         }, 1000);
@@ -328,21 +349,21 @@ export default function ForumScreen({ navigation, route }) {
       setPostingThread(true);
       let response;
       if (newThreadImages.length > 0) {
-        console.log('📸 Creating thread WITH images:', newThreadImages.length);
+        console.log('ðŸ“¸ Creating thread WITH images:', newThreadImages.length);
         const form = new FormData();
         form.append('title', newThreadTitle);
         form.append('description', newThreadDesc);
         form.append('category', 'General');
         form.append('status', 'published');
         newThreadImages.forEach((img, idx) => {
-          console.log(`📸 Adding image ${idx + 1}:`, img.name);
+          console.log(`ðŸ“¸ Adding image ${idx + 1}:`, img.name);
           form.append('images', {
             uri: img.uri,
             name: img.name || `image_${Date.now()}.jpg`,
             type: img.type || 'image/jpeg',
           });
         });
-        console.log('🚀 POST /api/v1/forum/threads (with FormData)');
+        console.log('ðŸš€ POST /api/v1/forum/threads (with FormData)');
         response = await axios.post('/api/v1/forum/threads', form, {
           timeout: 20000,
           headers: {
@@ -350,8 +371,8 @@ export default function ForumScreen({ navigation, route }) {
           }
         });
       } else {
-        console.log('📝 Creating thread WITHOUT images');
-        console.log('🚀 POST /api/v1/forum/threads (JSON)');
+        console.log('ðŸ“ Creating thread WITHOUT images');
+        console.log('ðŸš€ POST /api/v1/forum/threads (JSON)');
         response = await axios.post(
           '/api/v1/forum/threads',
           {
@@ -364,19 +385,19 @@ export default function ForumScreen({ navigation, route }) {
         );
       }
 
-      console.log('✅ Thread created successfully:', response.data?.data?._id);
-      Alert.alert('Success', '🎉 Thread posted successfully!');
+      console.log('âœ… Thread created successfully:', response.data?.data?._id);
+      Alert.alert('Success', 'ðŸŽ‰ Thread posted successfully!');
       setCreateModalVisible(false);
       setNewThreadTitle('');
       setNewThreadDesc('');
       setNewThreadImages([]);
-      fetchFeed();
+      fetchFeed({ showLoader: false });
     } catch (error) {
-      console.error('❌ Error creating thread:', error.message);
-      console.error('❌ Error code:', error.code);
-      console.error('❌ Error response:', error.response?.status, error.response?.data);
-      console.error('❌ Error config URL:', error.config?.url);
-      console.error('❌ Error config method:', error.config?.method);
+      console.error('âŒ Error creating thread:', error.message);
+      console.error('âŒ Error code:', error.code);
+      console.error('âŒ Error response:', error.response?.status, error.response?.data);
+      console.error('âŒ Error config URL:', error.config?.url);
+      console.error('âŒ Error config method:', error.config?.method);
       if (user) {
         const message = error.response?.data?.message || error.message || 'Failed to create thread';
         Alert.alert('Error', message);
@@ -508,7 +529,7 @@ export default function ForumScreen({ navigation, route }) {
         );
       }
 
-      Alert.alert('Success', '✅ Reply posted!');
+      Alert.alert('Success', 'âœ… Reply posted!');
       setNewPostContent('');
       setReplyImages([]);
       fetchThreadDetail(selectedThread._id);
@@ -718,35 +739,170 @@ export default function ForumScreen({ navigation, route }) {
     );
   };
 
-  const handleLikeThread = async (threadId) => {
+  const isSameUserId = (value, userIdStr) => {
+    if (!value || !userIdStr) return false;
+    return String(value) === userIdStr;
+  };
+
+  const detectUserLikedFromData = (thread) => {
+    if (!thread || !user) return false;
+    if (typeof thread.isLiked === 'boolean') return thread.isLiked;
+    if (typeof thread.hasLiked === 'boolean') return thread.hasLiked;
+    if (typeof thread.userHasLiked === 'boolean') return thread.userHasLiked;
+    if (typeof thread.likedByCurrentUser === 'boolean') return thread.likedByCurrentUser;
+    if (typeof thread.currentUserLiked === 'boolean') return thread.currentUserLiked;
+    if (thread.currentUserReaction && String(thread.currentUserReaction).toLowerCase() === 'liked') return true;
+    if (thread.likeStatus && String(thread.likeStatus).toLowerCase() === 'liked') return true;
+
+    const uid = user._id || user.id;
+    const userIdStr = uid ? String(uid) : '';
+    if (!userIdStr || !Array.isArray(thread.likes)) return false;
+
+    return thread.likes.some((like) => {
+      if (!like) return false;
+      if (typeof like !== 'object') return String(like) === userIdStr;
+      if (like && typeof like === 'object') {
+        return (
+          isSameUserId(like._id, userIdStr) ||
+          isSameUserId(like.id, userIdStr) ||
+          isSameUserId(like.user, userIdStr) ||
+          isSameUserId(like.userId, userIdStr) ||
+          isSameUserId(like?.user?._id, userIdStr) ||
+          isSameUserId(like?.user?.id, userIdStr)
+        );
+      }
+      return false;
+    });
+  };
+
+  const hasUserLiked = (thread) => {
+    if (!thread || !user) return false;
+    if (thread._id && typeof likedThreadOverrides[thread._id] === 'boolean') {
+      return likedThreadOverrides[thread._id];
+    }
+    return detectUserLikedFromData(thread);
+  };
+
+  const handleLikeThread = async (threadOrId) => {
+    const threadId = typeof threadOrId === 'string' ? threadOrId : threadOrId?._id;
+    if (!threadId) return;
+
+    const sourceThread =
+      typeof threadOrId === 'object' && threadOrId
+        ? threadOrId
+        : (feed.find((t) => t._id === threadId) || (selectedThread?._id === threadId ? selectedThread : null));
+    const fallbackNextLiked = !hasUserLiked(sourceThread || { _id: threadId });
+
     try {
-      await axios.post(
+      const response = await axios.post(
         `/api/v1/forum/threads/${threadId}/like`,
         {},
         { timeout: 15000 }
       );
-      fetchFeed();
-      if (selectedThread?._id === threadId) {
-        fetchThreadDetail(threadId);
+
+      const serverIsLiked = response?.data?.data?.isLiked;
+      const serverLikesCount = Number(response?.data?.data?.likesCount);
+      const resolvedIsLiked = typeof serverIsLiked === 'boolean' ? serverIsLiked : fallbackNextLiked;
+
+      setLikedThreadOverrides((prev) => ({ ...prev, [threadId]: resolvedIsLiked }));
+      if (Number.isFinite(serverLikesCount)) {
+        setFeed((prev) =>
+          prev.map((thread) =>
+            thread._id === threadId ? { ...thread, likesCount: serverLikesCount } : thread
+          )
+        );
+        setSelectedThread((prev) => {
+          if (!prev || prev._id !== threadId) return prev;
+          return { ...prev, likesCount: serverLikesCount };
+        });
       }
+
+      // Keep scroll position stable: avoid full list reload after like toggle
     } catch (error) {
       console.error('Error liking thread:', error);
     }
   };
 
-  const handleLikePost = async (postId) => {
+  const detectUserLikedPostFromData = (post) => {
+    if (!post || !user) return false;
+    if (typeof post.isLiked === 'boolean') return post.isLiked;
+    if (typeof post.hasLiked === 'boolean') return post.hasLiked;
+    if (typeof post.userHasLiked === 'boolean') return post.userHasLiked;
+    if (typeof post.likedByCurrentUser === 'boolean') return post.likedByCurrentUser;
+    if (typeof post.currentUserLiked === 'boolean') return post.currentUserLiked;
+    if (post.currentUserReaction && String(post.currentUserReaction).toLowerCase() === 'liked') return true;
+    if (post.likeStatus && String(post.likeStatus).toLowerCase() === 'liked') return true;
+
+    const uid = user._id || user.id;
+    const userIdStr = uid ? String(uid) : '';
+    if (!userIdStr || !Array.isArray(post.likes)) return false;
+
+    return post.likes.some((like) => {
+      if (!like) return false;
+      if (typeof like !== 'object') return String(like) === userIdStr;
+      if (like && typeof like === 'object') {
+        return (
+          isSameUserId(like._id, userIdStr) ||
+          isSameUserId(like.id, userIdStr) ||
+          isSameUserId(like.user, userIdStr) ||
+          isSameUserId(like.userId, userIdStr) ||
+          isSameUserId(like?.user?._id, userIdStr) ||
+          isSameUserId(like?.user?.id, userIdStr)
+        );
+      }
+      return false;
+    });
+  };
+
+  const hasUserLikedPost = (post) => {
+    if (!post || !user) return false;
+    if (post._id && typeof likedPostOverrides[post._id] === 'boolean') {
+      return likedPostOverrides[post._id];
+    }
+    return detectUserLikedPostFromData(post);
+  };
+
+  const handleLikePost = async (postOrId) => {
+    const postId = typeof postOrId === 'string' ? postOrId : postOrId?._id;
+    if (!postId) return;
+
+    const sourcePost =
+      typeof postOrId === 'object' && postOrId
+        ? postOrId
+        : threadPosts.find((p) => p._id === postId);
+
+    const fallbackNextLiked = !hasUserLikedPost(sourcePost || { _id: postId });
+
     try {
-      await axios.post(
+      const response = await axios.post(
         `/api/v1/forum/posts/${postId}/like`,
         {},
         { timeout: 15000 }
       );
-      if (selectedThread) {
-        fetchThreadDetail(selectedThread._id);
+
+      const serverIsLiked = response?.data?.data?.isLiked;
+      const serverLikesCount = Number(response?.data?.data?.likesCount);
+      const resolvedIsLiked = typeof serverIsLiked === 'boolean' ? serverIsLiked : fallbackNextLiked;
+
+      setLikedPostOverrides((prev) => ({ ...prev, [postId]: resolvedIsLiked }));
+      if (Number.isFinite(serverLikesCount)) {
+        setThreadPosts((prev) =>
+          prev.map((post) =>
+            post._id === postId ? { ...post, likesCount: serverLikesCount } : post
+          )
+        );
       }
+
+      // Keep reply list position stable: avoid full reload after like toggle
     } catch (error) {
       console.error('Error liking post:', error);
     }
+  };
+
+  const hasThreadImages = (thread) => {
+    if (!thread) return false;
+    if (Array.isArray(thread.images) && thread.images.length > 0) return true;
+    return Boolean(thread?.thumbnail?.url || thread?.imageUrl);
   };
 
   // Clear interaction (Remove Interest / Restore Interest)
@@ -756,7 +912,7 @@ export default function ForumScreen({ navigation, route }) {
         `/api/v1/forum/threads/${threadId}/interaction`,
         { timeout: 15000 }
       );
-      console.log('✅ Interaction cleared for thread', threadId);
+      console.log('âœ… Interaction cleared for thread', threadId);
 
       // If in 'interested' tab (Remove Interest), remove from list
       if (activeTab === 'interested') {
@@ -767,9 +923,9 @@ export default function ForumScreen({ navigation, route }) {
         setUninterestedThreads(prev => prev.filter(t => t._id !== threadId));
       }
       
-      Alert.alert('Success', '✅ Post status reset');
+      Alert.alert('Success', 'âœ… Post status reset');
     } catch (error) {
-      console.error('❌ Error clearing interaction:', error.message);
+      console.error('âŒ Error clearing interaction:', error.message);
       Alert.alert('Error', 'Failed to update post status');
     }
   };
@@ -781,13 +937,13 @@ export default function ForumScreen({ navigation, route }) {
         {},
         { timeout: 15000 }
       );
-      console.log('✅ Thread marked as interested');
+      console.log('âœ… Thread marked as interested');
 
       // If in feed, DO NOT remove it (it stays, just marked interested)
       
-      Alert.alert('Success', '✅ Post marked as interesting!');
+      Alert.alert('Success', 'âœ… Post marked as interesting!');
     } catch (error) {
-      console.error('❌ Error marking interested:', error.message);
+      console.error('âŒ Error marking interested:', error.message);
       Alert.alert('Error', 'Failed to mark as interested');
     }
   };
@@ -799,16 +955,16 @@ export default function ForumScreen({ navigation, route }) {
         {},
         { timeout: 15000 }
       );
-      console.log('✅ Thread marked as uninterested');
+      console.log('âœ… Thread marked as uninterested');
 
       // If in feed, REMOVE it
       if (activeTab === 'feed') {
         setFeed(prev => prev.filter(t => t._id !== threadId));
       }
       
-      Alert.alert('Success', '➖ Post marked as not interesting');
+      Alert.alert('Success', 'âž– Post marked as not interesting');
     } catch (error) {
-      console.error('❌ Error marking uninterested:', error.message);
+      console.error('âŒ Error marking uninterested:', error.message);
       Alert.alert('Error', 'Failed to mark as uninterested');
     }
   };
@@ -820,7 +976,7 @@ export default function ForumScreen({ navigation, route }) {
         {},
         { timeout: 15000 }
       );
-      console.log('✅ Thread saved');
+      console.log('âœ… Thread saved');
       
       // If in saved tab (Unsave), remove it
       if (activeTab === 'saved') {
@@ -828,9 +984,9 @@ export default function ForumScreen({ navigation, route }) {
       }
       // If in feed, keep it there
       
-      Alert.alert('Success', '🔖 Post saved/unsaved!');
+      Alert.alert('Success', 'ðŸ”– Post saved/unsaved!');
     } catch (error) {
-      console.error('❌ Error saving post:', error.message);
+      console.error('âŒ Error saving post:', error.message);
       Alert.alert('Error', 'Failed to save post');
     }
   };
@@ -850,13 +1006,13 @@ export default function ForumScreen({ navigation, route }) {
         { timeout: 15000 }
       );
 
-      console.log('✅ Report submitted');
-      Alert.alert('Success', '🚩 Report submitted successfully!');
+      console.log('âœ… Report submitted');
+      Alert.alert('Success', 'ðŸš© Report submitted successfully!');
       setReportModalVisible(false);
       setReportReason('');
       setSelectedThreadForAction(null);
     } catch (error) {
-      console.error('❌ Error submitting report:', error.message);
+      console.error('âŒ Error submitting report:', error.message);
       const errorMsg = error.response?.data?.message || 'Failed to submit report';
       Alert.alert('Error', errorMsg);
     } finally {
@@ -868,16 +1024,16 @@ export default function ForumScreen({ navigation, route }) {
   const fetchInterestedThreads = async () => {
     try {
       setTabLoading(prev => ({ ...prev, interested: true }));
-      console.log('📌 Fetching interested threads...');
+      console.log('ðŸ“Œ Fetching interested threads...');
       
       const response = await axios.get('/api/v1/forum/threads/interested/all', {
         timeout: 10000
       });
       
-      console.log('✅ Interested threads loaded:', response.data?.data?.length || 0, 'items');
-      setInterestedThreads(response.data?.data || []);
+      console.log('âœ… Interested threads loaded:', response.data?.data?.length || 0, 'items');
+      setInterestedThreads(sortByNewest(response.data?.data || []));
     } catch (error) {
-      console.error('❌ Error fetching interested threads:', error.message);
+      console.error('âŒ Error fetching interested threads:', error.message);
       if (user) {
         Alert.alert('Error', 'Failed to load interested posts');
       }
@@ -890,16 +1046,16 @@ export default function ForumScreen({ navigation, route }) {
   const fetchUninterestedThreads = async () => {
     try {
       setTabLoading(prev => ({ ...prev, uninterested: true }));
-      console.log('❌ Fetching uninterested threads...');
+      console.log('âŒ Fetching uninterested threads...');
       
       const response = await axios.get('/api/v1/forum/threads/uninterested/all', {
         timeout: 10000
       });
       
-      console.log('✅ Uninterested threads loaded:', response.data?.data?.length || 0, 'items');
-      setUninterestedThreads(response.data?.data || []);
+      console.log('âœ… Uninterested threads loaded:', response.data?.data?.length || 0, 'items');
+      setUninterestedThreads(sortByNewest(response.data?.data || []));
     } catch (error) {
-      console.error('❌ Error fetching uninterested threads:', error.message);
+      console.error('âŒ Error fetching uninterested threads:', error.message);
       if (user) {
         Alert.alert('Error', 'Failed to load uninterested posts');
       }
@@ -912,16 +1068,16 @@ export default function ForumScreen({ navigation, route }) {
   const fetchSavedThreads = async () => {
     try {
       setTabLoading(prev => ({ ...prev, saved: true }));
-      console.log('🔖 Fetching saved threads...');
+      console.log('ðŸ”– Fetching saved threads...');
       
       const response = await axios.get('/api/v1/forum/saved-threads', {
         timeout: 10000
       });
       
-      console.log('✅ Saved threads loaded:', response.data?.data?.length || 0, 'items');
-      setSavedThreads(response.data?.data || []);
+      console.log('âœ… Saved threads loaded:', response.data?.data?.length || 0, 'items');
+      setSavedThreads(sortByNewest(response.data?.data || []));
     } catch (error) {
-      console.error('❌ Error fetching saved threads:', error.message);
+      console.error('âŒ Error fetching saved threads:', error.message);
       if (user) {
         Alert.alert('Error', 'Failed to load saved posts');
       }
@@ -934,17 +1090,17 @@ export default function ForumScreen({ navigation, route }) {
   const fetchAllUsers = async (search = '') => {
     try {
       setTabLoading(prev => ({ ...prev, users: true }));
-      console.log('👥 Fetching all users with search:', search);
+      console.log('ðŸ‘¥ Fetching all users with search:', search);
       
       const response = await axios.get('/api/v1/users/all-users', {
         params: { search },
         timeout: 10000
       });
       
-      console.log('✅ Users loaded:', response.data?.data?.length || 0, 'users');
+      console.log('âœ… Users loaded:', response.data?.data?.length || 0, 'users');
       setAllUsers(response.data?.data || []);
     } catch (error) {
-      console.error('❌ Error fetching users:', error.message);
+      console.error('âŒ Error fetching users:', error.message);
       if (user) {
         Alert.alert('Error', 'Failed to load users');
       }
@@ -971,7 +1127,7 @@ export default function ForumScreen({ navigation, route }) {
         u._id === userId ? { ...u, friendStatus: 'pending_sent' } : u
       ));
     } catch (error) {
-      console.error('❌ Error sending friend request:', error.message);
+      console.error('âŒ Error sending friend request:', error.message);
       Alert.alert('Error', error.response?.data?.message || 'Failed to send friend request');
     } finally {
       setSendingFriendRequest(prev => ({ ...prev, [userId]: false }));
@@ -994,7 +1150,7 @@ export default function ForumScreen({ navigation, route }) {
         u._id === userId ? { ...u, friendStatus: 'none' } : u
       ));
     } catch (error) {
-      console.error('❌ Error canceling request:', error.message);
+      console.error('âŒ Error canceling request:', error.message);
       Alert.alert('Error', 'Failed to cancel request');
     } finally {
       setSendingFriendRequest(prev => ({ ...prev, [userId]: false }));
@@ -1019,7 +1175,7 @@ export default function ForumScreen({ navigation, route }) {
         u._id === userId ? { ...u, friendStatus: 'friends' } : u
       ));
     } catch (error) {
-      console.error('❌ Error accepting request:', error.message);
+      console.error('âŒ Error accepting request:', error.message);
       Alert.alert('Error', 'Failed to accept request');
     } finally {
       setSendingFriendRequest(prev => ({ ...prev, [userId]: false }));
@@ -1042,7 +1198,7 @@ export default function ForumScreen({ navigation, route }) {
         u._id === userId ? { ...u, friendStatus: 'none' } : u
       ));
     } catch (error) {
-      console.error('❌ Error declining request:', error.message);
+      console.error('âŒ Error declining request:', error.message);
       Alert.alert('Error', 'Failed to decline request');
     } finally {
       setSendingFriendRequest(prev => ({ ...prev, [userId]: false }));
@@ -1072,7 +1228,7 @@ export default function ForumScreen({ navigation, route }) {
                 u._id === userId ? { ...u, friendStatus: 'none' } : u
               ));
             } catch (error) {
-              console.error('❌ Error removing friend:', error.message);
+              console.error('âŒ Error removing friend:', error.message);
               Alert.alert('Error', 'Failed to unfriend');
             } finally {
               setSendingFriendRequest(prev => ({ ...prev, [userId]: false }));
@@ -1121,7 +1277,7 @@ export default function ForumScreen({ navigation, route }) {
         drawerSlideAnim={drawerSlideAnim}
         user={user}
         onLogout={() => {
-          // ⚡ Fast logout - immediate response (backend call happens in background)
+          // âš¡ Fast logout - immediate response (backend call happens in background)
           logout(navigation);
         }}
       />
@@ -1373,7 +1529,11 @@ export default function ForumScreen({ navigation, route }) {
                     return (
                     <View key={item._id}>
                     <TouchableOpacity
-                      style={[styles.threadCard, { borderColor: colors.border, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, shadowOffset: { width: 0, height: 4 } }]}
+                      style={[
+                        styles.threadCard,
+                        { borderColor: colors.border },
+                        openMenuThreadId === item._id && styles.threadCardMenuOpen
+                      ]}
                       onPress={() => {
                         setSelectedThread(item);
                         fetchThreadDetail(item._id);
@@ -1382,16 +1542,16 @@ export default function ForumScreen({ navigation, route }) {
                     >
                       <View style={styles.threadHeader}>
                         <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center', gap: 10 }}>
-                          <Image 
-                            source={{ uri: item.createdBy?.avatar?.url || 'https://via.placeholder.com/40' }} 
-                            style={{ width: 40, height: 40, borderRadius: 20 }}
+                          <Image
+                            source={{ uri: item.createdBy?.avatar?.url || 'https://via.placeholder.com/40' }}
+                            style={styles.threadAvatar}
                           />
                           <View>
                             <Text style={[styles.threadAuthor, { color: colors.text }]}>
                               {item.createdBy?.name || 'User'}
                             </Text>
                             <Text style={[styles.threadTime, { color: colors.textLight }]}>
-                              {getRelativeTime(item.createdAt)} • 🌎
+                              {getRelativeTime(item.createdAt)}
                             </Text>
                           </View>
                         </View>
@@ -1401,17 +1561,37 @@ export default function ForumScreen({ navigation, route }) {
                               e.stopPropagation();
                               setOpenMenuThreadId(openMenuThreadId === item._id ? null : item._id);
                             }}
-                            style={styles.menuButton}
+                            style={[
+                              styles.menuButton,
+                              !hasThreadImages(item) && styles.menuButtonCompact
+                            ]}
                           >
-                            <MaterialCommunityIcons name="dots-horizontal" size={24} color={colors.textLight} />
+                            <MaterialCommunityIcons
+                              name="dots-horizontal"
+                              size={hasThreadImages(item) ? 20 : 16}
+                              color={colors.primary}
+                            />
                           </TouchableOpacity>
                         </View>
                       </View>
 
                       {/* Dropdown Menu Overlay - Rendered conditionally when open */}
                       {openMenuThreadId === item._id && (
-                        <View style={{ position: 'absolute', top: 40, right: 10, zIndex: 9999 }}>
-                          <View style={[styles.menuDropdown, { backgroundColor: '#FFFFFF', borderColor: colors.border, elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, width: 160 }]}>
+                        <View style={styles.menuDropdownWrap}>
+                          <View style={[
+                            styles.menuDropdown,
+                            { backgroundColor: '#FFFFFF', borderColor: colors.border },
+                            !hasThreadImages(item) && styles.menuDropdownNoImage
+                          ]}>
+                            <View style={styles.menuHeader}>
+                              <Text style={[styles.menuHeaderTitle, { color: colors.text }]}>Manage this post</Text>
+                            </View>
+                            <ScrollView
+                              style={!hasThreadImages(item) ? styles.menuOptionsScrollable : undefined}
+                              contentContainerStyle={styles.menuOptionsContent}
+                              showsVerticalScrollIndicator={!hasThreadImages(item)}
+                              nestedScrollEnabled
+                            >
                             {activeTab !== 'interested' && activeTab !== 'uninterested' && activeTab !== 'saved' && (
                               <>
                                 <TouchableOpacity
@@ -1494,7 +1674,7 @@ export default function ForumScreen({ navigation, route }) {
                             )}
 
                             <TouchableOpacity
-                              style={[styles.menuOption, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }]}
+                              style={[styles.menuOption, styles.menuOptionDanger]}
                               onPress={(e) => {
                                 e.stopPropagation();
                                 setSelectedThreadForAction(item);
@@ -1505,6 +1685,7 @@ export default function ForumScreen({ navigation, route }) {
                               <MaterialCommunityIcons name="flag" size={18} color={colors.danger} />
                               <Text style={[styles.menuOptionText, { color: colors.danger }]}>Report</Text>
                             </TouchableOpacity>
+                            </ScrollView>
                           </View>
                         </View>
                       )}
@@ -1524,13 +1705,24 @@ export default function ForumScreen({ navigation, route }) {
                               : [])
                       )}
 
-                      <View style={[styles.threadFooter, { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10, marginTop: 10 }]}>
+                      <View style={styles.threadFooter}>
                         <TouchableOpacity 
                           style={styles.footerAction}
-                          onPress={() => handleLikeThread(item._id)}
+                          onPress={() => handleLikeThread(item)}
                         >
-                          <MaterialCommunityIcons name="thumb-up-outline" size={20} color={colors.textLight} />
-                          <Text style={styles.footerActionText}>Like ({item.likesCount || 0})</Text>
+                          <View style={[
+                            styles.likeIconBadge,
+                            hasUserLiked(item) ? styles.likeIconBadgeActive : styles.likeIconBadgeIdle,
+                          ]}>
+                            <MaterialCommunityIcons
+                              name={hasUserLiked(item) ? "thumb-up" : "thumb-up-outline"}
+                              size={14}
+                              color={hasUserLiked(item) ? '#2563EB' : '#FFFFFF'}
+                            />
+                          </View>
+                          <Text style={[styles.footerActionText, hasUserLiked(item) && styles.footerActionTextActive]}>
+                            {hasUserLiked(item) ? 'Liked' : 'Like'} ({item.likesCount || 0})
+                          </Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
@@ -1541,14 +1733,10 @@ export default function ForumScreen({ navigation, route }) {
                             setThreadDetailVisible(true);
                           }}
                         >
-                          <MaterialCommunityIcons name="comment-outline" size={20} color={colors.textLight} />
+                          <MaterialCommunityIcons name="comment-outline" size={18} color={colors.primary} />
                           <Text style={styles.footerActionText}>Comment ({item.repliesCount || 0})</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.footerAction}>
-                          <MaterialCommunityIcons name="share-outline" size={20} color={colors.textLight} />
-                          <Text style={styles.footerActionText}>Share</Text>
-                        </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
                     </View>
@@ -1705,80 +1893,100 @@ export default function ForumScreen({ navigation, route }) {
             <View style={{ width: 40 }} />
           </View>
 
-          <ScrollView style={styles.modalContent}>
-            <Text style={[styles.label, { color: colors.text }]}>Title</Text>
-            <TextInput
-              style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-              placeholder="Discussion title..."
-              placeholderTextColor={colors.textLight}
-              value={newThreadTitle}
-              onChangeText={setNewThreadTitle}
-              maxLength={200}
-            />
-            <Text style={[styles.charCount, { color: colors.textLight }]}>
-              {newThreadTitle.length}/200
-            </Text>
-
-            <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.textArea, { borderColor: colors.border, color: colors.text }]}
-              placeholder="Share your knowledge or question about black pepper farming..."
-              placeholderTextColor={colors.textLight}
-              value={newThreadDesc}
-              onChangeText={setNewThreadDesc}
-              multiline
-              numberOfLines={6}
-              maxLength={300}
-            />
-            <Text style={[styles.charCount, { color: colors.textLight }]}>
-              {newThreadDesc.length}/300
-            </Text>
-
-            {newThreadDesc.length > 0 && (
-              <View style={[styles.validationBox, {
-                backgroundColor: validateContent(newThreadDesc).isValid ? colors.success + '15' : colors.warning + '15',
-                borderColor: validateContent(newThreadDesc).isValid ? colors.success : colors.warning
-              }]}>
-                <Text style={[styles.validationText, {
-                  color: validateContent(newThreadDesc).isValid ? colors.success : colors.warning
-                }]}>
-                  {validateContent(newThreadDesc).message}
+          <ScrollView style={styles.modalContent} contentContainerStyle={styles.createModalContent}>
+            <View style={styles.createHeroCard}>
+              <View style={styles.createHeroIconWrap}>
+                <MaterialCommunityIcons name="forum-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.createHeroTitle, { color: colors.text }]}>Start A Helpful Discussion</Text>
+                <Text style={[styles.createHeroSub, { color: colors.textLight }]}>
+                  Keep posts clear, respectful, and related to black pepper farming.
                 </Text>
               </View>
-            )}
-
-            <View style={styles.replyAddButtons}>
-              <TouchableOpacity style={[styles.replyAddButton, { backgroundColor: colors.primary }]} onPress={pickThreadImagesFromGallery}>
-                <Feather name="image" size={18} color="#FFFFFF" />
-                <Text style={styles.replyAddButtonText}>Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.replyAddButton, { backgroundColor: colors.primary }]} onPress={pickThreadImageFromCamera}>
-                <Feather name="camera" size={18} color="#FFFFFF" />
-                <Text style={styles.replyAddButtonText}>Camera</Text>
-              </TouchableOpacity>
             </View>
-            {newThreadImages.length > 0 && (
-              <View style={[styles.replyPreviewGrid, { position: 'relative' }]}>
-                {renderImageGrid(
-                  newThreadImages.map(img => ({ uri: img.uri })),
-                  width - 24
-                )}
-                <View style={{ position: 'absolute', top: 8, right: 6, zIndex: 10, flexDirection: 'column', gap: 8 }}>
-                  {newThreadImages.map((img, idx) => (
-                    <TouchableOpacity
-                      key={`badge-${idx}`}
-                      style={styles.removeBadge}
-                      onPress={() => removeThreadImageAt(idx)}
-                    >
-                      <Feather name="x" size={14} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  ))}
+
+            <View style={[styles.createSectionCard, { borderColor: colors.border }]}>
+              <Text style={[styles.label, { color: colors.text }]}>Title</Text>
+              <TextInput
+                style={[styles.input, styles.createInput, { borderColor: colors.border, color: colors.text }]}
+                placeholder="Enter a concise post title"
+                placeholderTextColor={colors.textLight}
+                value={newThreadTitle}
+                onChangeText={setNewThreadTitle}
+                maxLength={200}
+              />
+              <Text style={[styles.charCount, styles.createCounter, { color: colors.textLight }]}>
+                {newThreadTitle.length}/200
+              </Text>
+            </View>
+
+            <View style={[styles.createSectionCard, { borderColor: colors.border }]}>
+              <Text style={[styles.label, { color: colors.text }]}>Description</Text>
+              <TextInput
+                style={[styles.input, styles.textArea, styles.createInput, { borderColor: colors.border, color: colors.text }]}
+                placeholder="Share details about your question, issue, or farming experience..."
+                placeholderTextColor={colors.textLight}
+                value={newThreadDesc}
+                onChangeText={setNewThreadDesc}
+                multiline
+                numberOfLines={6}
+                maxLength={300}
+              />
+              <Text style={[styles.charCount, styles.createCounter, { color: colors.textLight }]}>
+                {newThreadDesc.length}/300
+              </Text>
+
+              {newThreadDesc.length > 0 && (
+                <View style={[styles.validationBox, {
+                  backgroundColor: validateContent(newThreadDesc).isValid ? colors.success + '15' : colors.warning + '15',
+                  borderColor: validateContent(newThreadDesc).isValid ? colors.success : colors.warning
+                }]}>
+                  <Text style={[styles.validationText, {
+                    color: validateContent(newThreadDesc).isValid ? colors.success : colors.warning
+                  }]}>
+                    {validateContent(newThreadDesc).message}
+                  </Text>
                 </View>
+              )}
+            </View>
+
+            <View style={[styles.createSectionCard, { borderColor: colors.border }]}>
+              <Text style={[styles.label, { color: colors.text, marginBottom: 10 }]}>Add Photos (optional)</Text>
+              <View style={styles.createMediaRow}>
+                <TouchableOpacity style={[styles.createMediaButton, { backgroundColor: colors.primary }]} onPress={pickThreadImagesFromGallery}>
+                  <Feather name="image" size={17} color="#FFFFFF" />
+                  <Text style={styles.replyAddButtonText}>Gallery</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.createMediaButton, { backgroundColor: colors.primary }]} onPress={pickThreadImageFromCamera}>
+                  <Feather name="camera" size={17} color="#FFFFFF" />
+                  <Text style={styles.replyAddButtonText}>Camera</Text>
+                </TouchableOpacity>
               </View>
-            )}
+
+              {newThreadImages.length > 0 && (
+                <View style={[styles.replyPreviewGrid, styles.createPreviewWrap]}>
+                  {renderImageGrid(
+                    newThreadImages.map(img => ({ uri: img.uri })),
+                    width - 56
+                  )}
+                  <View style={{ position: 'absolute', top: 8, right: 6, zIndex: 10, flexDirection: 'column', gap: 8 }}>
+                    {newThreadImages.map((img, idx) => (
+                      <TouchableOpacity
+                        key={`badge-${idx}`}
+                        style={styles.removeBadge}
+                        onPress={() => removeThreadImageAt(idx)}
+                      >
+                        <Feather name="x" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
 
             <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+              style={[styles.submitButton, styles.createSubmitButton, { backgroundColor: colors.primary }]}
               onPress={handleCreateThread}
               disabled={postingThread}
             >
@@ -1786,7 +1994,7 @@ export default function ForumScreen({ navigation, route }) {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Feather name="send" size={20} color="#FFFFFF" />
+                  <Feather name="send" size={19} color="#FFFFFF" />
                   <Text style={styles.submitButtonText}>Post Discussion</Text>
                 </>
               )}
@@ -1811,7 +2019,7 @@ export default function ForumScreen({ navigation, route }) {
               <Feather name="chevron-left" size={28} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {selectedThread?.title}
+              Post Details
             </Text>
             <View style={{ width: 40 }} />
           </View>
@@ -1827,21 +2035,21 @@ export default function ForumScreen({ navigation, route }) {
                     <View style={styles.threadHeader}>
                       <Image
                         source={{ uri: selectedThread.createdBy?.avatar?.url || 'https://via.placeholder.com/40' }}
-                        style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
+                        style={styles.threadAvatar}
                       />
-                      <View>
+                      <View style={styles.threadIdentityBlock}>
                         <Text style={[styles.threadAuthor, { color: colors.text }]}>
                           {selectedThread.createdBy?.name || 'User'}
                         </Text>
                         <Text style={[styles.threadTime, { color: colors.textLight }]}>
-                          {getRelativeTime(selectedThread.createdAt)} • 🌎
+                          {getRelativeTime(selectedThread.createdAt)}
+                        </Text>
+                        <Text style={[styles.threadTitleInline, { color: colors.text }]}>
+                          {selectedThread.title}
                         </Text>
                       </View>
                     </View>
 
-                    <Text style={[styles.threadTitle, { color: colors.text, marginTop: 12 }]}>
-                      {selectedThread.title}
-                    </Text>
                     <Text style={[styles.threadDesc, { color: colors.textLight, marginTop: 4, marginBottom: 12 }]}>
                       {selectedThread.description}
                     </Text>
@@ -1856,11 +2064,20 @@ export default function ForumScreen({ navigation, route }) {
                     <View style={styles.threadActions}>
                       <TouchableOpacity
                         style={styles.actionButton}
-                        onPress={() => handleLikeThread(selectedThread._id)}
+                        onPress={() => handleLikeThread(selectedThread)}
                       >
-                        <MaterialCommunityIcons name="thumb-up-outline" size={20} color={colors.textLight} />
-                        <Text style={styles.actionText}>
-                          Like ({selectedThread.likesCount || 0})
+                        <View style={[
+                          styles.likeIconBadge,
+                          hasUserLiked(selectedThread) ? styles.likeIconBadgeActive : styles.likeIconBadgeIdle,
+                        ]}>
+                          <MaterialCommunityIcons
+                            name={hasUserLiked(selectedThread) ? "thumb-up" : "thumb-up-outline"}
+                            size={14}
+                            color={hasUserLiked(selectedThread) ? '#2563EB' : '#FFFFFF'}
+                          />
+                        </View>
+                        <Text style={[styles.actionText, hasUserLiked(selectedThread) && styles.footerActionTextActive]}>
+                          {hasUserLiked(selectedThread) ? 'Liked' : 'Like'} ({selectedThread.likesCount || 0})
                         </Text>
                       </TouchableOpacity>
                       <View style={styles.actionButton}>
@@ -1902,11 +2119,15 @@ export default function ForumScreen({ navigation, route }) {
                         <View style={styles.replyFooter}>
                           <TouchableOpacity
                             style={styles.replyLikeButton}
-                            onPress={() => handleLikePost(post._id)}
+                            onPress={() => handleLikePost(post)}
                           >
-                            <MaterialCommunityIcons name="thumb-up-outline" size={16} color={colors.textLight} />
+                            <MaterialCommunityIcons
+                              name={hasUserLikedPost(post) ? "thumb-up" : "thumb-up-outline"}
+                              size={16}
+                              color={hasUserLikedPost(post) ? '#2563EB' : colors.textLight}
+                            />
                             <Text style={[styles.replyLikeText, { color: colors.textLight }]}>
-                              Like ({post.likesCount || 0})
+                              {hasUserLikedPost(post) ? 'Liked' : 'Like'} ({post.likesCount || 0})
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -2099,25 +2320,33 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 18,
     margin: 12,
-    borderRadius: 12,
+    borderRadius: 18,
     alignItems: 'center',
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    elevation: 5,
+    shadowColor: '#0D2818',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
   },
   headerContent: {
     marginLeft: 12,
     flex: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 4,
+    letterSpacing: 0.2,
   },
   createButton: {
     flexDirection: 'row',
@@ -2140,37 +2369,56 @@ const styles = StyleSheet.create({
   categoryTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 22,
     marginRight: 8,
-    borderWidth: 1.5,
+    borderWidth: 1.2,
   },
   categoryTabText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   threadsList: {
     paddingHorizontal: 12,
   },
   threadCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 22,
+    padding: 15,
+    marginBottom: 18,
     borderWidth: 1,
-    elevation: 2,
-    position: 'relative'
+    elevation: 5,
+    shadowColor: '#0D2818',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    position: 'relative',
+    overflow: 'visible',
+  },
+  threadCardMenuOpen: {
+    zIndex: 1200,
+    elevation: 20,
   },
   threadHeader: {
     flexDirection: 'row',
-    // justifyContent: 'space-between', // Removed this to align left
-    alignItems: 'center', // Changed from flex-start to center for better avatar alignment
-    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  threadAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  threadIdentityBlock: {
+    flex: 1,
   },
   threadTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
+    lineHeight: 23,
   },
   threadAuthor: {
     fontSize: 15, // Increased font size
@@ -2203,16 +2451,29 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   threadDesc: {
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 20,
-    marginBottom: 12,
+    marginTop: 4,
+    marginBottom: 10,
   },
   threadFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E8F1EC',
+    gap: 10,
   },
   threadMeta: {
     fontSize: 11,
+  },
+  threadTitleInline: {
+    fontSize: 18,
+    marginTop: 7,
+    fontWeight: '800',
+    lineHeight: 24,
+    letterSpacing: 0.2,
   },
   loadMoreButton: {
     paddingVertical: 12,
@@ -2252,6 +2513,78 @@ const styles = StyleSheet.create({
   modalContent: {
     flex: 1,
     padding: 16,
+  },
+  createModalContent: {
+    paddingBottom: 28,
+    gap: 12,
+  },
+  createHeroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D7E8DF',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 4,
+  },
+  createHeroIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EDF6F2',
+  },
+  createHeroTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  createHeroSub: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  createSectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+  },
+  createInput: {
+    backgroundColor: '#FAFCFB',
+    borderRadius: 12,
+  },
+  createCounter: {
+    textAlign: 'right',
+    marginBottom: 0,
+  },
+  createMediaRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  createMediaButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 7,
+  },
+  createPreviewWrap: {
+    marginTop: 10,
+  },
+  createSubmitButton: {
+    marginTop: 2,
+    borderRadius: 14,
+    paddingVertical: 14,
+    elevation: 4,
+    shadowColor: '#1B4D3E',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   label: {
     fontSize: 13,
@@ -2301,10 +2634,16 @@ const styles = StyleSheet.create({
   },
   threadInfoCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
+    borderColor: '#DCEBE3',
+    shadowColor: '#103126',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   threadInfoFooter: {
     marginTop: 12,
@@ -2317,15 +2656,27 @@ const styles = StyleSheet.create({
   },
   threadActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 12,
+    justifyContent: 'space-between',
+    marginTop: 14,
+    gap: 10,
   },
   actionButton: {
-    paddingVertical: 8,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DBE9E1',
+    backgroundColor: '#F8FCFA',
   },
   actionText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#24453C',
   },
   repliesTitle: {
     fontSize: 15,
@@ -2521,7 +2872,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 12,
   },
-  actionButton: {
+  requestActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -2531,7 +2882,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 6,
   },
-  actionButtonText: {
+  requestActionButtonText: {
     fontWeight: '600',
     fontSize: 12,
   },
@@ -2548,34 +2899,76 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   menuButton: {
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF5F1',
+    borderWidth: 1,
+    borderColor: '#D7E6DE',
+  },
+  menuButtonCompact: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F4F8F6',
+  },
+  menuDropdownWrap: {
+    position: 'absolute',
+    top: 46,
+    right: 8,
+    zIndex: 9999,
   },
   menuDropdown: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: 'hidden',
-    position: 'absolute',
-    top: 8,
-    right: 8,
     minWidth: 180,
-    elevation: 8,
+    elevation: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 }
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    paddingVertical: 6,
+  },
+  menuDropdownNoImage: {
+    maxHeight: 220,
+  },
+  menuOptionsScrollable: {
+    maxHeight: 170,
+  },
+  menuOptionsContent: {
+    paddingBottom: 2,
+  },
+  menuHeader: {
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6EFEA',
+  },
+  menuHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   menuOption: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingVertical: 11,
+    gap: 10,
+    marginHorizontal: 6,
+    marginVertical: 2,
+    borderRadius: 11,
+    backgroundColor: '#F7FBF9',
+  },
+  menuOptionDanger: {
+    backgroundColor: '#FFF3F4',
   },
   menuOptionText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   miniFab: {
     width: 40,
@@ -2766,22 +3159,47 @@ const styles = StyleSheet.create({
     color: '#1B1B1B',
   },
   threadAuthor: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
   threadTime: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
+    fontWeight: '600',
   },
   footerAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    padding: 8
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DBE9E1',
+    backgroundColor: '#F8FCFA',
+    flex: 1,
+  },
+  likeIconBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  likeIconBadgeActive: {
+    backgroundColor: '#EAF0FF',
+  },
+  likeIconBadgeIdle: {
+    backgroundColor: '#1B4D3E',
   },
   footerActionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#65676B'
-  }
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#24453C',
+  },
+  footerActionTextActive: {
+    color: '#2563EB',
+  },
 });
+

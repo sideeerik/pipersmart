@@ -2,12 +2,31 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #F8FAF7;
+  position: relative;
+}
+
+/* Dark Background with Image */
+.mapping-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100vh;
+  z-index: -1;
+  background: 
+    radial-gradient(ellipse at 20% 30%, rgba(0, 40, 20, 0.85) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(10, 30, 15, 0.75) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(10, 10, 10, 0.9) 0%, rgba(13, 26, 18, 0.85) 50%, rgba(10, 10, 10, 0.9) 100%),
+    url('../../../paminta.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .mapping-container {
   flex: 1;
-  padding: 60px 20px 40px;
+  padding: 80px 20px 40px;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
@@ -439,12 +458,12 @@
 }
 
 .rec-item.rec-success {
-  background: #E8F5E9;
+  background: #124d2b;
   border-left-color: #27AE60;
 }
 
 .rec-item.rec-warning {
-  background: #FFF3E0;
+  background: #664208;
   border-left-color: #F39C12;
 }
 
@@ -464,15 +483,15 @@
 }
 
 .rec-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: #1B4D3E;
+  color: #0D2818;
   margin: 0 0 4px 0;
 }
 
 .rec-message {
-  font-size: 11px;
-  color: #5A7A73;
+  font-size: 12px;
+  color: #1B4D3E;
   margin: 0;
   line-height: 1.4;
 }

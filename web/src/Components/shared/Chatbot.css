@@ -1,8 +1,8 @@
-/* Chatbot Float Button - Bottom Right */
+/* Chatbot Float Button - Close to Chat Widget */
 .chatbot-float-btn {
   position: fixed;
-  bottom: 30px;
-  right: 30px;
+  bottom: 20px;
+  right: 20px;
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -32,7 +32,7 @@
 .chatbot-widget {
   position: fixed;
   bottom: 30px;
-  right: 30px;
+  right: 20px;
   width: 0;
   height: 0;
   background: white;

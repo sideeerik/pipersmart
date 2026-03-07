@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import L from 'leaflet';
 import axios from 'axios';
@@ -234,6 +234,17 @@ export default function MacromappingPage() {
   const [showResults, setShowResults] = useState(false);
   const mapRef = useRef(null);
 
+  // OSRM Routing State
+  const [routeMode, setRouteMode] = useState(false);
+  const [routeStart, setRouteStart] = useState(null);
+  const [routeEnd, setRouteEnd] = useState(null);
+  const [routeData, setRouteData] = useState(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState(null);
+  
+  // Backend URL
+  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
   const colors = {
     primary: '#1B4D3E',
     primaryDark: '#0D2818',
@@ -361,34 +372,41 @@ export default function MacromappingPage() {
         console.warn('Elevation API error, using fallback:', elevError);
       }
       
-      // Get annual rainfall from NASA POWER API
+      // Get annual rainfall from NASA POWER API (via backend proxy)
       let annualRainfall = 2000; // Default fallback
       try {
-        const nasaResponse = await fetch(
-          `https://power.larc.nasa.gov/api/v1/climate?parameters=PRECTOT&community=ag&longitude=${longitude}&latitude=${latitude}&start=2020&end=2022&format=json`
+        const nasaResponse = await axios.post(
+          `${API_BASE_URL}/api/v1/macromap/rainfall`,
+          {
+            longitude,
+            latitude,
+            start: 2020,
+            end: 2022
+          }
         );
-        const nasaData = await nasaResponse.json();
-        if (nasaData.properties && nasaData.properties.PRECTOT) {
-          const yearlyData = nasaData.properties.PRECTOT;
-          const avgRainfall = Object.values(yearlyData).reduce((a, b) => a + b, 0) / Object.keys(yearlyData).length;
-          annualRainfall = Math.round(avgRainfall * 365 / 100); // Convert to mm/year
+        if (nasaResponse.data.success && nasaResponse.data.annualRainfall) {
+          annualRainfall = nasaResponse.data.annualRainfall;
         }
       } catch (nasaError) {
-        console.warn('NASA POWER API error, using fallback rainfall:', nasaError);
+        console.warn('Rainfall API error, using fallback rainfall:', nasaError.message);
       }
       
-      // Get soil pH from SoilGrids API
+      // Get soil pH from SoilGrids API (via backend proxy)
       let soilPH = 6.0; // Default fallback
       try {
-        const soilResponse = await fetch(
-          `https://rest.soilgrids.org/soilgrids/v2.0/properties/query?lon=${longitude}&lat=${latitude}&depth=0-5cm&property=phH2o`
+        const soilResponse = await axios.post(
+          `${API_BASE_URL}/api/v1/macromap/soil-ph`,
+          {
+            longitude,
+            latitude,
+            depth: '0-5cm'
+          }
         );
-        const soilData = await soilResponse.json();
-        if (soilData.properties && soilData.properties.phH2o && soilData.properties.phH2o.values && soilData.properties.phH2o.values.mean) {
-          soilPH = (soilData.properties.phH2o.values.mean[0] / 10).toFixed(2); // Convert to pH scale
+        if (soilResponse.data.success && soilResponse.data.soilPH) {
+          soilPH = soilResponse.data.soilPH;
         }
       } catch (soilError) {
-        console.warn('SoilGrids API error, using fallback soil pH:', soilError);
+        console.warn('Soil pH API error, using fallback soil pH:', soilError.message);
       }
       
       // Calculate suitability with all parameters
@@ -432,12 +450,87 @@ export default function MacromappingPage() {
     }
   };
 
-  const MapClickHandler = ({ onAnalyze }) => {
+  // OSRM Routing Function (via backend proxy)
+  const getRoute = async (startLat, startLng, endLat, endLng) => {
+    try {
+      setRouteLoading(true);
+      setRouteError(null);
+      
+      const response = await axios.post(
+        `${API_BASE_URL}/api/v1/macromap/route`,
+        {
+          startLat,
+          startLng,
+          endLat,
+          endLng
+        }
+      );
+      
+      if (response.data.success && response.data.route) {
+        const route = response.data.route;
+        setRouteData({
+          geometry: route.geometry,
+          distance: route.distance,
+          duration: route.duration,
+          distanceKm: route.distanceKm,
+          durationMinutes: route.durationMinutes,
+          legs: route.legs
+        });
+      } else {
+        setRouteError(response.data.error || 'No route found between these locations');
+      }
+    } catch (error) {
+      console.error('Route calculation error:', error.message);
+      setRouteError('Failed to calculate route. Please try again.');
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
+  const handleMapClickForRoute = (lat, lng) => {
+    if (!routeMode) return;
+    
+    if (!routeStart) {
+      setRouteStart({ lat, lng });
+    } else if (!routeEnd) {
+      setRouteEnd({ lat, lng });
+      getRoute(routeStart.lat, routeStart.lng, lat, lng);
+    } else {
+      setRouteStart({ lat, lng });
+      setRouteEnd(null);
+      setRouteData(null);
+    }
+  };
+
+  const toggleRouteMode = () => {
+    setRouteMode(!routeMode);
+    if (routeMode) {
+      setRouteStart(null);
+      setRouteEnd(null);
+      setRouteData(null);
+      setRouteError(null);
+    }
+  };
+
+  const clearRoute = () => {
+    setRouteStart(null);
+    setRouteEnd(null);
+    setRouteData(null);
+    setRouteError(null);
+  };
+
+  const MapClickHandler = ({ onAnalyze, routeMode, onRouteClick }) => {
     const map = useMap();
     
     useMapEvents({
       click: (e) => {
-        onAnalyze(e.latlng.lat, e.latlng.lng);
+        if (routeMode) {
+          // Route mode: add waypoints
+          onRouteClick(e.latlng.lat, e.latlng.lng);
+        } else {
+          // Suitability analysis mode: analyze location
+          onAnalyze(e.latlng.lat, e.latlng.lng);
+        }
       }
     });
     
@@ -472,14 +565,17 @@ export default function MacromappingPage() {
         {/* Info Card */}
         <motion.div 
           className="info-card" 
-          style={{ backgroundColor: colors.primary }}
+          style={{ backgroundColor: 'rgba(27, 77, 62, 0.95)', border: '1px solid rgba(255,255,255,0.1)' }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="info-content">
             <h2 style={{ color: '#FFFFFF', marginBottom: 8 }}>🌾 Black Pepper Macromapping</h2>
             <p style={{ color: 'rgba(255,255,255,0.9)' }}>
-              Find the best zones for black pepper cultivation. Click anywhere on the map to analyze suitability.
+              {routeMode 
+                ? '🛣️ Route Mode: Click to set start and end points for your route calculation.'
+                : '📍 Analysis Mode: Click anywhere on the map to analyze suitability for black pepper cultivation.'
+              }
             </p>
           </div>
         </motion.div>
@@ -489,8 +585,33 @@ export default function MacromappingPage() {
           {/* Map Section */}
           <div className="map-section-enhanced">
             <div className="map-header-enhanced">
-              <h1>Suitability Heatmap</h1>
-              <p>Click any location to analyze</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div>
+                  <h1>{routeMode ? '🛣️ Route Calculator' : '🗺️ Suitability Heatmap'}</h1>
+                  <p>{routeMode ? 'Set start and destination points' : 'Click any location to analyze'}</p>
+                </div>
+                <button 
+                  onClick={toggleRouteMode}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: routeMode ? '#E74C3C' : 'linear-gradient(135deg, #27AE60 0%, #1B4D3E 100%)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  {routeMode ? '❌ Cancel Route' : '🛣️ Get Route'}
+                </button>
+              </div>
+              {routeMode && (
+                <p style={{ color: '#F39C12', marginTop: '8px', fontSize: '13px' }}>
+                  📍 Click on map to set start point, then click again to set destination
+                </p>
+              )}
             </div>
 
             <div className="map-wrapper-enhanced">
@@ -575,7 +696,63 @@ export default function MacromappingPage() {
                     />
                   ))}
 
-                  <MapClickHandler onAnalyze={analyzeLocation} />
+                  {/* Route Start Marker */}
+                  {routeStart && (
+                    <Marker
+                      position={[routeStart.lat, routeStart.lng]}
+                      icon={L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                      })}
+                    >
+                      <Popup>
+                        <div><strong>🟢 Route Start</strong><br />Lat: {routeStart.lat.toFixed(4)}, Lng: {routeStart.lng.toFixed(4)}</div>
+                      </Popup>
+                    </Marker>
+                  )}
+
+                  {/* Route End Marker */}
+                  {routeEnd && (
+                    <Marker
+                      position={[routeEnd.lat, routeEnd.lng]}
+                      icon={L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                      })}
+                    >
+                      <Popup>
+                        <div><strong>🔴 Route End</strong><br />Lat: {routeEnd.lat.toFixed(4)}, Lng: {routeEnd.lng.toFixed(4)}</div>
+                      </Popup>
+                    </Marker>
+                  )}
+
+                  {/* Route Polyline */}
+                  {routeData && routeData.geometry && routeData.geometry.length > 0 && (
+                    <Polyline
+                      positions={routeData.geometry.map(coord => [coord[1], coord[0]])}
+                      pathOptions={{
+                        color: '#3498DB',
+                        weight: 4,
+                        opacity: 0.9,
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                      }}
+                    />
+                  )}
+
+                  <MapClickHandler 
+                    onAnalyze={analyzeLocation}
+                    routeMode={routeMode}
+                    onRouteClick={handleMapClickForRoute}
+                  />
                 </MapContainer>
               )}
             </div>
@@ -619,8 +796,105 @@ export default function MacromappingPage() {
                   <div style={{ backgroundColor: '#F39C12' }} className="info-dot"></div>
                   <span>Analyzed Location</span>
                 </div>
+                {routeMode && (
+                  <>
+                    <div className="info-item">
+                      <div style={{ backgroundColor: '#27AE60' }} className="info-dot"></div>
+                      <span>Route Start</span>
+                    </div>
+                    <div className="info-item">
+                      <div style={{ backgroundColor: '#E74C3C' }} className="info-dot"></div>
+                      <span>Route End</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+
+            {/* Route Information Panel */}
+            {routeData && (
+              <motion.div 
+                className="route-info-card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                style={{
+                  backgroundColor: 'rgba(52, 152, 219, 0.95)',
+                  border: '2px solid #3498DB',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginTop: '12px',
+                  color: 'white',
+                  textAlign: 'center'
+                }} 
+              >
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '18px' }}>🛣️ Route Summary</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', opacity: 0.9, fontSize: '13px' }}>Distance</p>
+                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{routeData.distanceKm} km</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', opacity: 0.9, fontSize: '13px' }}>Duration</p>
+                    <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{routeData.durationMinutes} min</p>
+                  </div>
+                </div>
+                <button
+                  onClick={clearRoute}
+                  style={{
+                    marginTop: '12px',
+                    width: '100%',
+                    padding: '10px',
+                    background: 'rgba(255,255,255,0.2)',
+                    border: '1px solid white',
+                    borderRadius: '6px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '13px'
+                  }}
+                >
+                  Clear Route
+                </button>
+              </motion.div>
+            )}
+
+            {/* Route Loading Indicator */}
+            {routeLoading && (
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                border: '1px solid #3498DB',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#3498DB'
+              }}>
+                <div style={{ width: '16px', height: '16px', border: '2px solid #3498DB', borderRadius: '50%', borderTop: '2px solid transparent', animation: 'spin 1s linear infinite' }}></div>
+                <span>Calculating route...</span>
+              </div>
+            )}
+
+            {/* Route Error Display */}
+            {routeError && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{
+                  marginTop: '12px',
+                  padding: '12px',
+                  backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                  border: '1px solid #E74C3C',
+                  borderRadius: '8px',
+                  color: '#E74C3C',
+                  fontSize: '13px'
+                }}
+              >
+                ⚠️ {routeError}
+              </motion.div>
+            )}
 
             {analyzing && (
               <div className="analyzing-indicator">
@@ -853,7 +1127,7 @@ export default function MacromappingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <h2>Recent Analyses</h2>
+            <h2 style={{ color: '#ffffff' }}>Recent Analyses</h2>
             <div className="analyses-grid">
               {analyses.slice(0, 4).map((analysis) => (
                 <div 

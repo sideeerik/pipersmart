@@ -10,7 +10,8 @@
         "buildType": "apk"
       },
       "env": {
-        "BACKEND_URL": "https://dessie-unrevetted-enragedly.ngrok-free.dev",
+        
+        "BACKEND_URL": "http://192.168.100.213:4001",
         "GOOGLE_WEB_CLIENT_ID": "279289326349-dnepg8lgd1pe7gnf4hf4cnh9e6c23sel.apps.googleusercontent.com"
       }
     },

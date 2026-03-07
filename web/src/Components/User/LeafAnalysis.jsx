@@ -1,6 +1,54 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Header from '../shared/Header';
+
+// Floating Leaves Component with animation
+const FloatingLeaves = () => {
+  const leaves = [
+    { top: '8%', left: '3%', rotation: '15deg', opacity: 0.12, size: '36px', animationDuration: '20s' },
+    { top: '15%', left: '88%', rotation: '-25deg', opacity: 0.1, size: '32px', animationDuration: '25s' },
+    { top: '45%', left: '2%', rotation: '35deg', opacity: 0.08, size: '28px', animationDuration: '22s' },
+    { top: '70%', left: '92%', rotation: '-40deg', opacity: 0.1, size: '40px', animationDuration: '18s' },
+    { top: '35%', left: '95%', rotation: '50deg', opacity: 0.08, size: '26px', animationDuration: '28s' },
+    { top: '85%', left: '8%', rotation: '-15deg', opacity: 0.1, size: '34px', animationDuration: '24s' },
+    { top: '55%', left: '5%', rotation: '60deg', opacity: 0.06, size: '30px', animationDuration: '21s' },
+    { top: '25%', left: '75%', rotation: '-30deg', opacity: 0.08, size: '38px', animationDuration: '26s' },
+  ];
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes float {
+        0%, 100% { transform: translateY(0) rotate(var(--rotation)); }
+        50% { transform: translateY(-20px) rotate(calc(var(--rotation) + 10deg)); }
+      }
+      .leaf-float {
+        animation: float var(--duration) ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      {leaves.map((leaf, idx) => (
+        <span key={idx} className="leaf-float" style={{
+          position: 'absolute',
+          top: leaf.top,
+          left: leaf.left,
+          opacity: leaf.opacity,
+          fontSize: leaf.size,
+          '--rotation': leaf.rotation,
+          '--duration': leaf.animationDuration,
+        }}>
+          🍃
+        </span>
+      ))}
+    </div>
+  );
+};
 
 const LeafAnalysis = () => {
   const [image, setImage] = useState(null);
@@ -14,27 +62,58 @@ const LeafAnalysis = () => {
 
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-  // CSS Keyframes for animations
-  useEffect(() => {
+useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.4); }
+        50% { box-shadow: 0 0 0 15px rgba(39, 174, 96, 0); }
       }
-      @keyframes slideUp {
-        from { opacity: 0; transform: translateY(20px); }
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
         to { opacity: 1; transform: translateY(0); }
       }
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+      @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      @keyframes scan {
+        0% { top: 0%; }
+        100% { top: 100%; }
+      }
+      .scanning-bar {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: rgba(39, 174, 96, 0.8);
+        box-shadow: 0 0 15px 5px rgba(39, 174, 96, 0.5);
+        z-index: 10;
+        animation: scan 2s linear infinite;
+      }
+      .glass-card {
+        animation: fadeInUp 0.6s ease forwards;
+      }
+      .result-card {
+        animation: scaleIn 0.5s ease forwards;
+      }
+      .analyzing-btn {
+        animation: pulse 2s infinite;
+      }
+      .loading-shimmer {
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
       }
     `;
     document.head.appendChild(style);
+    return () => document.head.removeChild(style);
   }, []);
 
-  // Color palette (same as Home.jsx)
   const colors = {
     primary: '#1B4D3E',
     primaryDark: '#0D2818',
@@ -50,60 +129,65 @@ const LeafAnalysis = () => {
     success: '#27AE60',
   };
 
-  // Disease recommendations
   const diseaseRecommendations = {
     'Healthy': {
       icon: '✅',
       title: 'Plant is Healthy',
-      description: 'Your pepper plant shows no signs of disease.',
-      actions: ['Continue regular watering', 'Monitor weekly', 'Maintain proper spacing'],
-      color: colors.success
+      description: 'Your pepper plant shows no signs of disease. Keep up the great work!',
+      actions: ['Continue regular watering routine', 'Weekly monitoring recommended', 'Maintain proper plant spacing', 'Ensure adequate sunlight exposure'],
+      color: colors.success,
+      gradient: 'linear-gradient(135deg, #27AE60 0%, #2ECC71 100%)'
     },
     'Footrot': {
       icon: '⚠️',
       title: 'Footrot Disease Detected',
-      description: 'This is a fungal disease affecting the base of the plant.',
-      actions: ['Remove infected plant parts', 'Improve soil drainage', 'Apply fungicide treatment', 'Avoid waterlogging'],
-      color: colors.danger
+      description: 'This is a serious fungal disease affecting the base of the plant. Immediate action recommended.',
+      actions: ['Remove infected plant parts immediately', 'Improve soil drainage', 'Apply copper-based fungicide', 'Avoid waterlogging', 'Quarantine affected plants'],
+      color: colors.danger,
+      gradient: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)'
     },
     'Pollu_Disease': {
       icon: '🚨',
       title: 'Pollu Disease Detected',
-      description: 'Viral infection causing leaf curling and discoloration.',
-      actions: ['Isolate affected plant', 'Remove diseased leaves', 'Control aphid vectors', 'Use insecticide if needed'],
-      color: colors.warning
+      description: 'Viral infection causing leaf curling and discoloration. Spread by aphids.',
+      actions: ['Isolate affected plant immediately', 'Remove all diseased leaves', 'Control aphid population', 'Apply insecticidal soap', 'Monitor nearby plants'],
+      color: colors.warning,
+      gradient: 'linear-gradient(135deg, #F39C12 0%, #E67E22 100%)'
     },
     'Slow-Decline': {
       icon: '📉',
       title: 'Slow Decline Detected',
-      description: 'Progressive weakening of plant vigor.',
-      actions: ['Check soil moisture', 'Test soil pH and nutrients', 'Improve fertilization', 'Ensure proper drainage'],
-      color: colors.warning
+      description: 'Progressive weakening of plant vigor. Usually caused by poor soil conditions.',
+      actions: ['Test soil moisture levels', 'Conduct soil pH test', 'Improve fertilization schedule', 'Ensure proper drainage', 'Add organic matter to soil'],
+      color: colors.warning,
+      gradient: 'linear-gradient(135deg, #F39C12 0%, #E67E22 100%)'
     },
     'Slow_Decline': {
       icon: '📉',
       title: 'Slow Decline Detected',
-      description: 'Progressive weakening of plant vigor.',
-      actions: ['Check soil moisture', 'Test soil pH and nutrients', 'Improve fertilization', 'Ensure proper drainage'],
-      color: colors.warning
+      description: 'Progressive weakening of plant vigor. Usually caused by poor soil conditions.',
+      actions: ['Test soil moisture levels', 'Conduct soil pH test', 'Improve fertilization schedule', 'Ensure proper drainage', 'Add organic matter to soil'],
+      color: colors.warning,
+      gradient: 'linear-gradient(135deg, #F39C12 0%, #E67E22 100%)'
     },
     'Leaf_Blight': {
       icon: '🍂',
       title: 'Leaf Blight Detected',
-      description: 'Fungal infection causing leaf spots and browning.',
-      actions: ['Remove affected leaves', 'Improve air circulation', 'Reduce leaf wetness', 'Apply copper fungicide'],
-      color: colors.danger
+      description: 'Fungal infection causing leaf spots, browning, and premature leaf drop.',
+      actions: ['Remove and destroy affected leaves', 'Improve air circulation', 'Reduce leaf wetness duration', 'Apply copper fungicide', 'Avoid overhead watering'],
+      color: colors.danger,
+      gradient: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)'
     },
     'Yellow_Mottle_Virus': {
       icon: '💛',
-      title: 'Yellow Mottle Virus Detected',
-      description: 'Viral infection causing yellow patterns on leaves.',
-      actions: ['Remove infected plant if severe', 'Control insect vectors', 'Sanitize tools', 'Avoid spreading to other plants'],
-      color: colors.danger
+      title: 'Yellow Mottle Virus',
+      description: 'Viral infection causing yellow patterns on leaves. Can spread rapidly.',
+      actions: ['Remove infected plant if severe', 'Control insect vectors aggressively', 'Sanitize all tools', 'Avoid working with wet plants', 'Monitor all nearby plants'],
+      color: colors.danger,
+      gradient: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)'
     }
   };
 
-  // Normalize disease name from model output
   const normalizeDiseaseeName = (diseaseName) => {
     const diseaseMapping = {
       'healthy': 'Healthy',
@@ -121,7 +205,6 @@ const LeafAnalysis = () => {
       'yellow_mottle_virus': 'Yellow_Mottle_Virus',
       'ymv': 'Yellow_Mottle_Virus'
     };
-
     const lowerName = (diseaseName || '').toLowerCase().trim();
     return diseaseMapping[lowerName] || diseaseName;
   };
@@ -129,18 +212,14 @@ const LeafAnalysis = () => {
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         setError('Please select a valid image file');
         return;
       }
-
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setError('Image size must be less than 10MB');
         return;
       }
-
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -157,11 +236,9 @@ const LeafAnalysis = () => {
       setError('Please select an image first');
       return;
     }
-
     setLoading(true);
     setError(null);
     setResult(null);
-
     const startTime = Date.now();
 
     try {
@@ -183,7 +260,7 @@ const LeafAnalysis = () => {
             'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${token}`
           },
-          timeout: 60000 // Increased timeout for CPU inference
+          timeout: 60000
         }
       );
 
@@ -204,18 +281,13 @@ const LeafAnalysis = () => {
         setError('No response from server');
       }
     } catch (err) {
-      console.error('❌ Prediction error:', err);
-      
+      console.error('Prediction error:', err);
       let errorMsg = 'Failed to analyze image. Please try again.';
-      
       if (err.response?.data?.error) {
         errorMsg = err.response.data.error;
       } else if (err.message === 'Network Error') {
         errorMsg = 'Network error. Make sure backend is running.';
-      } else if (err.code === 'ECONNREFUSED') {
-        errorMsg = 'Cannot connect to backend. Check if server is running.';
       }
-      
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -227,625 +299,413 @@ const LeafAnalysis = () => {
     return diseaseRecommendations[normalized] || {
       icon: '❓',
       title: `${diseaseName || 'Unknown'} Disease`,
-      description: 'Unable to identify the disease. Model returned: ' + diseaseName,
-      actions: ['Consult agricultural expert', 'Get professional diagnosis'],
-      color: colors.textLight
+      description: 'Unable to identify the disease. Please consult an agricultural expert.',
+      actions: ['Consult agricultural expert', 'Get professional diagnosis', 'Take clear photos of symptoms'],
+      color: colors.textLight,
+      gradient: 'linear-gradient(135deg, #95A5A6 0%, #7F8C8D 100%)'
     };
   };
 
   const resultInfo = result ? getDiseaseInfo(result.disease) : null;
 
+  // Calculate confidence level
+  const getConfidenceLevel = (confidence) => {
+    if (confidence >= 85) return { label: 'High Confidence', color: colors.success };
+    if (confidence >= 60) return { label: 'Medium Confidence', color: colors.warning };
+    return { label: 'Low Confidence', color: colors.danger };
+  };
+
+  const confidenceLevel = result ? getConfidenceLevel(result.confidence) : null;
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: `linear-gradient(135deg, ${colors.primaryLight} 0%, ${colors.primary} 100%)`,
-      padding: '20px'
-    }}>
-      {/* Header */}
+    <div style={{ minHeight: '100vh', position: 'relative', fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+      <Header />
+      
+      {/* Floating Leaves Background */}
+      <FloatingLeaves />
+
+      {/* Background */}
       <div style={{
-        maxWidth: '1000px',
-        margin: '0 auto 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '20px 0'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          color: colors.secondary,
-          cursor: 'pointer'
-        }}
-        onClick={() => navigate('/dashboard')}
-        >
-          <span style={{ fontSize: '28px' }}>🌱</span>
-          <h1 style={{ margin: '0', fontSize: '24px', fontWeight: '800' }}>
-            PiperSmart
-          </h1>
-        </div>
-
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{
-            padding: '12px 24px',
-            background: colors.secondary,
-            color: colors.primary,
-            border: 'none',
-            borderRadius: '12px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '14px',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-          }}
-        >
-          ← Back to Dashboard
-        </button>
-      </div>
-
-      {/* Main Container */}
-      <div style={{
-        maxWidth: '1000px',
-        margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: result ? '1fr 1fr' : '1fr',
-        gap: '24px',
-        '@media (max-width: 768px)': {
-          gridTemplateColumns: '1fr'
-        }
-      }}>
-        {/* Upload Section */}
-        <div style={{
-          background: colors.secondary,
-          borderRadius: '16px',
-          padding: '40px',
-          boxShadow: `0 20px 60px rgba(27, 77, 62, 0.15)`,
-          animation: 'slideUp 0.5s ease'
-        }}>
-          <h2 style={{
-            color: colors.text,
-            fontSize: '24px',
-            fontWeight: '800',
-            margin: '0 0 24px 0'
-          }}>
-            🔬 Pepper Leaf Disease Detector
-          </h2>
-
-          <p style={{
-            color: colors.textLight,
-            fontSize: '14px',
-            margin: '0 0 24px 0',
-            lineHeight: '1.6'
-          }}>
-            Upload a clear image of your pepper plant leaf. Our AI model will analyze it and detect any diseases.
-          </p>
-
-          {/* Image Preview or Placeholder */}
-          {preview ? (
-            <div style={{
-              marginBottom: '24px',
-              position: 'relative'
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        minHeight: '100vh',
+        zIndex: -1,
+        background: `
+          radial-gradient(ellipse at 20% 30%, rgba(0, 40, 20, 0.85) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 70%, rgba(10, 30, 15, 0.75) 0%, transparent 50%),
+          linear-gradient(180deg, rgba(10, 10, 10, 0.9) 0%, rgba(13, 26, 18, 0.85) 50%, rgba(10, 10, 10, 0.9) 100%),
+          url('../../../paminta.webp')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }} />
+      
+      <div style={{ minHeight: '100vh', padding: '90px 20px 40px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h1 style={{ 
+              color: 'white', 
+              fontSize: '36px', 
+              fontWeight: '800', 
+              margin: '0 0 12px 0',
+              textShadow: '0 2px 20px rgba(0, 255, 136, 0.3)',
+              background: 'linear-gradient(135deg, #ffffff 0%, #00FF88 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
             }}>
-              <img
-                src={preview}
-                alt="Preview"
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  borderRadius: '12px',
-                  border: `2px solid ${colors.border}`,
-                  maxHeight: '300px',
-                  objectFit: 'cover'
-                }}
-              />
-              <button
-                onClick={() => {
-                  setImage(null);
-                  setPreview(null);
-                  setResult(null);
-                  setError(null);
-                }}
-                style={{
-                  position: 'absolute',
-                  top: '8px',
-                  right: '8px',
-                  background: colors.danger,
-                  color: colors.secondary,
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          ) : (
-            <div style={{
-              border: `2px dashed ${colors.border}`,
-              borderRadius: '12px',
-              padding: '40px',
-              textAlign: 'center',
-              marginBottom: '24px',
-              backgroundColor: colors.background,
-              transition: 'all 0.3s ease'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🍃</div>
-              <div style={{
-                color: colors.text,
-                fontSize: '16px',
-                fontWeight: '600',
-                marginBottom: '8px'
-              }}>
-                No image selected
-              </div>
-              <div style={{
-                color: colors.textLight,
-                fontSize: '13px'
-              }}>
-                Upload a leaf image to analyze
-              </div>
-            </div>
-          )}
-
-          {/* Upload Buttons */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            marginBottom: '24px'
-          }}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-              style={{
-                padding: '12px 16px',
-                background: colors.primary,
-                color: colors.secondary,
-                border: 'none',
-                borderRadius: '12px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-                transition: 'all 0.3s ease',
-                opacity: loading ? 0.6 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(27, 77, 62, 0.3)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }
-              }}
-            >
-              📁 {preview ? 'Change' : 'Upload'}
-            </button>
-
-            <button
-              onClick={() => {
-                // For web, we can use the browser's camera access if available
-                fileInputRef.current?.click();
-              }}
-              disabled={loading}
-              style={{
-                padding: '12px 16px',
-                background: colors.primaryLight,
-                color: colors.secondary,
-                border: 'none',
-                borderRadius: '12px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-                transition: 'all 0.3s ease',
-                opacity: loading ? 0.6 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(39, 174, 96, 0.3)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }
-              }}
-            >
-              📷 Camera
-            </button>
+              🔬 Leaf Disease Detection
+            </h1>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '16px', margin: 0 }}>
+              Upload a leaf image for AI-powered disease analysis
+            </p>
           </div>
 
-          {/* Hidden File Input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleImageSelect}
-            style={{ display: 'none' }}
-          />
-
-          {/* Error Message */}
-          {error && (
-            <div style={{
-              background: `${colors.danger}15`,
-              border: `2px solid ${colors.danger}`,
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '24px',
-              color: colors.danger,
-              fontSize: '14px',
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start',
-              animation: 'slideUp 0.3s ease'
+          {/* Dual Card Layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: result ? '1fr 1fr' : '1fr', gap: '24px' }}>
+            
+            {/* Upload Card */}
+            <div className="glass-card" style={{
+              background: 'rgba(255, 255, 255, 0.25)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '24px',
+              padding: '32px',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)'
             }}>
-              <span style={{ fontSize: '18px', marginTop: '-2px', flexShrink: 0 }}>⚠️</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Analyze Button */}
-          <button
-            onClick={handlePredict}
-            disabled={!image || loading}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: image ? colors.primary : `${colors.primary}55`,
-              color: colors.secondary,
-              border: 'none',
-              borderRadius: '12px',
-              cursor: image && !loading ? 'pointer' : 'not-allowed',
-              fontWeight: '700',
-              fontSize: '16px',
-              transition: 'all 0.3s ease',
-              boxShadow: image ? `0 4px 12px rgba(27, 77, 62, 0.3)` : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              opacity: loading ? 0.8 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (image && !loading) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(27, 77, 62, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (image && !loading) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(27, 77, 62, 0.3)';
-              }
-            }}
-          >
-            {loading ? (
-              <>
-                <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block', transformOrigin: 'center' }}>🔄</span>
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <span>🔍</span>
-                Analyze Leaf
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Results Section */}
-        {result && resultInfo && (
-          <div style={{
-            background: colors.secondary,
-            borderRadius: '16px',
-            padding: '40px',
-            boxShadow: `0 20px 60px rgba(27, 77, 62, 0.15)`,
-            borderLeft: `4px solid ${resultInfo.color}`,
-            animation: 'slideUp 0.5s ease'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '24px'
-            }}>
-              <div style={{
-                fontSize: '64px',
-                marginBottom: '16px'
-              }}>
-                {resultInfo.icon}
-              </div>
-              <h2 style={{
-                color: resultInfo.color,
-                fontSize: '24px',
-                fontWeight: '800',
-                margin: '0 0 12px 0'
-              }}>
-                {resultInfo.title}
-              </h2>
-              <div style={{
-                fontSize: '18px',
-                fontWeight: '700',
-                color: colors.primary,
-                marginBottom: '12px'
-              }}>
-                Confidence: {result.confidence}%
-              </div>
-              {result.processingTime && (
-                <div style={{
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  color: colors.textLight
+              {/* Card Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <div style={{ 
+                  width: '48px', height: '48px', 
+                  borderRadius: '12px', 
+                  background: 'linear-gradient(135deg, #1B4D3E 0%, #27AE60 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '24px'
                 }}>
-                  Processing time: {(result.processingTime / 1000).toFixed(2)}s
+                  🍃
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Upload Leaf Image</h2>
+                  <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.6)', fontSize: '13px' }}>Select from gallery or take a photo</p>
+                </div>
+              </div>
+
+{/* Image Preview - Widens when results are shown */}
+              <div style={{ position: 'relative', marginBottom: '24px' }}>
+                <div style={{ 
+                  borderRadius: '16px', 
+                  overflow: 'hidden',
+                  border: '2px dashed rgba(255,255,255,0.3)',
+                  background: preview ? 'transparent' : 'rgba(0,0,0,0.2)',
+                  transition: 'height 0.3s ease'
+                }}>
+{preview ? (
+                    <div style={{ position: 'relative' }}>
+                      <img src={preview} alt="Preview" style={{ 
+                        width: '100%', 
+height: result ? '400px' : '280px',
+                        objectFit: 'cover',
+                        display: 'block'
+                      }} />
+                      {loading && <div className="scanning-bar" />}
+                      {loading && (
+                        <div style={{
+                          position: 'absolute', bottom: '20px', left: '0', width: '100%', 
+                          textAlign: 'center', color: 'white', textShadow: '0 2px 4px black',
+                          fontWeight: '600'
+                        }}>
+                          Detecting Disease...<br/>Analyzing Leaf...
+                        </div>
+                      )}
+                      <button 
+                        onClick={() => { setImage(null); setPreview(null); setResult(null); setError(null); }}
+                        style={{
+                          position: 'absolute', top: '12px', right: '12px',
+                          width: '36px', height: '36px',
+                          borderRadius: '50%',
+                          background: 'rgba(231, 76, 60, 0.9)',
+                          border: 'none', color: 'white',
+                          cursor: 'pointer', fontSize: '18px',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      padding: '60px 20px', 
+                      textAlign: 'center',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'
+                    }}>
+                      <div style={{ fontSize: '56px', opacity: 0.5 }}>🖼️</div>
+                      <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>No image selected</div>
+                      <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>Click buttons below to upload</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                <button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  disabled={loading}
+                  style={{
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: loading ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.15)',
+                    color: 'white',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  📁 {preview ? 'Change' : 'Upload'}
+                </button>
+                <button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  disabled={loading}
+                  style={{
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: loading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #27AE60 0%, #1B4D3E 100%)',
+                    color: 'white',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    boxShadow: loading ? 'none' : '0 4px 15px rgba(39, 174, 96, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  📷 Camera
+                </button>
+              </div>
+
+              <input 
+                ref={fileInputRef} 
+                type="file" 
+                accept="image/*" 
+                capture="environment" 
+                onChange={handleImageSelect} 
+                style={{ display: 'none' }} 
+              />
+
+              {error && (
+                <div style={{ 
+                  background: 'rgba(231, 76, 60, 0.15)', 
+                  border: '1px solid rgba(231, 76, 60, 0.3)',
+                  borderRadius: '12px', 
+                  padding: '14px', 
+                  marginBottom: '20px', 
+                  color: '#E74C3C', 
+                  fontSize: '14px',
+                  display: 'flex', alignItems: 'center', gap: '8px'
+                }}>
+                  <span>⚠️</span> {error}
                 </div>
               )}
-            </div>
 
-            {/* Confidence Visualization Bar */}
-            <div style={{
-              background: colors.background,
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '24px'
-            }}>
-              <div style={{
-                height: '12px',
-                background: colors.border,
-                borderRadius: '6px',
-                overflow: 'hidden',
-                marginBottom: '8px'
-              }}>
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${result.confidence}%`,
-                    background: result.confidence > 85 
-                      ? `linear-gradient(90deg, ${colors.success} 0%, ${colors.primaryLight} 100%)`
-                      : `linear-gradient(90deg, ${colors.warning} 0%, ${colors.accent} 100%)`,
-                    transition: 'width 0.5s ease',
-                    borderRadius: '6px'
-                  }}
-                />
-              </div>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: '700',
-                color: result.confidence > 85 ? colors.success : colors.warning,
-                textAlign: 'center'
-              }}>
-                {result.confidence > 85 ? '✅ High Confidence' : '⚠️ Medium Confidence'} ({result.confidence}%)
-              </div>
-            </div>
-
-            <p style={{
-              color: colors.textLight,
-              fontSize: '14px',
-              lineHeight: '1.6',
-              marginBottom: '24px',
-              textAlign: 'center'
-            }}>
-              {resultInfo.description}
-            </p>
-
-            {/* Recommendations */}
-            <div style={{
-              background: colors.background,
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px',
-              borderLeft: `4px solid ${resultInfo.color}`
-            }}>
-              <h4 style={{
-                color: colors.text,
-                fontSize: '14px',
-                fontWeight: '700',
-                margin: '0 0 16px 0',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <span>📋</span>
-                Recommended Actions
-              </h4>
-              <ul style={{
-                margin: '0',
-                paddingLeft: '0',
-                listStyle: 'none'
-              }}>
-                {resultInfo.actions.map((action, idx) => (
-                  <li
-                    key={idx}
-                    style={{
-                      color: colors.text,
-                      fontSize: '13px',
-                      marginBottom: idx !== resultInfo.actions.length - 1 ? '12px' : '0',
-                      paddingLeft: '28px',
-                      position: 'relative',
-                      lineHeight: '1.5'
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute',
-                      left: '0',
-                      color: resultInfo.color,
-                      fontSize: '16px'
-                    }}>
-                      ✓
-                    </span>
-                    {action}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* All Predictions */}
-            {result.all_predictions && (
-              <div style={{
-                background: colors.background,
-                borderRadius: '12px',
-                padding: '20px',
-                marginTop: '0'
-              }}>
-                <h4 style={{
-                  color: colors.text,
-                  fontSize: '14px',
+              <button 
+                onClick={handlePredict} 
+                disabled={!image || loading}
+                className={loading ? 'analyzing-btn' : ''}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: image && !loading 
+                    ? 'linear-gradient(135deg, #27AE60 0%, #1B4D3E 100%)' 
+                    : 'rgba(255,255,255,0.1)',
+                  color: image && !loading ? 'white' : 'rgba(255,255,255,0.4)',
+                  cursor: image && !loading ? 'pointer' : 'not-allowed',
                   fontWeight: '700',
-                  margin: '0 0 16px 0',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span>📊</span>
-                  All Model Predictions
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {Object.entries(result.all_predictions).map(([disease, confidence]) => {
-                    const isTop = disease === result.disease;
-                    return (
-                      <div key={disease} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: isTop ? '12px' : '0',
-                        background: isTop ? `${resultInfo.color}15` : 'transparent',
-                        borderRadius: '8px',
-                        borderLeft: isTop ? `3px solid ${resultInfo.color}` : 'none',
-                        paddingLeft: isTop ? '12px' : '0'
-                      }}>
-                        <div style={{
-                          flex: 1,
-                          minWidth: '100px',
-                          fontSize: '12px',
-                          fontWeight: isTop ? '700' : '600',
-                          color: isTop ? resultInfo.color : colors.text
-                        }}>
-                          {disease} {isTop ? '⭐' : ''}
-                        </div>
-                        <div style={{
-                          flex: 2,
-                          height: '20px',
-                          background: colors.border,
-                          borderRadius: '10px',
-                          overflow: 'hidden',
-                          position: 'relative'
-                        }}>
-                          <div style={{
-                            height: '100%',
-                            width: `${confidence}%`,
-                            background: isTop
-                              ? resultInfo.color
-                              : `linear-gradient(90deg, ${colors.primary} 0%, ${colors.primaryLight} 100%)`,
-                            transition: 'width 0.5s ease'
-                          }} />
-                        </div>
-                        <div style={{
-                          width: '45px',
-                          textAlign: 'right',
-                          fontSize: '12px',
-                          fontWeight: '700',
-                          color: isTop ? resultInfo.color : colors.primary
-                        }}>
-                          {confidence}%
-                        </div>
-                      </div>
-                    );
-                  })}
+                  fontSize: '16px',
+                  boxShadow: image && !loading ? '0 8px 25px rgba(39, 174, 96, 0.4)' : 'none',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {loading ? '🔄 Analyzing...' : '🔍 Analyze Leaf'}
+              </button>
+            </div>
+
+            {/* Results Card */}
+            {result && resultInfo && (
+              <div className="result-card" style={{
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderRadius: '24px',
+                padding: '32px',
+                border: `1px solid ${resultInfo.color}40`,
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+                borderLeft: `4px solid ${resultInfo.color}`
+              }}>
+                {/* Result Header */}
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ 
+                    width: '80px', height: '80px', 
+                    borderRadius: '50%', 
+                    background: resultInfo.gradient,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '40px',
+                    margin: '0 auto 16px',
+                    boxShadow: `0 8px 30px ${resultInfo.color}40`
+                  }}>
+                    {resultInfo.icon}
+                  </div>
+                  <h2 style={{ margin: 0, color: resultInfo.color, fontSize: '24px', fontWeight: '800' }}>
+                    {resultInfo.title}
+                  </h2>
                 </div>
+
+                {/* Confidence Gauge */}
+                <div style={{ 
+                  background: 'rgba(0,0,0,0.2)', 
+                  borderRadius: '16px', 
+                  padding: '20px', 
+                  marginBottom: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+                    <div style={{ position: 'relative', width: '100px', height: '55px' }}>
+                      {/* Arc Background */}
+                      <div style={{
+                        position: 'absolute',
+                        width: '100px',
+                        height: '50px',
+                        borderRadius: '50px 50px 0 0',
+                        background: 'rgba(255,255,255,0.1)',
+                        overflow: 'hidden'
+                      }} />
+                      {/* Arc Fill */}
+                      <div style={{
+                        position: 'absolute',
+                        width: '100px',
+                        height: '50px',
+                        borderRadius: '50px 50px 0 0',
+                        background: `conic-gradient(from 180deg, ${confidenceLevel?.color} 0deg, transparent ${(result.confidence / 100) * 180}deg)`,
+                      }} />
+                      {/* Percentage */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '0',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        fontSize: '24px',
+                        fontWeight: '800',
+                        color: 'white'
+                      }}>
+                        {result.confidence}%
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    display: 'inline-block',
+                    marginTop: '12px',
+                    padding: '6px 16px',
+                    background: `${confidenceLevel?.color}20`,
+                    borderRadius: '20px',
+                    color: confidenceLevel?.color,
+                    fontSize: '13px',
+                    fontWeight: '600'
+                  }}>
+                    {confidenceLevel?.label}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <p style={{ 
+                  color: 'rgba(255,255,255,0.8)', 
+                  fontSize: '14px', 
+                  lineHeight: '1.7', 
+                  marginBottom: '20px',
+                  textAlign: 'center' 
+                }}>
+                  {resultInfo.description}
+                </p>
+
+                {/* Actions */}
+                <div style={{ 
+                  background: 'rgba(0,0,0,0.2)', 
+                  borderRadius: '16px', 
+                  padding: '20px',
+                  marginBottom: '20px'
+                }}>
+                  <h4 style={{ 
+                    margin: '0 0 16px 0', 
+                    color: 'white', 
+                    fontSize: '14px', 
+                    fontWeight: '700',
+                    display: 'flex', alignItems: 'center', gap: '8px'
+                  }}>
+                    📋 Recommended Actions
+                  </h4>
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                    {resultInfo.actions.map((action, idx) => (
+                      <li key={idx} style={{ 
+                        color: 'rgba(255,255,255,0.8)', 
+                        fontSize: '13px', 
+                        marginBottom: '12px',
+                        paddingLeft: '24px',
+                        position: 'relative'
+                      }}>
+                        <span style={{ 
+                          position: 'absolute', 
+                          left: '0', 
+                          color: resultInfo.color 
+                        }}>✓</span>
+                        {action}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Action Button */}
+                <button 
+                  onClick={() => { setImage(null); setPreview(null); setResult(null); setError(null); }}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: resultInfo.gradient,
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    boxShadow: `0 4px 15px ${resultInfo.color}40`,
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  🔄 Analyze Another Leaf
+                </button>
               </div>
             )}
-
-            {/* Analyze Another Button */}
-            <button
-              onClick={() => {
-                setImage(null);
-                setPreview(null);
-                setResult(null);
-                setError(null);
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                marginTop: '24px',
-                background: colors.primaryLight,
-                color: colors.secondary,
-                border: 'none',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-                transition: 'all 0.3s ease',
-                boxShadow: `0 4px 12px rgba(39, 174, 96, 0.3)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 20px rgba(39, 174, 96, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(39, 174, 96, 0.3)';
-              }}
-            >
-              <span>🔄</span>
-              Analyze Another Leaf
-            </button>
           </div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div style={{
-        maxWidth: '1000px',
-        margin: '40px auto 0',
-        textAlign: 'center',
-        color: colors.secondary,
-        opacity: '0.8'
-      }}>
-        <p style={{ fontSize: '12px', margin: '0' }}>
-          Model Accuracy: 99.22% | 6 Disease Classes
-        </p>
+          {/* Footer */}
+          <div style={{ textAlign: 'center', marginTop: '40px', color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
+            <span style={{ 
+              padding: '6px 16px', 
+              background: 'rgba(255,255,255,0.1)', 
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              ✨ Model Accuracy: 99.22% | 6 Disease Classes
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -69,6 +69,10 @@ app.use('/api/v1/macromapping', macromappingRoutes);
 const recentActivitiesRoutes = require('./routes/recentActivities');
 app.use('/api/v1/activities', recentActivitiesRoutes);
 
+// ========== EXPORT ROUTES ==========
+const exportRoutes = require('./routes/Export');
+app.use('/api/v1/export', exportRoutes);
+
 // ========== HEALTH CHECK ==========
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

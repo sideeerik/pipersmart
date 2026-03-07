@@ -8,14 +8,13 @@ import {
   SafeAreaView,
   ImageBackground,
   Dimensions,
-  Image,
   StatusBar,
   Animated,
   Alert,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import MobileHeader from '../../shared/MobileHeader';
-import MobileFooter from '../../shared/MobileFooter';
 import { logout, getUser } from '../../utils/helpers';
 
 const { width } = Dimensions.get('window');
@@ -44,18 +43,18 @@ export default function IndexScreen({ navigation }) {
   const [showRecentActivity, setShowRecentActivity] = useState(false);
 
   const colors = {
-    primary: '#1B4D3E',
-    primaryDark: '#0D2818',
-    primaryLight: '#E8F5E9',
+    primary: '#0E3B2E',
+    primaryDark: '#0A241C',
+    primaryLight: '#EAF4EF',
     secondary: '#FFFFFF',
-    background: '#F2F4F0', // Slightly darker for contrast
-    text: '#1B4D3E',
-    textLight: '#5A7A73',
-    border: '#D4E5DD',
-    accent: '#D4AF37',
-    warning: '#F39C12',
-    danger: '#E74C3C',
-    success: '#27AE60',
+    background: '#F3F7F4', // Slightly darker for contrast
+    text: '#0E3B2E',
+    textLight: '#5A6B63',
+    border: '#DDE7E1',
+    accent: '#C9A227',
+    warning: '#F2A93B',
+    danger: '#E2554D',
+    success: '#2BB673',
     cardBg: '#FFFFFF',
   };
 
@@ -191,21 +190,27 @@ export default function IndexScreen({ navigation }) {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View pointerEvents="none" style={styles.backgroundDecor}>
+          <View style={styles.decorCircleA} />
+          <View style={styles.decorCircleB} />
+        </View>
         {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <View style={styles.welcomeLeft}>
-            <Text style={styles.greetingText}>{getGreeting()},</Text>
-            <Text style={styles.userNameText}>{user ? user.name.split(' ')[0] : 'Farmer'}</Text>
-            <View style={styles.statusIndicator}>
-              <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
-              <Text style={styles.statusText}>System Online</Text>
+        <View style={styles.welcomeCard}>
+          <View style={styles.welcomeSection}>
+            <View style={styles.welcomeLeft}>
+              <Text style={styles.greetingText}>{getGreeting()},</Text>
+              <Text style={styles.userNameText}>{user ? user.name.split(' ')[0] : 'Guest'}</Text>
+              <View style={styles.statusIndicator}>
+                <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
+                <Text style={styles.statusText}>System Online</Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.welcomeRight}>
-            <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-            <View style={styles.weatherBadge}>
-              <Feather name="sun" size={20} color={colors.warning} />
-              <Text style={styles.weatherText}>28°C</Text>
+            <View style={styles.welcomeRight}>
+              <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+              <View style={styles.weatherBadge}>
+                <Feather name="sun" size={20} color={colors.warning} />
+                <Text style={styles.weatherText}>28 C</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -217,7 +222,10 @@ export default function IndexScreen({ navigation }) {
             resizeMode="cover"
             imageStyle={{ borderRadius: 16 }}
           >
-            <View style={styles.carouselOverlay} />
+            <LinearGradient
+              colors={['rgba(14, 59, 46, 0.1)', 'rgba(14, 59, 46, 0.7)']}
+              style={styles.carouselOverlay}
+            />
             <View style={styles.carouselContent}>
               <Text style={styles.carouselTitle}>{slides[currentSlide].title}</Text>
               <Text style={styles.carouselDescription}>{slides[currentSlide].description}</Text>
@@ -263,7 +271,10 @@ export default function IndexScreen({ navigation }) {
               style={styles.mainCardBg}
               imageStyle={{ borderRadius: 24, opacity: 0.8 }}
             >
-              <View style={styles.mainCardOverlay} />
+              <LinearGradient
+                colors={['rgba(14, 59, 46, 0.2)', 'rgba(14, 59, 46, 0.75)']}
+                style={styles.mainCardOverlay}
+              />
               <View style={styles.mainCardContent}>
                 <View style={styles.mainCardHeader}>
                   <View style={styles.iconCircle}>
@@ -276,7 +287,7 @@ export default function IndexScreen({ navigation }) {
                 </View>
                 <View>
                   <Text style={styles.mainCardTitle}>Start Detection</Text>
-                  <Text style={styles.mainCardSubtitle}>Scan Black Pepper Bunga and Leaves</Text>
+                  <Text style={styles.mainCardSubtitle}>Scan peppercorns and leaves</Text>
                 </View>
               </View>
             </ImageBackground>
@@ -312,7 +323,7 @@ export default function IndexScreen({ navigation }) {
               style={[styles.gridCard, { backgroundColor: colors.cardBg }]} 
               onPress={() => handleNavigation('Macromapping')}
             >
-              <View style={[styles.gridIcon, { backgroundColor: '#E8F5E9' }]}>
+              <View style={[styles.gridIcon, { backgroundColor: '#EAF4EF' }]}>
                 <Feather name="map" size={24} color="#2E7D32" />
               </View>
               <Text style={styles.gridTitle}>Farm Map</Text>
@@ -362,7 +373,7 @@ export default function IndexScreen({ navigation }) {
               <Text style={styles.stepDesc}>Take a photo of the leaf</Text>
             </View>
             <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#E8F5E9' }]}>
+              <View style={[styles.stepNumber, { backgroundColor: '#EAF4EF' }]}>
                 <Text style={[styles.stepNumberText, { color: '#2E7D32' }]}>2</Text>
               </View>
               <Text style={styles.stepTitle}>Upload</Text>
@@ -438,12 +449,51 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
   },
+  backgroundDecor: {
+    position: 'absolute',
+    top: -20,
+    left: 0,
+    right: 0,
+    height: 220,
+    overflow: 'hidden',
+  },
+  decorCircleA: {
+    position: 'absolute',
+    top: -60,
+    left: -80,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(14, 59, 46, 0.08)',
+  },
+  decorCircleB: {
+    position: 'absolute',
+    top: -30,
+    right: -70,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(43, 182, 115, 0.12)',
+  },
+  welcomeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    shadowColor: '#0E3B2E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    marginBottom: 16,
+  },
   welcomeSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 8,
+    marginTop: 4,
     paddingHorizontal: 4,
   },
   welcomeLeft: {
@@ -458,12 +508,12 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 16,
-    color: '#5A7A73',
+    color: '#5A6B63',
     fontWeight: '600',
   },
   userNameText: {
     fontSize: 28,
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -475,16 +525,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
-    elevation: 2,
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    shadowColor: '#0E3B2E',
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   weatherText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   carouselContainer: {
     height: 200,
@@ -492,10 +544,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 24,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#0E3B2E',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   carouselSlide: {
     width: '100%',
@@ -505,7 +559,7 @@ const styles = StyleSheet.create({
   },
   carouselOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 16,
   },
   carouselContent: {
     alignItems: 'center',
@@ -555,7 +609,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+    backgroundColor: 'rgba(43, 182, 115, 0.12)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -567,12 +621,12 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#27AE60',
+    color: '#2BB673',
     fontWeight: '600',
   },
   dateText: {
     fontSize: 13,
-    color: '#5A7A73',
+    color: '#5A6B63',
     fontWeight: '500',
   },
   bentoGrid: {
@@ -584,10 +638,10 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     width: '100%',
     elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#0E3B2E',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
   mainCardBg: {
     flex: 1,
@@ -596,7 +650,7 @@ const styles = StyleSheet.create({
   },
   mainCardOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27, 77, 62, 0.4)', // Primary color overlay
+    borderRadius: 24,
   },
   mainCardContent: {
     flex: 1,
@@ -612,7 +666,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F7F4',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -657,11 +711,13 @@ const styles = StyleSheet.create({
     padding: 16,
     height: 140,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#0E3B2E',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
     justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   gridIcon: {
     width: 48,
@@ -674,12 +730,12 @@ const styles = StyleSheet.create({
   gridTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     marginBottom: 2,
   },
   gridSubtitle: {
     fontSize: 13,
-    color: '#5A7A73',
+    color: '#5A6B63',
   },
   smallCard: {
     flex: 1,
@@ -690,15 +746,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 8,
     elevation: 1,
-    shadowColor: '#000',
+    shadowColor: '#0E3B2E',
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   smallCardText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#5A7A73',
+    color: '#5A6B63',
   },
   section: {
     marginBottom: 24,
@@ -712,12 +770,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   seeAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#27AE60',
+    color: '#2BB673',
   },
   emptyState: {
     backgroundColor: '#FFFFFF',
@@ -726,17 +784,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#D4E5DD',
+    borderColor: '#DDE7E1',
     borderStyle: 'dashed',
   },
   emptyStateText: {
     marginTop: 12,
     marginBottom: 16,
-    color: '#5A7A73',
+    color: '#5A6B63',
     fontSize: 14,
   },
   scanButtonSmall: {
-    backgroundColor: '#1B4D3E',
+    backgroundColor: '#0E3B2E',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -756,7 +814,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#1B4D3E',
+    backgroundColor: '#0E3B2E',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -765,7 +823,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     borderWidth: 4,
-    borderColor: '#F2F4F0', // Match bg color for "cutout" effect
+    borderColor: '#F3F7F4', // Match bg color for "cutout" effect
   },
   introCard: {
     backgroundColor: '#FFFFFF',
@@ -773,10 +831,12 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 24,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#0E3B2E',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   introHeader: {
     flexDirection: 'row',
@@ -788,18 +848,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#EAF4EF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   introTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
   },
   introText: {
     fontSize: 14,
-    color: '#5A7A73',
+    color: '#5A6B63',
     lineHeight: 22,
   },
   stepsContainer: {
@@ -813,10 +873,12 @@ const styles = StyleSheet.create({
     width: 140,
     alignItems: 'center',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#0E3B2E',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
   },
   stepNumber: {
     width: 32,
@@ -833,12 +895,14 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1B4D3E',
+    color: '#0E3B2E',
     marginBottom: 4,
   },
   stepDesc: {
     fontSize: 12,
-    color: '#5A7A73',
+    color: '#5A6B63',
     textAlign: 'center',
   },
 });
+
+

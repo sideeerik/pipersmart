@@ -18,7 +18,8 @@ const notificationSchema = new mongoose.Schema(
         'new_message',
         'system',
         'account',
-        'admin_broadcast'
+        'admin_broadcast',
+        'friend_request' // added for social feature
       ],
       required: true
     },

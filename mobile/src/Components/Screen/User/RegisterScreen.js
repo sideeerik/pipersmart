@@ -307,11 +307,11 @@ export default function RegisterScreen({ navigation }) {
 
       console.log('✅ Registration successful:', res.data);
       Alert.alert(
-        'Success! 🌿',
-        'Account created successfully!',
+        'Check Your Email',
+        res.data?.message || `Registration successful. We sent a verification email to ${email}. Please open it in Gmail and verify your account before logging in.`,
         [
           {
-            text: 'Login Now',
+            text: 'Go to Login',
             onPress: () => navigation.navigate('Login'),
           },
         ]

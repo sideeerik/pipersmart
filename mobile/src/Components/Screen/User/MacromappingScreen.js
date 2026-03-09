@@ -25,6 +25,7 @@ import axios from 'axios';
 import { BACKEND_URL } from 'react-native-dotenv';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
+import { LinearGradient } from 'expo-linear-gradient';
 import MobileHeader from '../../shared/MobileHeader';
 import { getWeatherData, getFarmingRecommendations } from '../../../utils/weatherService';
 import { getElevation } from '../../../utils/elevationService';
@@ -42,6 +43,8 @@ if (Platform.OS === 'android') {
 }
 
 const { width, height } = Dimensions.get('window');
+const HOURLY_CARD_WIDTH = 92;
+const HOURLY_CARD_GAP = 10;
 // Bottom Sheet Config - Now serving as Weather Dashboard
 const BOTTOM_SHEET_MAX_HEIGHT = height * 0.85;
 const BOTTOM_SHEET_MIN_HEIGHT = 180; // Increased to show basic weather glance
@@ -499,6 +502,13 @@ const MAP_HTML = `
             clickMarker = L.marker([lat, lng], {icon: clickIcon}).addTo(map);
         }
 
+        function clearClickMarker() {
+            if (clickMarker) {
+                map.removeLayer(clickMarker);
+                clickMarker = null;
+            }
+        }
+
         map.on('click', function(e) {
             var lat = e.latlng.lat;
             var lng = e.latlng.lng;
@@ -542,6 +552,8 @@ const MAP_HTML = `
                     drawRoute(msg.coordinates);
                 } else if (msg.type === 'setClickMarker') {
                     setClickMarker(msg.latitude, msg.longitude);
+                } else if (msg.type === 'clearClickMarker') {
+                    clearClickMarker();
                 }
             } catch (e) {
                 console.error(e);
@@ -568,6 +580,7 @@ export default function MacromappingScreen({ navigation }) {
   const [weatherData, setWeatherData] = useState(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
+  const [suitabilityData, setSuitabilityData] = useState(null);
   
   const [activeCategory, setActiveCategory] = useState('Farms'); // 'Farms' or 'Retailers'
   
@@ -743,19 +756,29 @@ export default function MacromappingScreen({ navigation }) {
     }).start(() => setSidePanelOpen(!sidePanelOpen));
   };
 
-  const fetchLocationWeather = async (latitude, longitude, locationName) => {
+  const fetchLocationWeather = async (latitude, longitude, locationName, locationContext = {}) => {
     try {
       setLoadingWeather(true);
       const data = await getWeatherData(latitude, longitude);
+      const elevationResults = await getElevation([{ latitude, longitude }]);
+      const elevation = elevationResults?.[0]?.elevation ?? 100;
+      const scoreResult = calculateSuitabilityScore(data, elevation, data.rainProbability, locationContext);
+      const suitability = getSuitabilityRating(scoreResult.score);
+      const detailedRecommendations = getDetailedRecommendations(data, elevation, data.rainProbability);
+
       setWeatherData({
         locationName,
         ...data,
       });
-      // Generate recommendations based on fetched weather
-      const recs = getFarmingRecommendations(data);
-      setRecommendations(recs);
+      setSuitabilityData({
+        ...scoreResult,
+        elevation,
+        ...suitability,
+      });
+      setRecommendations(detailedRecommendations.length > 0 ? detailedRecommendations : getFarmingRecommendations(data));
     } catch (error) {
       console.error('Error fetching weather:', error);
+      setSuitabilityData(null);
     } finally {
       setLoadingWeather(false);
     }
@@ -854,7 +877,7 @@ export default function MacromappingScreen({ navigation }) {
               }
               
               setSelectedItem(clickedLocation);
-              fetchLocationWeather(latitude, longitude, addressName);
+              fetchLocationWeather(latitude, longitude, addressName, clickedLocation);
               expandBottomSheet();
               
               // Ask to save after delay
@@ -881,6 +904,31 @@ export default function MacromappingScreen({ navigation }) {
       }).start(() => {
         lastSheetY.current = height - BOTTOM_SHEET_SNAP_POINT;
       });
+  };
+
+  const collapseBottomSheet = () => {
+    Animated.spring(sheetY, {
+      toValue: height - BOTTOM_SHEET_MIN_HEIGHT,
+      useNativeDriver: false,
+    }).start(() => {
+      lastSheetY.current = height - BOTTOM_SHEET_MIN_HEIGHT;
+    });
+  };
+
+  const clearSelectedPlace = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsNavigating(false);
+    setSelectedItem(null);
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'drawRoute',
+        coordinates: []
+      }));
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'clearClickMarker'
+      }));
+    }
+    collapseBottomSheet();
   };
 
   const handleItemPress = (item, type = null) => {
@@ -939,7 +987,10 @@ export default function MacromappingScreen({ navigation }) {
     }
 
     setSelectedItem(type ? { ...item, type } : item);
-    fetchLocationWeather(item.latitude, item.longitude, item.name);
+    fetchLocationWeather(item.latitude, item.longitude, item.name, {
+      ...item,
+      kind: (type || activeCategory) === 'Farms' ? 'farm' : 'retailer',
+    });
     
     if (sidePanelOpen) {
         toggleSidePanel();
@@ -1078,7 +1129,10 @@ export default function MacromappingScreen({ navigation }) {
             setSelectedItem(farm);
             
             // Fetch weather for the location
-            fetchLocationWeather(farm.latitude, farm.longitude, farm.name);
+            fetchLocationWeather(farm.latitude, farm.longitude, farm.name, {
+              ...farm,
+              kind: 'farm',
+            });
             
             // Fetch and draw route
             fetchRoute(userLocation.latitude, userLocation.longitude, farm.latitude, farm.longitude);
@@ -1116,20 +1170,7 @@ export default function MacromappingScreen({ navigation }) {
     if (lastClickTimes.current.cancel && now - lastClickTimes.current.cancel < 500) return;
     lastClickTimes.current.cancel = now;
     
-    setIsNavigating(false);
-    setSelectedItem(null);
-    // Clear route from map
-    if (webViewRef.current) {
-      webViewRef.current.postMessage(JSON.stringify({
-        type: 'drawRoute',
-        coordinates: []
-      }));
-    }
-    // Collapse bottom sheet
-    Animated.spring(sheetY, { 
-      toValue: height - BOTTOM_SHEET_MIN_HEIGHT, 
-      useNativeDriver: false 
-    }).start();
+    clearSelectedPlace();
   };
 
   const startNavigation = () => {
@@ -1324,7 +1365,10 @@ export default function MacromappingScreen({ navigation }) {
                               fetchRoute(userLocation.latitude, userLocation.longitude, item.latitude, item.longitude);
                           }
                           // Fetch weather for this new location
-                          fetchLocationWeather(item.latitude, item.longitude, item.name);
+                          fetchLocationWeather(item.latitude, item.longitude, item.name, {
+                            ...item,
+                            kind: msg.itemType === 'Farms' ? 'farm' : 'retailer',
+                          });
                           setSelectedItem(item); // Use full item so save works with all required fields
                           expandBottomSheet();
                       }
@@ -1379,8 +1423,58 @@ export default function MacromappingScreen({ navigation }) {
     return 'cloud';
   };
 
+  const getRecommendationAccent = (type) => {
+    if (type === 'danger') return '#E74C3C';
+    if (type === 'warning') return '#F39C12';
+    if (type === 'info') return '#2D8CFF';
+    return '#27AE60';
+  };
+
+  const getRecommendationIcon = (type) => {
+    if (type === 'danger') return 'alert-octagon';
+    if (type === 'warning') return 'alert-triangle';
+    if (type === 'info') return 'info';
+    return 'check-circle';
+  };
+
+  const getCurrentPhilippineHourLabel = () => {
+    const hourParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      hour: 'numeric',
+      hour12: false,
+    }).formatToParts(new Date());
+
+    const hourValue = hourParts.find((part) => part.type === 'hour')?.value ?? '0';
+    return `${Number(hourValue)}:00`;
+  };
+
   const directoryItems = activeCategory === 'Farms' ? FARMS_DATA : RETAILERS_DATA;
   const isFarmCategory = activeCategory === 'Farms';
+  const currentPhilippineHourLabel = getCurrentPhilippineHourLabel();
+  const hourlyScrollRef = useRef(null);
+  const [hourlyViewportWidth, setHourlyViewportWidth] = useState(width);
+  const hourlyEdgePadding = Math.max((hourlyViewportWidth - HOURLY_CARD_WIDTH) / 2, 0);
+
+  useEffect(() => {
+    if (!weatherData?.hourly?.length || !hourlyScrollRef.current || !hourlyViewportWidth) {
+      return;
+    }
+
+    const currentHourIndex = weatherData.hourly.findIndex(
+      (hour) => hour.time === currentPhilippineHourLabel
+    );
+
+    if (currentHourIndex < 0) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      hourlyScrollRef.current?.scrollTo({
+        x: currentHourIndex * (HOURLY_CARD_WIDTH + HOURLY_CARD_GAP),
+        animated: true,
+      });
+    });
+  }, [weatherData?.hourly, currentPhilippineHourLabel, hourlyViewportWidth]);
 
   return (
     <View style={styles.container}>
@@ -1497,6 +1591,9 @@ export default function MacromappingScreen({ navigation }) {
                     <Text style={styles.selectedLocationName}>{selectedItem.name}</Text>
                     <Text style={styles.selectedLocationAddress} numberOfLines={1}>{selectedItem.address || selectedItem.location || 'Location'}</Text>
                 </View>
+                <TouchableOpacity style={styles.selectedLocationClose} onPress={clearSelectedPlace}>
+                    <Feather name="x" size={18} color={colors.text} />
+                </TouchableOpacity>
             </View>
         )}
 
@@ -1703,10 +1800,7 @@ export default function MacromappingScreen({ navigation }) {
                   </View>
                   {selectedItem && (
                     <TouchableOpacity 
-                      onPress={() => {
-                        setSelectedItem(null);
-                        Animated.spring(sheetY, { toValue: height - BOTTOM_SHEET_MIN_HEIGHT, useNativeDriver: false }).start();
-                      }}
+                      onPress={clearSelectedPlace}
                       style={styles.cancelButton}
                     >
                       <MaterialCommunityIcons name="close" size={20} color="#FFF" />
@@ -1760,15 +1854,25 @@ export default function MacromappingScreen({ navigation }) {
             ) : weatherData ? (
                 <>
                     {/* Current Weather Card (Compact) */}
-                    <View style={[styles.currentWeatherCard, { backgroundColor: colors.primary }]}>
+                    <LinearGradient
+                      colors={['#123A2D', '#1B4D3E', '#2E6B57']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.currentWeatherCard}
+                    >
+                      <View style={styles.weatherAtmosphereOrbOne} />
+                      <View style={styles.weatherAtmosphereOrbTwo} />
                       <View style={styles.weatherTop}>
-                        <MaterialCommunityIcons
-                          name={getWeatherIcon(weatherData.weatherCode)}
-                          size={50}
-                          color="#FFFFFF"
-                          style={styles.weatherIcon}
-                        />
+                        <View style={styles.weatherIconWrap}>
+                          <MaterialCommunityIcons
+                            name={getWeatherIcon(weatherData.weatherCode)}
+                            size={50}
+                            color="#FFFFFF"
+                            style={styles.weatherIcon}
+                          />
+                        </View>
                         <View style={styles.tempSection}>
+                          <Text style={styles.weatherNowLabel}>Current Weather</Text>
                           <Text style={styles.currentTemp}>{weatherData.temp}°C</Text>
                           <Text style={styles.weatherCondition}>{weatherData.condition}</Text>
                         </View>
@@ -1777,63 +1881,135 @@ export default function MacromappingScreen({ navigation }) {
                             <Text style={styles.tempRangeText}>L: {weatherData.minTemp}°</Text>
                         </View>
                       </View>
-                    </View>
+                      <View style={styles.weatherFooterRow}>
+                        <View style={styles.weatherFooterChip}>
+                          <MaterialCommunityIcons name="map-marker-radius" size={13} color="#D6F5E0" />
+                          <Text style={styles.weatherFooterChipText}>{selectedItem ? 'Selected Site' : 'Current Area'}</Text>
+                        </View>
+                        <View style={styles.weatherFooterChip}>
+                          <MaterialCommunityIcons name="leaf" size={13} color="#D6F5E0" />
+                          <Text style={styles.weatherFooterChipText}>Pepper analysis active</Text>
+                        </View>
+                      </View>
+                    </LinearGradient>
 
                     {/* Weather Grid */}
                     <View style={styles.detailsGrid}>
-                        <View style={[styles.detailCard, { backgroundColor: '#E8F5E9' }]}>
+                        <View style={[styles.detailCard, styles.detailHumidity]}>
                             <MaterialCommunityIcons name="water-percent" size={20} color={colors.primary} />
                             <Text style={styles.detailValue}>{weatherData.humidity}%</Text>
                             <Text style={styles.detailLabel}>Humidity</Text>
                         </View>
-                        <View style={[styles.detailCard, { backgroundColor: '#E3F2FD' }]}>
+                        <View style={[styles.detailCard, styles.detailWind]}>
                             <MaterialCommunityIcons name="weather-windy" size={20} color={colors.primary} />
                             <Text style={styles.detailValue}>{weatherData.windSpeed} km/h</Text>
                             <Text style={styles.detailLabel}>Wind</Text>
                         </View>
-                        <View style={[styles.detailCard, { backgroundColor: '#FFF3E0' }]}>
+                        <View style={[styles.detailCard, styles.detailRain]}>
                             <MaterialCommunityIcons name="cloud-percent" size={20} color={colors.primary} />
                             <Text style={styles.detailValue}>{weatherData.rainProbability}%</Text>
                             <Text style={styles.detailLabel}>Rain Chance</Text>
                         </View>
-                        <View style={[styles.detailCard, { backgroundColor: '#FCE4EC' }]}>
+                        <View style={[styles.detailCard, styles.detailSoil]}>
                             <MaterialCommunityIcons name="water-opacity" size={20} color={colors.primary} />
                             <Text style={styles.detailValue}>{weatherData.soilMoisture.toFixed(1)}%</Text>
                             <Text style={styles.detailLabel}>Soil</Text>
                         </View>
                     </View>
 
-                    {/* Location Tips Section */}
-                    {selectedItem && (
+                    {/* Black Pepper Suitability Section */}
+                    {selectedItem && suitabilityData && (
                       <View style={styles.tipsSection}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>📍 Location Tips</Text>
+                        <View style={styles.sectionHeadingRow}>
+                          <View>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>🌿 Black Pepper Suitability</Text>
+                            <Text style={styles.sectionSubtitle}>Field-readiness snapshot for this selected site</Text>
+                          </View>
+                        </View>
+                        <View style={[styles.suitabilityHeroCard, { borderLeftColor: suitabilityData.color }]}>
+                          <View style={styles.suitabilityHeroTop}>
+                            <View>
+                              <Text style={styles.suitabilityHeroLabel}>Suitability Score</Text>
+                              <Text style={styles.suitabilityHeroScore}>{suitabilityData.score}/100</Text>
+                            </View>
+                            <View style={[styles.suitabilityBadge, { backgroundColor: suitabilityData.color }]}>
+                              <Text style={styles.suitabilityBadgeText}>{suitabilityData.rating}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.suitabilityHeroText}>{suitabilityData.description}</Text>
+                          <Text style={styles.suitabilityMeta}>Elevation: {Math.round(suitabilityData.elevation)} m above sea level</Text>
+                          <Text style={styles.suitabilityMeta}>
+                            Base score: {suitabilityData.baseScore}/100
+                            {suitabilityData.bonusScore > 0 ? `  |  Site bonus: +${suitabilityData.bonusScore}` : ''}
+                          </Text>
+                          {suitabilityData.bonusReasons?.length > 0 && (
+                            <Text style={styles.suitabilityMeta}>
+                              Bonus basis: {suitabilityData.bonusReasons.join(', ')}
+                            </Text>
+                          )}
+                          <View style={styles.suitabilityStatsRow}>
+                            <View style={styles.suitabilityStatChip}>
+                              <MaterialCommunityIcons name="thermometer" size={14} color={colors.primary} />
+                              <Text style={styles.suitabilityStatText}>{weatherData.temp}°C</Text>
+                            </View>
+                            <View style={styles.suitabilityStatChip}>
+                              <MaterialCommunityIcons name="water-percent" size={14} color={colors.primary} />
+                              <Text style={styles.suitabilityStatText}>{weatherData.humidity}% RH</Text>
+                            </View>
+                            <View style={styles.suitabilityStatChip}>
+                              <MaterialCommunityIcons name="cloud-percent" size={14} color={colors.primary} />
+                              <Text style={styles.suitabilityStatText}>{weatherData.rainProbability}% rain</Text>
+                            </View>
+                          </View>
+                          <View style={styles.suitabilityStatsRow}>
+                            <View style={styles.suitabilityStatChip}>
+                              <Text style={styles.suitabilityStatText}>Temp score {suitabilityData.breakdown.temperature}</Text>
+                            </View>
+                            <View style={styles.suitabilityStatChip}>
+                              <Text style={styles.suitabilityStatText}>Humidity score {suitabilityData.breakdown.humidity}</Text>
+                            </View>
+                            <View style={styles.suitabilityStatChip}>
+                              <Text style={styles.suitabilityStatText}>Elevation score {suitabilityData.breakdown.elevation}</Text>
+                            </View>
+                            <View style={styles.suitabilityStatChip}>
+                              <Text style={styles.suitabilityStatText}>Rain score {suitabilityData.breakdown.rainfall}</Text>
+                            </View>
+                          </View>
+                        </View>
                         <View style={styles.tipsContainer}>
                           <View style={styles.tipItem}>
-                            <MaterialCommunityIcons name="road" size={18} color={colors.accent} />
+                            <MaterialCommunityIcons name="thermometer" size={18} color={colors.accent} />
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.tipLabel}>Road Conditions</Text>
-                              <Text style={styles.tipText}>Well-maintained routes. Check weather before travel.</Text>
+                              <Text style={styles.tipLabel}>Temperature Fit</Text>
+                              <Text style={styles.tipText}>
+                                {weatherData.temp >= 23 && weatherData.temp <= 32
+                                  ? `Current ${weatherData.temp}°C is within the viable range for black pepper, with best growth near 27-28°C.`
+                                  : `Current ${weatherData.temp}°C is outside the ideal range. Use shade, windbreaks, or irrigation support if planting here.`}
+                              </Text>
                             </View>
                           </View>
                           <View style={styles.tipItem}>
-                            <MaterialCommunityIcons name="clock-outline" size={18} color={colors.accent} />
+                            <MaterialCommunityIcons name="water-percent" size={18} color={colors.accent} />
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.tipLabel}>Best Time to Visit</Text>
-                              <Text style={styles.tipText}>Early morning (6-8 AM) for cooler weather and easier parking.</Text>
+                              <Text style={styles.tipLabel}>Moisture and Humidity</Text>
+                              <Text style={styles.tipText}>
+                                {weatherData.humidity >= 60 && weatherData.humidity <= 80
+                                  ? `Humidity at ${weatherData.humidity}% is favorable. Maintain drainage so high moisture helps vines without promoting root rot.`
+                                  : `Humidity at ${weatherData.humidity}% needs attention. Black pepper performs best with consistently humid but well-drained conditions.`}
+                              </Text>
                             </View>
                           </View>
                           <View style={styles.tipItem}>
-                            <MaterialCommunityIcons name="parking" size={18} color={colors.accent} />
+                            <MaterialCommunityIcons name="sprout-outline" size={18} color={colors.accent} />
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.tipLabel}>Parking</Text>
-                              <Text style={styles.tipText}>Free parking available. Shaded area near entrance.</Text>
-                            </View>
-                          </View>
-                          <View style={styles.tipItem}>
-                            <MaterialCommunityIcons name="information" size={18} color={colors.accent} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.tipLabel}>Hours</Text>
-                              <Text style={styles.tipText}>Open 8 AM - 5 PM daily. Ask for details at gate.</Text>
+                              <Text style={styles.tipLabel}>Planting Decision</Text>
+                              <Text style={styles.tipText}>
+                                {suitabilityData.score >= 80
+                                  ? 'This site is strong for black pepper. Prioritize support posts, disease monitoring, and regular mulching to capitalize on the conditions.'
+                                  : suitabilityData.score >= 60
+                                  ? 'This site can support black pepper with management. Improve drainage, moisture retention, and shade balance before scaling up.'
+                                  : 'This site is marginal for black pepper. Test on a small area first and correct water, shade, and elevation-related limits before expansion.'}
+                              </Text>
                             </View>
                           </View>
                         </View>
@@ -1843,12 +2019,25 @@ export default function MacromappingScreen({ navigation }) {
                     {/* Recommendations */}
                     {recommendations.length > 0 && (
                       <View style={styles.recommendationsSection}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                        <View style={styles.sectionHeadingRow}>
+                          <View>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>
                           🌿 Farming Recommendations
-                        </Text>
+                            </Text>
+                            <Text style={styles.sectionSubtitle}>Actionable checks before planting or visiting</Text>
+                          </View>
+                        </View>
                         {recommendations.map((rec, index) => (
-                            <View key={index} style={[styles.recommendationCard, { borderLeftColor: rec.type === 'warning' ? colors.warning : (rec.type === 'danger' ? colors.danger : colors.success) }]}>
-                                <Text style={styles.recTitle}>{rec.title}</Text>
+                            <View key={index} style={[styles.recommendationCard, { borderLeftColor: getRecommendationAccent(rec.type) }]}>
+                                <View style={styles.recommendationTop}>
+                                  <View style={[styles.recommendationIconWrap, { backgroundColor: `${getRecommendationAccent(rec.type)}18` }]}>
+                                    <Feather name={getRecommendationIcon(rec.type)} size={15} color={getRecommendationAccent(rec.type)} />
+                                  </View>
+                                  <View style={styles.recommendationCopy}>
+                                    <Text style={styles.recTitle}>{rec.title}</Text>
+                                    <Text style={styles.recPill}>{rec.type === 'danger' ? 'Immediate attention' : rec.type === 'warning' ? 'Manage closely' : rec.type === 'info' ? 'Field note' : 'Favorable'}</Text>
+                                  </View>
+                                </View>
                                 <Text style={styles.recMessage}>{rec.message}</Text>
                             </View>
                         ))}
@@ -1858,17 +2047,55 @@ export default function MacromappingScreen({ navigation }) {
                     {/* Hourly Forecast */}
                     {weatherData.hourly && (
                       <View style={styles.forecastSection}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                          ⏰ Next 24 Hours
-                        </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                          {weatherData.hourly.map((hour, index) => (
-                            <View key={index} style={styles.hourlyCard}>
-                              <Text style={styles.hourlyTime}>{hour.time}</Text>
-                              <MaterialCommunityIcons name={getWeatherIcon(hour.weatherCode)} size={24} color={colors.primary} />
-                              <Text style={styles.hourlyTemp}>{hour.temp}°</Text>
-                            </View>
-                          ))}
+                        <View style={styles.sectionHeadingRow}>
+                          <View>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                              ⏰ Next 24 Hours
+                            </Text>
+                            <Text style={styles.sectionSubtitle}>Short-range temperature and rain rhythm</Text>
+                          </View>
+                        </View>
+                        <ScrollView
+                          ref={hourlyScrollRef}
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          onLayout={(event) => setHourlyViewportWidth(event.nativeEvent.layout.width)}
+                          contentContainerStyle={[
+                            styles.hourlyScrollContent,
+                            { paddingHorizontal: hourlyEdgePadding },
+                          ]}
+                        >
+                          {weatherData.hourly.map((hour, index) => {
+                            const isCurrentHour = hour.time === currentPhilippineHourLabel;
+                            return (
+                            <LinearGradient
+                              key={index}
+                              colors={isCurrentHour ? ['#163D30', '#245847'] : ['#FFFFFF', '#F5FBF7']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={styles.hourlyCard}
+                            >
+                              <Text style={[styles.hourlyTime, isCurrentHour && styles.hourlyTimeActive]}>{hour.time}</Text>
+                              <View style={[styles.hourlyIconWrap, isCurrentHour && styles.hourlyIconWrapActive]}>
+                                <MaterialCommunityIcons
+                                  name={getWeatherIcon(hour.weatherCode)}
+                                  size={22}
+                                  color={isCurrentHour ? '#FFFFFF' : colors.primary}
+                                />
+                              </View>
+                              <Text style={[styles.hourlyTemp, isCurrentHour && styles.hourlyTempActive]}>{hour.temp}°</Text>
+                              <View style={[styles.hourlyRainChip, isCurrentHour && styles.hourlyRainChipActive]}>
+                                <MaterialCommunityIcons
+                                  name="weather-rainy"
+                                  size={11}
+                                  color={isCurrentHour ? '#DDF7E8' : colors.primary}
+                                />
+                                <Text style={[styles.hourlyRainText, isCurrentHour && styles.hourlyRainTextActive]}>
+                                  {hour.rainProbability}%
+                                </Text>
+                              </View>
+                            </LinearGradient>
+                          )})}
                         </ScrollView>
                       </View>
                     )}
@@ -1876,32 +2103,46 @@ export default function MacromappingScreen({ navigation }) {
                     {/* Daily Forecast */}
                     {weatherData.daily && weatherData.daily.length > 0 && (
                       <View style={styles.dailySection}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                          📅 7-Day Forecast
-                        </Text>
+                        <View style={styles.sectionHeadingRow}>
+                          <View>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                              📅 7-Day Forecast
+                            </Text>
+                            <Text style={styles.sectionSubtitle}>Daily outlook for field visits and crop planning</Text>
+                          </View>
+                        </View>
                         {weatherData.daily.map((day, index) => (
                           <View
                             key={index}
-                            style={[styles.dailyCard, { backgroundColor: '#FFFFFF' }]}
+                            style={[styles.dailyCard, index === 0 && styles.dailyCardActive]}
                           >
                             <View style={styles.dailyLeft}>
-                              <Text style={[styles.dailyDate, { color: colors.text }]}>
-                                {day.date}
-                              </Text>
+                              <View style={styles.dailyDateBadge}>
+                                <Text style={[styles.dailyDate, { color: colors.text }]}>
+                                  {day.date}
+                                </Text>
+                              </View>
                               <View style={styles.dailyTempRange}>
-                                <Text style={[styles.dailyTempText, { color: colors.text }]}>
+                                <Text style={[styles.dailyTempHigh, { color: colors.text }]}>
                                   {day.maxTemp}°
                                 </Text>
-                                <Text style={[styles.dailyTempText, { color: colors.textLight }]}>
+                                <Text style={[styles.dailyTempLow, { color: colors.textLight }]}>
                                   {day.minTemp}°
                                 </Text>
                               </View>
                             </View>
-                            <MaterialCommunityIcons
-                              name={getWeatherIcon(day.weatherCode)}
-                              size={36}
-                              color={colors.primary}
-                            />
+                            <View style={styles.dailyCenter}>
+                              <View style={[styles.dailyIconWrap, index === 0 && styles.dailyIconWrapActive]}>
+                                <MaterialCommunityIcons
+                                  name={getWeatherIcon(day.weatherCode)}
+                                  size={28}
+                                  color={colors.primary}
+                                />
+                              </View>
+                              <Text style={styles.dailyConditionHint}>
+                                {day.rainProbability >= 70 ? 'Wet day' : day.rainProbability >= 40 ? 'Mixed skies' : 'Dry window'}
+                              </Text>
+                            </View>
                             <View style={styles.dailyRight}>
                               <View style={styles.dailyRain}>
                                 <MaterialCommunityIcons name="cloud-percent" size={14} color={colors.warning} />
@@ -1923,17 +2164,46 @@ export default function MacromappingScreen({ navigation }) {
 
                     {/* Optimal Conditions */}
                     <View style={styles.optimalSection}>
-                      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                        📋 Optimal Conditions for Black Pepper
-                      </Text>
+                        <View style={styles.sectionHeadingRow}>
+                          <View>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                          📋 Optimal Conditions for Black Pepper
+                            </Text>
+                            <Text style={styles.sectionSubtitle}>Quick benchmark against current field conditions</Text>
+                          </View>
+                        </View>
+
+                      <View style={styles.optimalOverviewCard}>
+                        <View style={styles.optimalOverviewTop}>
+                          <View>
+                            <Text style={styles.optimalOverviewEyebrow}>Field Benchmark</Text>
+                            <Text style={styles.optimalOverviewTitle}>Growing Window Match</Text>
+                          </View>
+                          <View style={[
+                            styles.optimalOverviewBadge,
+                            { backgroundColor: suitabilityData?.color || colors.primary }
+                          ]}>
+                            <Text style={styles.optimalOverviewBadgeText}>{suitabilityData?.rating || 'Review'}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.optimalOverviewText}>
+                          {suitabilityData?.score >= 80
+                            ? 'Most core signals are aligned. The site is showing a strong black pepper growing window right now.'
+                            : suitabilityData?.score >= 60
+                            ? 'Several conditions are workable, but at least one factor needs management to keep black pepper performance stable.'
+                            : 'Current conditions are below the ideal benchmark. Treat this as a monitored site and correct stress factors before scaling.'}
+                        </Text>
+                      </View>
                       
                       {/* Black Pepper Specific Advice */}
-                      <View style={[styles.recommendationCard, { borderLeftColor: colors.primary, marginBottom: 16 }]}>
-                         <Text style={styles.recTitle}>🌶️ Black Pepper Insight</Text>
+                      <View style={[styles.recommendationCard, styles.insightCard, { borderLeftColor: suitabilityData?.color || colors.primary, marginBottom: 16 }]}>
+                         <Text style={styles.recTitle}>Black Pepper Insight</Text>
                          <Text style={styles.recMessage}>
-                            {weatherData.temp >= 20 && weatherData.temp <= 30 && weatherData.humidity >= 60 
-                                ? "This location currently has excellent conditions for Black Pepper growth. The temperature and humidity are within the ideal range for flowering and fruiting." 
-                                : "Current conditions may require attention. Black Pepper thrives in 20-30°C and high humidity. Consider irrigation or shade management if parameters are outside this range."}
+                            {suitabilityData?.score >= 80
+                              ? 'This location is highly favorable for black pepper. Focus on trellising, disease scouting, and moisture consistency to maximize productivity.'
+                              : suitabilityData?.score >= 60
+                              ? 'This location is workable for black pepper. You can improve performance with proper shade, organic matter, and careful water management.'
+                              : 'This location is not yet ideal for black pepper. Treat it as a trial area unless you can improve humidity, drainage, and field protection.'}
                          </Text>
                       </View>
 
@@ -1942,19 +2212,20 @@ export default function MacromappingScreen({ navigation }) {
                           style={[
                             styles.optimalCard,
                             {
-                              backgroundColor:
+                              backgroundColor: '#FFFFFF',
+                              borderColor:
                                 weatherData.temp >= 20 && weatherData.temp <= 30
-                                  ? '#C8E6C9'
-                                  : '#FFCDD2',
+                                  ? '#CAE8D3'
+                                  : '#F4D0D0',
                             },
                           ]}
                         >
-                          <Text style={[styles.optimalLabel, { color: colors.text }]}>
-                            Temperature
-                          </Text>
-                          <Text style={[styles.optimalRange, { color: colors.text }]}>
-                            20-30°C
-                          </Text>
+                          <View style={[styles.optimalIconWrap, weatherData.temp >= 20 && weatherData.temp <= 30 ? styles.optimalIconWrapGood : styles.optimalIconWrapBad]}>
+                            <MaterialCommunityIcons name="thermometer" size={18} color={weatherData.temp >= 20 && weatherData.temp <= 30 ? colors.success : colors.danger} />
+                          </View>
+                          <Text style={[styles.optimalLabel, { color: colors.text }]}>Temperature</Text>
+                          <Text style={[styles.optimalCurrent, { color: colors.text }]}>{weatherData.temp}°C</Text>
+                          <Text style={[styles.optimalRange, { color: colors.textLight }]}>Ideal: 20-30°C</Text>
                           <Text
                             style={[
                               styles.optimalStatus,
@@ -1976,19 +2247,20 @@ export default function MacromappingScreen({ navigation }) {
                           style={[
                             styles.optimalCard,
                             {
-                              backgroundColor:
+                              backgroundColor: '#FFFFFF',
+                              borderColor:
                                 weatherData.humidity >= 60 && weatherData.humidity <= 90
-                                  ? '#C8E6C9'
-                                  : '#FFCDD2',
+                                  ? '#CAE8D3'
+                                  : '#F4D0D0',
                             },
                           ]}
                         >
-                          <Text style={[styles.optimalLabel, { color: colors.text }]}>
-                            Humidity
-                          </Text>
-                          <Text style={[styles.optimalRange, { color: colors.text }]}>
-                            60-90%
-                          </Text>
+                          <View style={[styles.optimalIconWrap, weatherData.humidity >= 60 && weatherData.humidity <= 90 ? styles.optimalIconWrapGood : styles.optimalIconWrapBad]}>
+                            <MaterialCommunityIcons name="water-percent" size={18} color={weatherData.humidity >= 60 && weatherData.humidity <= 90 ? colors.success : colors.danger} />
+                          </View>
+                          <Text style={[styles.optimalLabel, { color: colors.text }]}>Humidity</Text>
+                          <Text style={[styles.optimalCurrent, { color: colors.text }]}>{weatherData.humidity}%</Text>
+                          <Text style={[styles.optimalRange, { color: colors.textLight }]}>Ideal: 60-90%</Text>
                           <Text
                             style={[
                               styles.optimalStatus,
@@ -2010,19 +2282,20 @@ export default function MacromappingScreen({ navigation }) {
                           style={[
                             styles.optimalCard,
                             {
-                              backgroundColor:
+                              backgroundColor: '#FFFFFF',
+                              borderColor:
                                 weatherData.soilMoisture >= 40 && weatherData.soilMoisture <= 60
-                                  ? '#C8E6C9'
-                                  : '#FFCDD2',
+                                  ? '#CAE8D3'
+                                  : '#F4D0D0',
                             },
                           ]}
                         >
-                          <Text style={[styles.optimalLabel, { color: colors.text }]}>
-                            Soil Moisture
-                          </Text>
-                          <Text style={[styles.optimalRange, { color: colors.text }]}>
-                            40-60%
-                          </Text>
+                          <View style={[styles.optimalIconWrap, weatherData.soilMoisture >= 40 && weatherData.soilMoisture <= 60 ? styles.optimalIconWrapGood : styles.optimalIconWrapBad]}>
+                            <MaterialCommunityIcons name="water-opacity" size={18} color={weatherData.soilMoisture >= 40 && weatherData.soilMoisture <= 60 ? colors.success : colors.danger} />
+                          </View>
+                          <Text style={[styles.optimalLabel, { color: colors.text }]}>Soil Moisture</Text>
+                          <Text style={[styles.optimalCurrent, { color: colors.text }]}>{weatherData.soilMoisture.toFixed(1)}%</Text>
+                          <Text style={[styles.optimalRange, { color: colors.textLight }]}>Ideal: 40-60%</Text>
                           <Text
                             style={[
                               styles.optimalStatus,
@@ -2325,6 +2598,16 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontWeight: '500',
   },
+  selectedLocationClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF5F1',
+    borderWidth: 1,
+    borderColor: '#DDEBE3',
+  },
   legendContainer: {
     position: 'absolute',
     bottom: 200, // Adjusted to be above the taller bottom sheet
@@ -2558,35 +2841,109 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    elevation: 2,
+    elevation: 5,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+  },
+  weatherAtmosphereOrbOne: {
+    position: 'absolute',
+    top: -26,
+    right: -14,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.09)',
+  },
+  weatherAtmosphereOrbTwo: {
+    position: 'absolute',
+    bottom: -36,
+    left: -30,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   weatherTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  weatherIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   weatherIcon: {
-    marginRight: 10,
   },
   tempSection: {
     flex: 1,
   },
-  currentTemp: {
-    fontSize: 32,
+  weatherNowLabel: {
+    fontSize: 11,
     fontWeight: '700',
+    color: 'rgba(255,255,255,0.76)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: 6,
+  },
+  currentTemp: {
+    fontSize: 34,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   weatherCondition: {
     fontSize: 14,
     color: '#FFFFFF',
     opacity: 0.9,
+    fontWeight: '600',
   },
   tempRange: {
       alignItems: 'flex-end',
+      gap: 4,
   },
   tempRangeText: {
       color: '#FFF',
       fontSize: 12,
+      fontWeight: '700',
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.12)',
+      paddingHorizontal: 9,
+      paddingVertical: 6,
+      borderRadius: 999,
+  },
+  weatherFooterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  weatherFooterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  weatherFooterChipText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   detailsGrid: {
     flexDirection: 'row',
@@ -2596,68 +2953,184 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     width: '23%',
-    borderRadius: 8,
-    padding: 8,
+    borderRadius: 14,
+    padding: 10,
     alignItems: 'center',
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E3ECE6',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  detailHumidity: {
+    backgroundColor: '#ECF8F0',
+  },
+  detailWind: {
+    backgroundColor: '#ECF3FB',
+  },
+  detailRain: {
+    backgroundColor: '#FFF4E9',
+  },
+  detailSoil: {
+    backgroundColor: '#FAEEF3',
   },
   detailValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 6,
     textAlign: 'center',
+    color: '#234336',
   },
   detailLabel: {
     fontSize: 10,
-    color: '#666',
+    color: '#627A72',
+    marginTop: 3,
+    fontWeight: '700',
   },
   recommendationsSection: {
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  sectionHeadingRow: {
+    marginBottom: 10,
+  },
+  sectionSubtitle: {
+    marginTop: 3,
+    fontSize: 12,
+    color: '#6E857D',
+    fontWeight: '600',
   },
   recommendationCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 10,
     borderLeftWidth: 4,
-    elevation: 1,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: '#EEE',
+    borderColor: '#E7EEE9',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  recommendationTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  recommendationIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recommendationCopy: {
+    flex: 1,
   },
   recTitle: {
     fontSize: 13,
+    fontWeight: '800',
+    color: '#1B4D3E',
+  },
+  recPill: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    fontSize: 10,
     fontWeight: '700',
-    marginBottom: 2,
+    color: '#6A8179',
+    textTransform: 'uppercase',
+    letterSpacing: 0.45,
   },
   recMessage: {
     fontSize: 12,
-    color: '#555',
+    color: '#546B64',
+    lineHeight: 18,
+  },
+  insightCard: {
+    backgroundColor: '#FBFDFB',
   },
   forecastSection: {
     marginBottom: 20,
   },
+  hourlyScrollContent: {
+    paddingRight: 6,
+  },
   hourlyCard: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 8,
-    marginRight: 8,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginRight: 10,
     alignItems: 'center',
-    width: 60,
+    width: 92,
+    borderWidth: 1,
+    borderColor: '#E1ECE5',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   hourlyTime: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 8,
+    color: '#5E7770',
+  },
+  hourlyTimeActive: {
+    color: '#FFFFFF',
+  },
+  hourlyIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#EEF7F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  hourlyIconWrapActive: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
   },
   hourlyTemp: {
-    fontSize: 12,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#163D30',
+  },
+  hourlyTempActive: {
+    color: '#FFFFFF',
+  },
+  hourlyRainChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#EDF7F0',
+  },
+  hourlyRainChipActive: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  hourlyRainText: {
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 4,
+    color: '#2D6A57',
+  },
+  hourlyRainTextActive: {
+    color: '#FFFFFF',
   },
   distanceText: {
     fontSize: 12,
@@ -2669,26 +3142,75 @@ const styles = StyleSheet.create({
   dailyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 18,
     padding: 14,
     marginBottom: 10,
     elevation: 2,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E3ECE6',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  dailyCardActive: {
+    borderColor: '#CFE4D8',
+    backgroundColor: '#F8FCFA',
   },
   dailyLeft: {
     flex: 1,
   },
+  dailyDateBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#EEF7F1',
+    marginBottom: 8,
+  },
   dailyDate: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#37584D',
   },
   dailyTempRange: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
-  dailyTempText: {
-    fontSize: 12,
-    fontWeight: '600',
+  dailyTempHigh: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  dailyTempLow: {
+    fontSize: 15,
+    fontWeight: '700',
+    alignSelf: 'flex-end',
+    marginBottom: 2,
+  },
+  dailyCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  dailyIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#F0F8F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  dailyIconWrapActive: {
+    backgroundColor: '#E3F3E9',
+  },
+  dailyConditionHint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6A837B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.45,
   },
   dailyRight: {
     marginLeft: 12,
@@ -2716,6 +3238,55 @@ const styles = StyleSheet.create({
   optimalSection: {
     marginBottom: 20,
   },
+  optimalOverviewCard: {
+    backgroundColor: '#F9FCFA',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E0EBE4',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  optimalOverviewTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  optimalOverviewEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#6B847C',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  optimalOverviewTitle: {
+    marginTop: 3,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1B4D3E',
+  },
+  optimalOverviewBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  optimalOverviewBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  optimalOverviewText: {
+    marginTop: 12,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#516A63',
+    fontWeight: '600',
+  },
   optimalGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2723,25 +3294,49 @@ const styles = StyleSheet.create({
   },
   optimalCard: {
     width: '48%',
-    borderRadius: 12,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 12,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     elevation: 2,
+    borderWidth: 1,
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  optimalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  optimalIconWrapGood: {
+    backgroundColor: '#EAF7EE',
+  },
+  optimalIconWrapBad: {
+    backgroundColor: '#FCECEC',
   },
   optimalLabel: {
     fontSize: 13,
     fontWeight: '600',
   },
+  optimalCurrent: {
+    marginTop: 6,
+    fontSize: 22,
+    fontWeight: '800',
+  },
   optimalRange: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    marginTop: 8,
+    marginTop: 4,
   },
   optimalStatus: {
     fontSize: 12,
-    fontWeight: '600',
-    marginTop: 8,
+    fontWeight: '700',
+    marginTop: 10,
   },
   headerTop: {
     flexDirection: 'row',
@@ -2788,6 +3383,80 @@ const styles = StyleSheet.create({
   tipsContainer: {
     gap: 12,
     marginTop: 12,
+  },
+  suitabilityHeroCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: '#E2ECE6',
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  suitabilityHeroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  suitabilityHeroLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6D847C',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  suitabilityHeroScore: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1B4D3E',
+    marginTop: 2,
+  },
+  suitabilityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  suitabilityBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  suitabilityHeroText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#4E6660',
+    lineHeight: 19,
+    fontWeight: '600',
+  },
+  suitabilityMeta: {
+    marginTop: 8,
+    fontSize: 11,
+    color: '#748981',
+    fontWeight: '600',
+  },
+  suitabilityStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  suitabilityStatChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#F1F7F3',
+    borderWidth: 1,
+    borderColor: '#DCE9E2',
+  },
+  suitabilityStatText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#315447',
   },
   tipItem: {
     flexDirection: 'row',

@@ -2,6 +2,24 @@ import axios from 'axios';
 import * as Location from 'expo-location';
 
 const OPEN_METEO_API = 'https://api.open-meteo.com/v1/forecast';
+const PHILIPPINE_TIME_ZONE = 'Asia/Manila';
+
+const formatPhilippineHourLabel = (value) => {
+  const hour = new Intl.DateTimeFormat('en-US', {
+    timeZone: PHILIPPINE_TIME_ZONE,
+    hour: 'numeric',
+    hour12: false,
+  }).format(new Date(value));
+
+  return `${Number(hour)}:00`;
+};
+
+const formatPhilippineDayLabel = (value) => new Intl.DateTimeFormat('en-US', {
+  timeZone: PHILIPPINE_TIME_ZONE,
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+}).format(new Date(value));
 
 /**
  * Get weather data for black pepper farming
@@ -57,7 +75,7 @@ const getWeatherByCoordinates = async (latitude, longitude) => {
 
     // Process hourly data (next 24 hours)
     const hourlyData = hourly.time.slice(0, 24).map((time, index) => ({
-      time: new Date(time).getHours() + ':00',
+      time: formatPhilippineHourLabel(time),
       temp: Math.round(hourly.temperature_2m[index]),
       rainProbability: hourly.precipitation_probability[index],
       weatherCode: hourly.weather_code[index],
@@ -65,7 +83,7 @@ const getWeatherByCoordinates = async (latitude, longitude) => {
 
     // Process daily data (next 7 days)
     const dailyData = daily.time.map((time, index) => ({
-      date: new Date(time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      date: formatPhilippineDayLabel(time),
       maxTemp: Math.round(daily.temperature_2m_max[index]),
       minTemp: Math.round(daily.temperature_2m_min[index]),
       rainProbability: daily.precipitation_probability_max[index],

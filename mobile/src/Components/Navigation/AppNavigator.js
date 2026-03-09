@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import axios from 'axios';
 import { BACKEND_URL } from 'react-native-dotenv';
 import UserStack from './UserStack';
@@ -86,8 +87,17 @@ export default function AppNavigator() {
     return null;
   }
 
+  const linking = {
+    prefixes: [Linking.createURL('/'), 'pipersmart://'],
+    config: {
+      screens: {
+        ResetPassword: 'reset-password/:token',
+      },
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       {userRole === 'admin' ? <AdminStack /> : <UserStack />}
     </NavigationContainer>
   );

@@ -1,264 +1,238 @@
 /**
- * Suitability scoring for BLACK PEPPER (Piper nigrum) cultivation in the Philippines
- * 
- * Black pepper is well-suited to the country's tropical climate with:
- * - Temperature: 23-32°C (optimal: 27-28°C)
- * - Humidity: 60-80% (optimal: 70%) - HIGH HUMIDITY required
- * - Rainfall: 1000-2500mm annually (100-250 cm) - CONSISTENT rainfall essential
- * - Elevation: 0-1000m (lower is better) - sea level to lowlands ideal
- * 
- * Best local varieties: Panniyur-1, Panniyur-5, Panniyur-8
- * Also suited: Common Philippine types for backyards and plantations
+ * Suitability scoring for black pepper (Piper nigrum) in the Philippines.
+ *
+ * Reference ranges used:
+ * - Temperature: viable 20-35 C, strongest at 25-35 C
+ * - Humidity: ideal 60-80% RH
+ * - Rainfall proxy: high and consistent rainfall preferred
+ * - Elevation: viable up to 1500 m, best below 350 m
  */
 
-/**
- * Calculate temperature suitability score
- * Optimal: 27-28°C, Range: 23-32°C
- */
+const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
+
 const calculateTempScore = (temp) => {
-  const optimalTemp = 27.5;
-  const minTemp = 23;
-  const maxTemp = 32;
-
-  if (temp < minTemp || temp > maxTemp) {
-    return 0; // Outside viable range
-  }
-
-  // Score peaks at optimal temperature
-  const distance = Math.abs(temp - optimalTemp);
-  const maxDistance = Math.max(optimalTemp - minTemp, maxTemp - optimalTemp);
-  return Math.max(0, 100 * (1 - distance / maxDistance));
+  if (temp >= 25 && temp <= 35) return 100;
+  if (temp >= 22 && temp < 25) return 84;
+  if (temp > 35 && temp <= 37) return 72;
+  if (temp >= 20 && temp < 22) return 62;
+  if (temp > 37 && temp <= 39) return 48;
+  return 20;
 };
 
-/**
- * Calculate humidity suitability score
- * Optimal: 70%, Range: 60-80%
- */
 const calculateHumidityScore = (humidity) => {
-  const optimalHumidity = 70;
-  const minHumidity = 60;
-  const maxHumidity = 80;
-
-  if (humidity < minHumidity || humidity > maxHumidity) {
-    return 0; // Outside viable range
-  }
-
-  const distance = Math.abs(humidity - optimalHumidity);
-  const maxDistance = Math.max(optimalHumidity - minHumidity, maxHumidity - optimalHumidity);
-  return Math.max(0, 100 * (1 - distance / maxDistance));
+  if (humidity >= 60 && humidity <= 80) return 100;
+  if (humidity >= 55 && humidity < 60) return 82;
+  if (humidity > 80 && humidity <= 88) return 86;
+  if (humidity >= 45 && humidity < 55) return 62;
+  if (humidity > 88 && humidity <= 95) return 58;
+  return 28;
 };
 
-/**
- * Calculate elevation suitability score
- * Optimal: sea level to 1000m
- */
 const calculateElevationScore = (elevation) => {
-  const maxElevation = 1000;
-
-  if (elevation > maxElevation) {
-    return 0; // Too high
-  }
-
-  // Score decreases with elevation
-  return Math.max(0, 100 * (1 - elevation / maxElevation));
+  if (elevation <= 350) return 100;
+  if (elevation <= 700) return 90;
+  if (elevation <= 1000) return 78;
+  if (elevation <= 1500) return 62;
+  if (elevation <= 1800) return 40;
+  return 20;
 };
 
-/**
- * Calculate rainfall suitability score
- * Optimal: 1500-2500mm annually
- * Estimated from rain probability (simplified)
- */
 const calculateRainfallScore = (rainProbability) => {
-  // Rain probability 60-80% is good (estimated as good rainfall)
-  const optimalRain = 70;
-  const minRain = 40;
-  const maxRain = 90;
-
-  if (rainProbability < minRain || rainProbability > maxRain) {
-    return 50; // Reduced but still viable
-  }
-
-  const distance = Math.abs(rainProbability - optimalRain);
-  const maxDistance = Math.max(optimalRain - minRain, maxRain - optimalRain);
-  return Math.max(0, 100 * (1 - distance / maxDistance));
+  if (rainProbability >= 60 && rainProbability <= 90) return 100;
+  if (rainProbability >= 45 && rainProbability < 60) return 84;
+  if (rainProbability > 90) return 80;
+  if (rainProbability >= 30 && rainProbability < 45) return 64;
+  return 38;
 };
 
-/**
- * Calculate overall suitability score
- * Weighted average of all factors
- */
-export const calculateSuitabilityScore = (weather, elevation, rainProbability) => {
-  const tempScore = calculateTempScore(weather.temp);
-  const humidityScore = calculateHumidityScore(weather.humidity);
-  const elevationScore = calculateElevationScore(elevation);
-  const rainfallScore = calculateRainfallScore(rainProbability);
+const getContextBonus = (locationContext = {}) => {
+  const searchableText = `${locationContext.name || ''} ${locationContext.specialty || ''}`.toLowerCase();
+  let bonus = 0;
+  const reasons = [];
 
-  // Weights for each factor
-  const weights = {
-    temperature: 0.35, // 35%
-    humidity: 0.30, // 30%
-    elevation: 0.20, // 20%
-    rainfall: 0.15, // 15%
+  if (locationContext.kind === 'farm') {
+    bonus += 6;
+    reasons.push('existing farm site');
+  }
+
+  if (searchableText.includes('pepper') || searchableText.includes('pamintahan') || searchableText.includes('piper')) {
+    bonus += 8;
+    reasons.push('pepper-linked location');
+  }
+
+  return {
+    value: Math.min(14, bonus),
+    reasons,
+  };
+};
+
+export const calculateSuitabilityScore = (
+  weather,
+  elevation,
+  rainProbability,
+  locationContext = {}
+) => {
+  const breakdown = {
+    temperature: calculateTempScore(weather.temp),
+    humidity: calculateHumidityScore(weather.humidity),
+    elevation: calculateElevationScore(elevation),
+    rainfall: calculateRainfallScore(rainProbability),
   };
 
-  const totalScore =
-    tempScore * weights.temperature +
-    humidityScore * weights.humidity +
-    elevationScore * weights.elevation +
-    rainfallScore * weights.rainfall;
+  const weights = {
+    temperature: 0.3,
+    humidity: 0.25,
+    elevation: 0.2,
+    rainfall: 0.25,
+  };
 
-  return Math.round(totalScore);
+  const baseScore =
+    breakdown.temperature * weights.temperature +
+    breakdown.humidity * weights.humidity +
+    breakdown.elevation * weights.elevation +
+    breakdown.rainfall * weights.rainfall;
+
+  const contextBonus = getContextBonus(locationContext);
+  const score = clampScore(baseScore + contextBonus.value);
+
+  return {
+    score,
+    baseScore: clampScore(baseScore),
+    bonusScore: contextBonus.value,
+    bonusReasons: contextBonus.reasons,
+    breakdown,
+  };
 };
 
-/**
- * Get suitability rating and color
- */
 export const getSuitabilityRating = (score) => {
-  if (score >= 80) {
+  if (score >= 85) {
     return {
       rating: 'Excellent',
-      color: '#27AE60', // Green
-      icon: '✓✓',
+      color: '#27AE60',
+      icon: '++',
       description: 'Highly suitable for black pepper cultivation',
     };
-  } else if (score >= 60) {
+  }
+
+  if (score >= 70) {
     return {
       rating: 'Good',
-      color: '#F39C12', // Orange/Yellow
-      icon: '✓',
-      description: 'Suitable with some considerations',
-    };
-  } else if (score >= 40) {
-    return {
-      rating: 'Fair',
-      color: '#E67E22', // Dark Orange
-      icon: '△',
-      description: 'Marginal - additional inputs may be needed',
-    };
-  } else {
-    return {
-      rating: 'Poor',
-      color: '#E74C3C', // Red
-      icon: '✗',
-      description: 'Not recommended for black pepper',
+      color: '#1F8A70',
+      icon: '+',
+      description: 'Suitable with manageable field considerations',
     };
   }
+
+  if (score >= 55) {
+    return {
+      rating: 'Fair',
+      color: '#F39C12',
+      icon: '~',
+      description: 'Moderately suitable if shade and moisture are managed well',
+    };
+  }
+
+  return {
+    rating: 'Poor',
+    color: '#E67E22',
+    icon: '!',
+    description: 'Challenging for black pepper without stronger interventions',
+  };
 };
 
-/**
- * Get detailed recommendations based on score breakdown
- * Tailored for BLACK PEPPER cultivation in the Philippines
- */
 export const getDetailedRecommendations = (weather, elevation, rainProbability) => {
   const recommendations = [];
 
-  // Temperature recommendations - Critical for black pepper
-  if (weather.temp < 23) {
+  if (weather.temp < 20) {
     recommendations.push({
       type: 'danger',
       title: 'Temperature Too Low',
-      message: 'Below 23°C minimum - black pepper growth will be severely affected. Consider protected cultivation.',
+      message: 'Below 20 C can damage black pepper growth. Protected establishment is recommended.',
     });
   } else if (weather.temp < 25) {
     recommendations.push({
       type: 'warning',
-      title: 'Suboptimal Temperature',
-      message: 'Below optimal range (27-28°C). Growth will be slower than ideal.',
+      title: 'Cooler Than Ideal',
+      message: 'Viable, but not in the strongest growth band. Expect slower vine growth than in warmer tropical sites.',
     });
-  } else if (weather.temp > 32) {
+  } else if (weather.temp <= 35) {
     recommendations.push({
-      type: 'warning',
-      title: 'High Temperature',
-      message: 'Above 32°C optimal range. Ensure adequate shade, mulching, and irrigation to prevent stress.',
+      type: 'success',
+      title: 'Strong Temperature Band',
+      message: `Current temperature of ${weather.temp} C is in the preferred warm range for black pepper.`,
     });
   } else {
     recommendations.push({
-      type: 'success',
-      title: 'Optimal Temperature',
-      message: `Current: ${weather.temp}°C - Excellent conditions for black pepper growth.`,
+      type: 'warning',
+      title: 'Heat Stress Risk',
+      message: 'Temperatures above 35 C can stress vines. Use shade, mulch, and reliable irrigation.',
     });
   }
 
-  // Humidity recommendations - CRITICAL for black pepper
   if (weather.humidity < 60) {
     recommendations.push({
-      type: 'danger',
-      title: 'Humidity Too Low',
-      message: 'Below 60% minimum - black pepper requires HIGH humidity (60-80%). Install irrigation/misting systems.',
-    });
-  } else if (weather.humidity < 70) {
-    recommendations.push({
       type: 'warning',
-      title: 'Low Humidity',
-      message: 'Below optimal 70%. Black pepper thrives in HIGH humidity - increase irrigation and mulching.',
+      title: 'Humidity Below Target',
+      message: 'Black pepper prefers 60-80% RH. Support moisture retention with mulch and irrigation.',
     });
   } else if (weather.humidity <= 80) {
     recommendations.push({
       type: 'success',
-      title: 'Optimal Humidity',
-      message: `Current: ${weather.humidity}% - Perfect conditions for black pepper. Monitor for fungal diseases in high humidity.`,
+      title: 'Healthy Humidity Window',
+      message: `Current humidity of ${weather.humidity}% supports vigorous vine growth.`,
     });
   } else {
     recommendations.push({
       type: 'info',
-      title: 'Very High Humidity',
-      message: `Current: ${weather.humidity}% - Good for growth but ensure proper ventilation to prevent fungal issues.`,
+      title: 'Humid Conditions',
+      message: 'Humidity is favorable for growth, but monitor for fungal pressure and keep airflow open.',
     });
   }
 
-  // Elevation recommendations
-  if (elevation > 1000) {
-    recommendations.push({
-      type: 'warning',
-      title: 'Elevation Too High',
-      message: 'Above 1000m - black pepper prefers sea level to lowlands (0-1000m). Growth will be limited.',
-    });
-  } else if (elevation < 100) {
+  if (elevation <= 350) {
     recommendations.push({
       type: 'success',
-      title: 'Optimal Elevation',
-      message: 'Elevation ideal for black pepper cultivation (sea level to lowlands).',
+      title: 'Prime Elevation Zone',
+      message: 'This site sits in the strongest low-elevation yield band for black pepper.',
+    });
+  } else if (elevation <= 1500) {
+    recommendations.push({
+      type: 'info',
+      title: 'Acceptable Elevation',
+      message: `Elevation of ${Math.round(elevation)} m is still viable, though top-end yields are usually better lower down.`,
     });
   } else {
     recommendations.push({
-      type: 'success',
-      title: 'Good Elevation',
-      message: `Elevation ${Math.round(elevation)}m is within optimal range (0-1000m) for black pepper.`,
+      type: 'warning',
+      title: 'High Elevation Site',
+      message: 'Above 1500 m is beyond the preferred elevation band and may reduce performance.',
     });
   }
 
-  // Rainfall recommendations - CRITICAL for black pepper
-  if (rainProbability < 40) {
-    recommendations.push({
-      type: 'danger',
-      title: 'Insufficient Rainfall',
-      message: 'Black pepper requires HIGH consistent rainfall (100-250cm annually). Invest in comprehensive irrigation.',
-    });
-  } else if (rainProbability < 60) {
+  if (rainProbability < 45) {
     recommendations.push({
       type: 'warning',
-      title: 'Low Rainfall Probability',
-      message: 'Below optimal rainfall for black pepper. Supplemental irrigation essential.',
+      title: 'Rainfall Support Needed',
+      message: 'Black pepper needs consistent moisture. Plan irrigation during extended dry periods.',
     });
-  } else if (rainProbability <= 80) {
+  } else if (rainProbability <= 90) {
     recommendations.push({
       type: 'success',
-      title: 'Good Rainfall Pattern',
-      message: 'Adequate consistent rainfall expected - excellent for black pepper moisture requirements.',
+      title: 'Moisture Pattern Looks Favorable',
+      message: 'The rainfall outlook supports the high-moisture environment black pepper prefers.',
     });
   } else {
     recommendations.push({
       type: 'info',
-      title: 'High Rainfall',
-      message: 'Very high rainfall expected. Ensure good drainage to prevent root rot.',
+      title: 'Very Wet Outlook',
+      message: 'Rainfall is favorable, but drainage must stay strong to avoid waterlogging and root rot.',
     });
   }
 
-  // Recommended varieties
   recommendations.push({
-    type: 'success',
-    title: 'Recommended Varieties',
-    message: 'Panniyur-1, Panniyur-5, Panniyur-8 (high-yielding), or common Philippine backyardtypes.',
+    type: 'info',
+    title: 'Shade and Wind Protection',
+    message: 'Black pepper performs best with partial shade and shelter from strong winds. Support standards and windbreaks help.',
   });
 
   return recommendations;

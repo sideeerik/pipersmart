@@ -2,15 +2,11 @@ import React, { useState, useRef } from 'react';
 import {
   View,
   TextInput,
-  Alert,
   TouchableOpacity,
   Text,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ActivityIndicator,
-  Dimensions,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +14,6 @@ import axios from 'axios';
 import { BACKEND_URL } from 'react-native-dotenv';
 import { Feather } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
 
 export default function ForgotPassword({ navigation }) {
@@ -26,7 +21,6 @@ export default function ForgotPassword({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [emailFocused, setEmailFocused] = useState(false);
   const [messageSent, setMessageSent] = useState(false);
 
   const emailInput = useRef(null);
@@ -76,7 +70,7 @@ export default function ForgotPassword({ navigation }) {
       console.log('✅ Forgot password response:', response.data);
 
       if (response.data.success) {
-        setMessage(response.data.message || 'Password reset email sent successfully! Check your inbox.');
+        setMessage(response.data.message || 'Password reset email sent successfully. Check your Gmail inbox for the reset link.');
         setMessageSent(true);
         setEmail('');
       } else {
@@ -101,15 +95,8 @@ export default function ForgotPassword({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+      <View style={styles.container}>
+        <View style={styles.scrollContent}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
@@ -121,7 +108,7 @@ export default function ForgotPassword({ navigation }) {
             </View>
             <Text style={[styles.title, { color: colors.text }]}>Reset Password</Text>
             <Text style={[styles.subtitle, { color: colors.textLight }]}>
-              We'll send you a reset link
+              We will send a reset link to your email
             </Text>
           </View>
 
@@ -146,15 +133,11 @@ export default function ForgotPassword({ navigation }) {
             {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
-              <View style={[
-                styles.inputWrapper,
-                { borderColor: emailFocused ? colors.borderFocus : colors.border },
-                emailFocused && styles.inputFocused
-              ]}>
+              <View style={[styles.inputWrapper, { borderColor: colors.border }]}>
                 <Feather 
                   name="mail" 
                   size={20} 
-                  color={emailFocused ? colors.accent : colors.textLight} 
+                  color={colors.textLight} 
                   style={styles.icon}
                 />
                 <TextInput
@@ -164,16 +147,17 @@ export default function ForgotPassword({ navigation }) {
                   placeholderTextColor={colors.textLight}
                   value={email}
                   onChangeText={setEmail}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
+                  inputMode="email"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  autoComplete="off"
-                  importantForAutofill="no"
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                  underlineColorAndroid="transparent"
                   editable={!loading}
                   returnKeyType="send"
                   onSubmitEditing={handleSubmit}
+                  blurOnSubmit={false}
                 />
               </View>
             </View>
@@ -218,11 +202,11 @@ export default function ForgotPassword({ navigation }) {
           {/* Help Text */}
           <View style={styles.helpContainer}>
             <Text style={[styles.helpText, { color: colors.textLight }]}>
-              Didn't receive the email? Check your spam folder or contact support.
+              Didn't receive the email? Check your Gmail spam folder or contact support.
             </Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -235,9 +219,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
+    flex: 1,
     paddingHorizontal: 20,
     paddingVertical: 30,
+    justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
@@ -310,13 +295,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 56,
   },
-  inputFocused: {
-    shadowColor: '#27AE60',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
-  },
   icon: {
     marginRight: 12,
   },
@@ -327,7 +305,6 @@ const styles = StyleSheet.create({
     height: '100%',
     paddingVertical: 0,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-    width: '100%',
   },
   sendButton: {
     borderRadius: 12,

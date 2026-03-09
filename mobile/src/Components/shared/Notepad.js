@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
   Alert,
   ActivityIndicator,
   Animated,
@@ -47,6 +48,7 @@ export default function Notepad({ side = 'right', bottom = 20, offset = 20 }) {
   const [content, setContent] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [editingNote, setEditingNote] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -113,27 +115,41 @@ export default function Notepad({ side = 'right', bottom = 20, offset = 20 }) {
     }
 
     try {
+      setSaving(true);
+      Keyboard.dismiss();
       const token = await getToken();
       const payload = { title, content, color: selectedColor };
+      let response;
 
       if (editingNote) {
-        await axios.put(`${BACKEND_URL}/api/v1/notes/${editingNote._id}`, payload, {
+        response = await axios.put(`${BACKEND_URL}/api/v1/notes/${editingNote._id}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        const updatedNote = response.data?.note;
+        if (updatedNote) {
+          setNotes((prevNotes) =>
+            prevNotes.map((note) => (note._id === updatedNote._id ? updatedNote : note))
+          );
+        }
       } else {
-        await axios.post(`${BACKEND_URL}/api/v1/notes`, payload, {
+        response = await axios.post(`${BACKEND_URL}/api/v1/notes`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        const createdNote = response.data?.note;
+        if (createdNote) {
+          setNotes((prevNotes) => [createdNote, ...prevNotes]);
+        }
       }
 
       setTitle('');
       setContent('');
       setSelectedColor(COLORS[0]);
       setEditingNote(null);
-      fetchNotes();
     } catch (error) {
       console.error('Error saving note:', error);
       Alert.alert('Error', 'Failed to save note');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -282,9 +298,19 @@ export default function Notepad({ side = 'right', bottom = 20, offset = 20 }) {
                     </TouchableOpacity>
                   ) : null}
 
-                  <TouchableOpacity style={styles.saveButton} onPress={handleSaveNote}>
-                    <Feather name="check" size={16} color="#FFFFFF" />
-                    <Text style={styles.saveButtonText}>{editingNote ? 'Update' : 'Add Note'}</Text>
+                  <TouchableOpacity
+                    style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                    onPress={handleSaveNote}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Feather name="check" size={16} color="#FFFFFF" />
+                    )}
+                    <Text style={styles.saveButtonText}>
+                      {saving ? 'Saving...' : editingNote ? 'Update' : 'Add Note'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -507,6 +533,9 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 18,
     gap: 6,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
     color: '#FFF',

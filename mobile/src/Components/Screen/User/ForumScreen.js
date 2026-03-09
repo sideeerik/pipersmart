@@ -1266,6 +1266,28 @@ export default function ForumScreen({ navigation, route }) {
     return `${Math.floor(diffInSeconds / 31536000)}y ago`;
   };
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const hasSearch = normalizedQuery.length > 0;
+
+  const threadMatchesQuery = (item) => {
+    if (!hasSearch) return true;
+    const title = (item?.title || item?.threadTitle || '').toLowerCase();
+    const author = (
+      item?.createdBy?.name ||
+      item?.author?.name ||
+      item?.user?.name ||
+      item?.createdBy?.email ||
+      ''
+    ).toLowerCase();
+    return title.includes(normalizedQuery) || author.includes(normalizedQuery);
+  };
+
+  const userMatchesQuery = (item) => {
+    if (!hasSearch) return true;
+    const name = (item?.name || '').toLowerCase();
+    return name.includes(normalizedQuery);
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
@@ -1291,6 +1313,30 @@ export default function ForumScreen({ navigation, route }) {
             <Text style={styles.headerSubtitle}>Share farming knowledge and tips</Text>
           </View>
         </View>
+
+        <View style={styles.searchContainer}>
+          <View style={[styles.searchBar, { borderColor: colors.border }]}>
+            <Feather name="search" size={18} color={colors.textLight} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder={activeTab === 'users' ? 'Search users by name' : 'Search'}
+              placeholderTextColor={colors.textLight}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              autoCorrect={false}
+            />
+            {hasSearch && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={styles.searchClear}
+              >
+                <Feather name="x" size={16} color={colors.textLight} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         <View style={styles.categoriesContainer}>
           <View style={{ flexDirection: 'row', paddingHorizontal: 12, gap: 8 }}>
             <TouchableOpacity
@@ -1367,6 +1413,12 @@ export default function ForumScreen({ navigation, route }) {
             displayData = allUsers;
           }
 
+          if (hasSearch) {
+            displayData = activeTab === 'users'
+              ? displayData.filter(userMatchesQuery)
+              : displayData.filter(threadMatchesQuery);
+          }
+
           return (
             <>
               {isLoading ? (
@@ -1384,10 +1436,10 @@ export default function ForumScreen({ navigation, route }) {
                     color={colors.border}
                   />
                   <Text style={[styles.emptyText, { color: colors.text }]}>
-                    No posts yet
+                    {hasSearch ? 'No matching results' : 'No posts yet'}
                   </Text>
                   <Text style={[styles.emptySubtext, { color: colors.textLight }]}>
-                    Be the first to start a discussion!
+                    {hasSearch ? 'Try a different name or title.' : 'Be the first to start a discussion!'}
                   </Text>
                 </View>
               ) : (
@@ -2347,6 +2399,39 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 4,
     letterSpacing: 0.2,
+  },
+  searchContainer: {
+    paddingHorizontal: 12,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    shadowColor: '#0D2818',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  searchClear: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F3',
   },
   createButton: {
     flexDirection: 'row',

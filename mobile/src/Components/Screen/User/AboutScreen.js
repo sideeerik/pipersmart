@@ -109,8 +109,8 @@ export default function AboutScreen({ navigation }) {
     },
     {
       icon: "🔬",
-      title: "Bunga Analysis",
-      desc: "Ripeness Percentage Detection & Health Percentage Detection"
+      title: "Peppercorn Analysis",
+      desc: "Ripeness and Health Percentage Detection"
     },
     {
       icon: "🗺️",

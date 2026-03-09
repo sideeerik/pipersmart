@@ -373,6 +373,7 @@ const MAP_HTML = `
         var userMarker;
         var markers = {};
         var routeLayer;
+        var routeLayerGroup;
         var clickMarker;
 
         var farmIcon = L.icon({
@@ -410,6 +411,15 @@ const MAP_HTML = `
             popupAnchor: [1, -34],
             shadowSize: [41, 41]
         });
+
+        // Keep vector layers stable across zoom/rotate.
+        function ensureRouteLayerGroup() {
+            if (!routeLayerGroup) {
+                map.createPane('routePane');
+                map.getPane('routePane').style.zIndex = 450;
+                routeLayerGroup = L.layerGroup([], { pane: 'routePane' }).addTo(map);
+            }
+        }
 
         function addMarkers(data) {
             // Do not clear existing markers immediately if we want smooth updates, 
@@ -463,19 +473,21 @@ const MAP_HTML = `
         }
 
         function drawRoute(coords) {
-            if (routeLayer) {
-                map.removeLayer(routeLayer);
-            }
+            ensureRouteLayerGroup();
+            routeLayerGroup.clearLayers();
+            routeLayer = null;
             if (coords && coords.length > 0) {
                 var latLngs = coords.map(c => [c.latitude, c.longitude]);
                 // Use smoothFactor to optimize rendering performance during zoom/pan
                 routeLayer = L.polyline(latLngs, {
-                    color: 'blue', 
+                    color: 'blue',
                     weight: 5,
-                    opacity: 0.7,
-                    smoothFactor: 3.0, // Higher value = better performance, less detail
-                    renderer: L.canvas() // Explicitly use Canvas renderer
-                }).addTo(map);
+                    opacity: 0.75,
+                    smoothFactor: 2.5, // Slightly more detail while staying smooth
+                    renderer: L.canvas(),
+                    pane: 'routePane'
+                }).addTo(routeLayerGroup);
+                routeLayer.bringToFront();
                 map.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
             }
         }
@@ -498,6 +510,15 @@ const MAP_HTML = `
                 latitude: lat,
                 longitude: lng
             }));
+        });
+
+        map.on('zoomend moveend resize', function() {
+            if (routeLayer && routeLayer.redraw) {
+                routeLayer.redraw();
+            }
+            if (routeLayer && routeLayer.bringToFront) {
+                routeLayer.bringToFront();
+            }
         });
 
         document.addEventListener('message', function(event) {
@@ -1501,7 +1522,7 @@ export default function MacromappingScreen({ navigation }) {
         </View>
       </SafeAreaView>
 
-      <View style={styles.mapContainer} pointerEvents={isUIActive() ? 'none' : 'auto'}>
+      <View style={styles.mapContainer}>
         <WebView
           ref={webViewRef}
           source={{ html: MAP_HTML }}
@@ -1510,7 +1531,6 @@ export default function MacromappingScreen({ navigation }) {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
-          pointerEvents={isUIActive() ? 'none' : 'auto'}
           onLoadEnd={() => {
             if (userLocation && webViewRef.current) {
               webViewRef.current.postMessage(JSON.stringify({

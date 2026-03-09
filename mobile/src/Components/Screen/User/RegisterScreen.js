@@ -19,12 +19,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { authenticate } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
-// import { GOOGLE_WEB_CLIENT_ID } from 'react-native-dotenv';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
-// import auth from '@react-native-firebase/auth';
 
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
@@ -54,37 +51,32 @@ export default function RegisterScreen({ navigation }) {
   const formSlideAnim = useRef(new Animated.Value(height)).current;
   const heroOpacityAnim = useRef(new Animated.Value(1)).current;
   const getStartedScaleAnim = useRef(new Animated.Value(1)).current;
+  const imageFadeAnim = useRef(new Animated.Value(1)).current;
+  const imageOpacity = Animated.multiply(imageFadeAnim, heroOpacityAnim);
 
   useEffect(() => {
-    // Initialize GoogleSignin
-    // const initGoogleSignIn = async () => {
-    //   try {
-    //     if (GOOGLE_WEB_CLIENT_ID) {
-    //       GoogleSignin.configure({
-    //         webClientId: GOOGLE_WEB_CLIENT_ID,
-    //         scopes: ['email', 'profile'],
-    //       });
-    //       console.log('✅ GoogleSignin configured in RegisterScreen');
-    //     } else {
-    //       console.warn('⚠️ GOOGLE_WEB_CLIENT_ID not found in .env');
-    //     }
-    //   } catch (err) {
-    //     console.error('❌ Failed to configure GoogleSignin:', err);
-    //   }
-    // };
-    // initGoogleSignIn();
-    
-    // Start carousel timer
+    // Start carousel timer with crossfade
     carouselTimerRef.current = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length);
-    }, 4000);
+      Animated.timing(imageFadeAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length);
+        Animated.timing(imageFadeAnim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 4500);
     
     return () => {
       if (carouselTimerRef.current) {
         clearInterval(carouselTimerRef.current);
       }
     };
-  }, []);
+  }, [imageFadeAnim]);
 
   // Handle "Get Started" button press
   const handleGetStarted = () => {
@@ -143,92 +135,6 @@ export default function RegisterScreen({ navigation }) {
     });
   };
 
-  // const onGoogleButtonPress = async () => {
-  //   setLoading(true);
-  //   try {
-  //     console.log('🔥 Starting Google Sign-Up...');
-  //     
-  //     // Check if GoogleSignin is configured
-  //     if (!GOOGLE_WEB_CLIENT_ID) {
-  //       throw new Error('🔴 GOOGLE_WEB_CLIENT_ID not configured in .env file');
-  //     }
-  //     
-  //     // Sign out first to avoid cached sessions
-  //     try {
-  //       await GoogleSignin.signOut();
-  //       console.log('✅ Previous session cleared');
-  //     } catch (e) {
-  //       console.log('ℹ️ No previous session to clear');
-  //     }
-  //     
-  //     // Check Play Services
-  //     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  //     console.log('✅ Play Services available');
-  //     
-  //     // Sign in
-  //     const response = await GoogleSignin.signIn();
-  //     console.log('✅ Google Sign-Up successful:', response.user.email);
-  //     
-  //     // Get ID token
-  //     const idToken = response.idToken;
-  //     if (!idToken) {
-  //       throw new Error('No ID token received from Google');
-  //     }
-  //     console.log('🔑 ID Token received (length: ' + idToken.length + ')');
-  //     
-  //     // Send to backend
-  //     console.log('📨 Sending to backend...');
-  //     const res = await axios.post(
-  //       `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
-  //       { idToken },
-  //       { timeout: 10000 }
-  //     );
-  //     
-  //     console.log('✅ Backend verified:', res.data?.user?.email);
-  //     
-  //     await authenticate(res.data, () => {
-  //       setTimeout(() => {
-  //         Alert.alert(
-  //           'Welcome! 🌿',
-  //           `Account created for ${res.data.user?.name || res.data.user?.email}`,
-  //           [
-  //             { 
-  //               text: 'Continue', 
-  //               onPress: () => {
-  //                 if (res.data.user?.role === 'admin') {
-  //                   navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
-  //                 } else {
-  //                   navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
-  //                 }
-  //               }
-  //             }
-  //           ]
-  //         );
-  //       }, 300);
-  //     });
-
-  //   } catch (error) {
-  //     console.error('❌ Google Sign-Up error:', error);
-  //     let errorMessage = 'Google Sign-Up failed';
-  //     
-  //     // Handle specific error types
-  //     if (error.message?.includes('DEVELOPER_ERROR')) {
-  //       errorMessage = '🔴 DEVELOPER_ERROR: Check your Google Cloud Console configuration.\n\nEnsure:\n1. SHA-1 fingerprint matches\n2. Package name is correct\n3. Web Client ID is correct';
-  //     } else if (error.code === -1 || error.code === 'DEVELOPER_ERROR') {
-  //       errorMessage = 'Google configuration error. Please check your .env file and Google Cloud Console setup.';
-  //     } else if (error.message?.includes('Network')) {
-  //       errorMessage = 'Network error. Check your internet connection.';
-  //     } else if (error.response?.data?.message) {
-  //       errorMessage = error.response.data.message;
-  //     } else if (error.message) {
-  //       errorMessage = error.message;
-  //     }
-  //     
-  //     Alert.alert('Google Sign-Up Failed', errorMessage);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   // Animation Values
   const nameFocusAnim = useRef(new Animated.Value(0)).current;
@@ -445,12 +351,17 @@ export default function RegisterScreen({ navigation }) {
       {/* Background Image with rotation */}
       <Animated.Image
         source={backgroundImages[currentImageIndex]}
-        style={[styles.backgroundImage, { opacity: heroOpacityAnim }]}
+        style={[styles.backgroundImage, { opacity: imageOpacity }]}
         resizeMode="cover"
       />
       
-      {/* Dark overlay */}
-      <View style={styles.overlay} />
+      {/* Gradient overlay */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.65)']}
+        start={{ x: 0.1, y: 0.0 }}
+        end={{ x: 0.6, y: 1.0 }}
+        style={styles.overlay}
+      />
 
       <SafeAreaView style={{ flex: 1 }}>
         {/* Hero Section - Visible when form is closed */}
@@ -718,7 +629,10 @@ export default function RegisterScreen({ navigation }) {
                   </Animated.View>
 
                   {loading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <View style={styles.loadingRow}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.loadingText}>Creating account...</Text>
+                    </View>
                   ) : (
                     <Text style={styles.buttonText}>Create Account</Text>
                   )}
@@ -745,7 +659,7 @@ export default function RegisterScreen({ navigation }) {
               {/* Login Link */}
               <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => {
+                <TouchableOpacity style={styles.loginButton} onPress={() => {
                   handleCloseForm();
                   setTimeout(() => navigation.navigate('Login'), 300);
                 }}>
@@ -858,7 +772,6 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
   heroSection: {
     flex: 1,
@@ -955,9 +868,9 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backgroundColor: 'rgba(255, 255, 255, 0.68)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.4,
@@ -982,25 +895,30 @@ const styles = StyleSheet.create({
   },
   formSubtitle: {
     fontSize: 13,
-    color: '#999999',
+    color: '#556A61',
   },
   formContainer: {
     marginBottom: 18,
   },
   inputContainer: {
-    marginBottom: 14,
-    height: 50,
+    marginBottom: 16,
+    height: 60,
     justifyContent: 'center',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
+    borderColor: '#DCE5E0',
     paddingHorizontal: 16,
     height: '100%',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   icon: {
     marginRight: 12,
@@ -1103,7 +1021,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   registerButton: {
-    height: 50,
+    height: 56,
     borderRadius: 12,
     backgroundColor: '#27AE60',
     justifyContent: 'center',
@@ -1118,6 +1036,17 @@ const styles = StyleSheet.create({
   shimmer: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   buttonText: {
     color: '#FFFFFF',
@@ -1160,10 +1089,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 16,
+    alignItems: 'center',
   },
   loginText: {
     color: '#000000',
     fontSize: 13,
+  },
+  loginButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(39, 174, 96, 0.12)',
   },
   loginLink: {
     color: '#27AE60',

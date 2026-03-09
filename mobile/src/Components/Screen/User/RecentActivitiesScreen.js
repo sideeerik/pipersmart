@@ -356,7 +356,7 @@ export default function RecentActivitiesScreen({ navigation }) {
                 : `/api/v1/predict/leaf/${activity._id}`;
               
               const response = await axios.delete(
-                `${process.env.BACKEND_URL}${endpoint}`,
+                `${BACKEND_URL}${endpoint}`,
                 { headers: { Authorization: `Bearer ${token}` } }
               );
               

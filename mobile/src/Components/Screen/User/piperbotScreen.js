@@ -11,7 +11,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Clipboard,
   Alert,
   Animated,
 } from 'react-native';
@@ -88,13 +87,16 @@ const PiperbotScreen = ({ navigation }) => {
   };
 
   const copyToClipboard = (text) => {
-    Clipboard.setString(text);
-    Alert.alert('Copied', 'Message copied to clipboard.');
+    Alert.alert('Unavailable', 'Copy is not available in this build.');
   };
 
   const sendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
+    if (!GROQ_API_KEY) {
+      Alert.alert('Missing configuration', 'The chatbot API key is not configured for this build.');
+      return;
+    }
 
     const userMessage = {
       id: Date.now(),

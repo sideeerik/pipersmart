@@ -32,7 +32,6 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.sideeerik.mobile",
-      "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBoKXxpyQGxiPdplqOjiALoU0lRhxuGhKA"
@@ -64,10 +63,7 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
         }
-      ],
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      "@react-native-google-signin/google-signin"
+      ]
     ],
     "extra": {
       "eas": {

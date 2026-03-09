@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { BACKEND_URL } from 'react-native-dotenv';
 
 // Auth change listeners array
 let authChangeListeners = [];
@@ -124,7 +125,7 @@ export const logout = async (navigation) => {
     // 🔄 Background: Call backend logout endpoint asynchronously (don't wait)
     if (token) {
       // Fire and forget - don't await this
-      axios.post('/api/v1/users/logout', {}, {
+      axios.post(`${BACKEND_URL}/api/v1/users/logout`, {}, {
         headers: { 
           'Authorization': `Bearer ${token}`
         }

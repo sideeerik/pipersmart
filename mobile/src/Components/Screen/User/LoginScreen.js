@@ -18,12 +18,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { authenticate } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
-// import { GOOGLE_WEB_CLIENT_ID } from 'react-native-dotenv';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
-// import auth from '@react-native-firebase/auth';
 
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
@@ -53,115 +50,28 @@ export default function LoginScreen({ navigation }) {
   
   const passwordInput = useRef(null);
   const emailInput = useRef(null);
-  
-  // Initialize GoogleSignin
-  // useEffect(() => {
-  //   if (GOOGLE_WEB_CLIENT_ID) {
-  //     GoogleSignin.configure({
-  //       webClientId: GOOGLE_WEB_CLIENT_ID,
-  //       scopes: ['email', 'profile'],
-  //     });
-  //     console.log('✅ GoogleSignin configured');
-  //   } else {
-  //     console.error('❌ GOOGLE_WEB_CLIENT_ID not found in .env');
-  //   }
-  // }, []);
-  
-  // Rotate background images every 4 seconds
+
+
+  const imageOpacity = Animated.multiply(imageFadeAnim, videoOpacityAnim);
+
+  // Rotate background images every 4 seconds with crossfade
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length);
-    }, 4000);
+      Animated.timing(imageFadeAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length);
+        Animated.timing(imageFadeAnim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 4500);
     return () => clearInterval(interval);
-  }, []);
-
-  // const onGoogleButtonPress = async () => {
-  //   setLoading(true);
-  //   try {
-  //     console.log('🔥 Starting Google Sign-In...');
-  //     
-  //     // Check if GoogleSignin is configured
-  //     if (!GOOGLE_WEB_CLIENT_ID) {
-  //       throw new Error('🔴 GOOGLE_WEB_CLIENT_ID not configured in .env file');
-  //     }
-  //     
-  //     // Sign out first to ensure fresh login
-  //     try {
-  //       await GoogleSignin.signOut();
-  //       console.log('✅ Previous session cleared');
-  //     } catch (e) {
-  //       console.log('ℹ️ No previous session to clear');
-  //     }
-  //     
-  //     // Check Play Services
-  //     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  //     console.log('✅ Play Services available');
-  //     
-  //     // Sign in with Google
-  //     const response = await GoogleSignin.signIn();
-  //     console.log('✅ Google Sign-In successful:', response.user.email);
-  //     
-  //     // Get ID token
-  //     const idToken = response.idToken;
-  //     if (!idToken) {
-  //       throw new Error('No ID token received from Google Sign-In');
-  //     }
-  //     console.log('🔑 ID Token received (length: ' + idToken.length + ')');
-  //     
-  //     // Send to backend for verification
-  //     console.log('📡 Sending ID token to backend...');
-  //     const res = await axios.post(
-  //       `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
-  //       { idToken },
-  //       { timeout: 10000 }
-  //     );
-  //     
-  //     console.log('✅ Backend verified Google token');
-  //     console.log('🎯 User:', res.data?.user?.email, '| Role:', res.data?.user?.role);
-  //     
-  //     // Authenticate user
-  //     await authenticate(res.data, () => {
-  //       setTimeout(() => {
-  //         Alert.alert(
-  //           'Welcome! 🌿',\n  //           `Signed in as ${res.data.user?.name || res.data.user?.email}`,
-  //           [
-  //             { 
-  //               text: 'Continue', 
-  //               onPress: () => {
-  //                 if (res.data.user?.role === 'admin') {
-  //                   navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
-  //                 } else {
-  //                   navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
-  //                 }
-  //               }
-  //             }
-  //           ]
-  //         );
-  //       }, 300);
-  //     });
-  //
-  //   } catch (error) {
-  //     console.error('❌ Google Sign-In error:', error);
-  //     let errorMessage = 'Google Sign-In failed';
-  //     
-  //     // Handle specific error types
-  //     if (error.message?.includes('DEVELOPER_ERROR')) {
-  //       errorMessage = '🔴 DEVELOPER_ERROR: Check your Google Cloud Console configuration.\\n\\nEnsure:\\n1. SHA-1 fingerprint matches\\n2. Package name is correct\\n3. Web Client ID is correct';
-  //     } else if (error.code === -1 || error.code === 'DEVELOPER_ERROR') {
-  //       errorMessage = 'Google configuration error. Please check your .env file and Google Cloud Console setup.';
-  //     } else if (error.message?.includes('Network')) {
-  //       errorMessage = 'Network error. Check your internet connection.';
-  //     } else if (error.response?.data?.message) {
-  //       errorMessage = error.response.data.message;
-  //     } else if (error.message) {
-  //       errorMessage = error.message;
-  //     }
-  //     
-  //     Alert.alert('Google Sign-In Failed', errorMessage);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  }, [imageFadeAnim]);
 
   // Animation Values
   const animateButtonPress = () => {
@@ -294,12 +204,17 @@ export default function LoginScreen({ navigation }) {
       {/* Background Image with rotation */}
       <Animated.Image
         source={backgroundImages[currentImageIndex]}
-        style={[styles.backgroundImage, { opacity: videoOpacityAnim }]}
+        style={[styles.backgroundImage, { opacity: imageOpacity }]}
         resizeMode="cover"
       />
       
-      {/* Dark overlay */}
-      <View style={styles.overlay} />
+      {/* Gradient overlay */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.65)']}
+        start={{ x: 0.1, y: 0.0 }}
+        end={{ x: 0.6, y: 1.0 }}
+        style={styles.overlay}
+      />
 
       <SafeAreaView style={{ flex: 1 }}>
         {/* Login Form */}
@@ -318,6 +233,12 @@ export default function LoginScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
+              <View style={styles.brandHeader}>
+                <Image source={logoImage} style={styles.brandLogo} resizeMode="contain" />
+                <Text style={styles.brandTitle}>PiperSmart</Text>
+                <Text style={styles.brandTagline}>Precision pepper insights in your pocket</Text>
+              </View>
+
               <BlurView intensity={25} tint="dark" style={styles.formCard}>
                 {/* Form Header */}
                 <View style={styles.formHeader}>
@@ -399,7 +320,10 @@ export default function LoginScreen({ navigation }) {
                     </Animated.View>
 
                     {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <View style={styles.loadingRow}>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <Text style={styles.loadingText}>Logging in...</Text>
+                      </View>
                     ) : (
                       <Text style={styles.buttonText}>Sign In</Text>
                     )}
@@ -426,7 +350,7 @@ export default function LoginScreen({ navigation }) {
                 {/* Sign Up Link */}
                 <View style={styles.signupContainer}>
                   <Text style={styles.signupText}>Don't have an account? </Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                  <TouchableOpacity style={styles.signupButton} onPress={() => navigation.navigate('Register')}>
                     <Text style={styles.signupLink}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
@@ -516,7 +440,29 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  brandHeader: {
+    alignItems: 'center',
+    marginBottom: 18,
+    paddingTop: 16,
+    paddingHorizontal: 24,
+  },
+  brandLogo: {
+    width: 72,
+    height: 72,
+    marginBottom: 10,
+  },
+  brandTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
+  },
+  brandTagline: {
+    marginTop: 6,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
   },
   heroSection: {
     flex: 1,
@@ -598,9 +544,9 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     padding: 28,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backgroundColor: 'rgba(255, 255, 255, 0.68)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.4,
@@ -634,26 +580,31 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   formSubtitle: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: 13,
+    color: '#556A61',
   },
   formContainer: {
     marginBottom: 24,
   },
   inputContainer: {
-    marginBottom: 20,
-    height: 56,
+    marginBottom: 18,
+    height: 60,
     justifyContent: 'center',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
+    borderColor: '#DCE5E0',
     paddingHorizontal: 16,
     height: '100%',
+    shadowColor: '#0D2818',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   icon: {
     marginRight: 12,
@@ -702,6 +653,17 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
   },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
@@ -743,10 +705,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
+    alignItems: 'center',
   },
   signupText: {
     color: '#666666',
     fontSize: 14,
+  },
+  signupButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(39, 174, 96, 0.12)',
   },
   signupLink: {
     color: '#27AE60',

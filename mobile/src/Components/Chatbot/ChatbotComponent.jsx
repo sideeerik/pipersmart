@@ -33,6 +33,15 @@ const ChatbotComponent = () => {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+    if (!GROQ_API_KEY) {
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: 'bot',
+        text: 'Chatbot API key is not configured for this build.',
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
 
     // Add user message
     const userMessage = {

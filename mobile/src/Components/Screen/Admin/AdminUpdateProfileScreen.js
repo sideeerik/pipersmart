@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Alert, ScrollView, Text, Image, TouchableOpacity } from 'react-native';
 import axios from 'axios';
-import { getUser, saveUser, getToken } from '../../utils/helpers';
+import { getToken } from '../../utils/helpers';
 import { BACKEND_URL } from 'react-native-dotenv';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -55,7 +55,7 @@ export default function AdminUpdateProfileScreen({ route, navigation }) {
         formData.append('avatar', { uri: avatar, name: filename, type });
       }
 
-      const res = await axios.put(`${BACKEND_URL}/me/update`, formData, {
+      const res = await axios.put(`${BACKEND_URL}/api/v1/users/me/update`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',

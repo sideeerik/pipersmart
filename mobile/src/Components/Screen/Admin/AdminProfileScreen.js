@@ -19,7 +19,7 @@ export default function AdminProfileScreen({ navigation, route }) {
     const fetchProfile = async () => {
       try {
         const token = await getToken();
-        const res = await axios.get(`${BACKEND_URL}/me`, {
+        const res = await axios.get(`${BACKEND_URL}/api/v1/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data.user);

@@ -2,7 +2,6 @@ const User = require('../models/User');
 const crypto = require('crypto');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/Cloudinary');
 const Mailer = require('../utils/Mailer');
-const admin = require('../utils/firebaseAdmin');
 
 // ========== REGISTER USER ========== 
 exports.registerUser = async (req, res) => {
@@ -33,8 +32,7 @@ exports.registerUser = async (req, res) => {
       password,
       avatar: avatarData,
       isVerified: false,
-      isActive: true,
-      authProvider: 'local'
+      isActive: true
     });
 
     // Generate email verification token
@@ -54,11 +52,21 @@ exports.registerUser = async (req, res) => {
     `;
 
     console.log('📨 Sending verification email to local user:', user.email);
-    await Mailer({
-      email: user.email,
-      subject: 'Verify your email - ' + process.env.APP_NAME,
-      message
-    });
+    try {
+      await Mailer({
+        email: user.email,
+        subject: 'Verify your email - ' + process.env.APP_NAME,
+        message
+      });
+    } catch (mailError) {
+      console.error('Verification email failed during registration:', mailError.message);
+      await User.deleteOne({ _id: user._id });
+
+      return res.status(503).json({
+        success: false,
+        message: 'Registration could not be completed because the email service is unavailable. Please try again in a few minutes.'
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -67,8 +75,7 @@ exports.registerUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        isVerified: user.isVerified,
-        authProvider: user.authProvider
+        isVerified: user.isVerified
       }
     });
 
@@ -290,85 +297,6 @@ exports.updateProfile = async (req, res) => {
     });
   }
 };
-// ========== GOOGLE LOGIN ==========
-exports.firebaseGoogleAuth = async (req, res) => {
-  try {
-    console.log('🔥 Firebase Google auth attempt');
-    const { idToken } = req.body;
-    if (!idToken) return res.status(400).json({ message: 'Firebase ID token is required' });
-
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { email, uid, name, picture } = decodedToken;
-
-    let user = await User.findOne({ email });
-    if (!user) {
-      user = await User.create({
-        name: name || email.split('@')[0],
-        email,
-        password: uid,
-        avatar: { public_id: `google_${uid}`, url: picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || email.split('@')[0])}&background=random&color=fff&size=150` },
-        isVerified: true,
-        isActive: true,
-        firebaseUID: uid,
-        authProvider: 'google'
-      });
-      console.log('✅ User auto-created for Google login');
-    }
-
-    if (user.isDeleted) return res.status(403).json({ message: 'Your account has been deleted. Please contact support.' });
-    if (!user.isActive) return res.status(403).json({ message: 'Your account is inactive. Please contact support.' });
-
-    const token = user.getJwtToken();
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    res.status(200).json({ success: true, token, user: userResponse, message: 'Google authentication successful' });
-
-  } catch (error) {
-    console.error('❌ FIREBASE GOOGLE AUTH ERROR:', error);
-    res.status(500).json({ success: false, message: 'Google authentication failed', error: error.message });
-  }
-};
-
-// ========== FACEBOOK LOGIN ==========
-exports.firebaseFacebookAuth = async (req, res) => {
-  try {
-    console.log('🔥 Firebase Facebook auth attempt');
-    const { idToken } = req.body;
-    if (!idToken) return res.status(400).json({ message: 'Firebase ID token is required' });
-
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { email, uid, name, picture } = decodedToken;
-
-    let user = await User.findOne({ email });
-    if (!user) {
-      user = await User.create({
-        name: name || email.split('@')[0],
-        email,
-        password: uid,
-        avatar: { public_id: `facebook_${uid}`, url: picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || email.split('@')[0])}&background=random&color=fff&size=150` },
-        isVerified: true,
-        isActive: true,
-        firebaseUID: uid,
-        authProvider: 'facebook'
-      });
-      console.log('✅ User auto-created for Facebook login');
-    }
-
-    if (user.isDeleted) return res.status(403).json({ message: 'Your account has been deleted. Please contact support.' });
-    if (!user.isActive) return res.status(403).json({ message: 'Your account is inactive. Please contact support.' });
-
-    const token = user.getJwtToken();
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    res.status(200).json({ success: true, token, user: userResponse, message: 'Facebook authentication successful' });
-
-  } catch (error) {
-    console.error('❌ FIREBASE FACEBOOK AUTH ERROR:', error);
-    res.status(500).json({ success: false, message: 'Facebook authentication failed', error: error.message });
-  }
-};
 
 // ========== FORGOT PASSWORD ==========
 exports.forgotPassword = async (req, res) => {
@@ -379,13 +307,12 @@ exports.forgotPassword = async (req, res) => {
     const resetToken = user.getResetPasswordToken();
     await user.save({ validateBeforeSave: false });
 
-    // Use FRONTEND_URL env variable or fallback to localhost
-    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const resetUrl = `${FRONTEND_URL}/reset-password/${resetToken}`;
+    const appScheme = process.env.MOBILE_APP_SCHEME || 'pipersmart';
+    const resetUrl = `${appScheme}://reset-password/${resetToken}`;
 
     const message = `
       <h2>Password Reset Request</h2>
-      <p>Click the link below to reset your password:</p>
+      <p>Click the link below on your mobile device to reset your password in PiperSmart:</p>
       <a href="${resetUrl}" target="_blank" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">Reset Your Password</a>
       <br><br>
       <p>If you did not request this email, please ignore it.</p>

@@ -83,17 +83,6 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    // ADDED: Firebase Authentication Fields
-    firebaseUID: {
-        type: String,
-        default: null
-    },
-
-    authProvider: {
-        type: String,
-        enum: ['local', 'firebase-email', 'google', 'facebook'], // Added 'facebook'
-        default: 'local'
-    },
     // Friends and Friend Requests
     friends: [
         {
@@ -130,15 +119,12 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Encrypt password before saving user (only for local auth)
+// Encrypt password before saving user
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {
         return next();
     }
-    // Only hash password for local authentication, not for Firebase users
-    if (this.authProvider === 'local') {
-        this.password = await bcrypt.hash(this.password, 10);
-    }
+    this.password = await bcrypt.hash(this.password, 10);
     next();
 });
 
@@ -149,11 +135,8 @@ userSchema.methods.getJwtToken = function () {
     });
 };
 
-// Compare entered password with hashed password (only for local auth)
+// Compare entered password with hashed password
 userSchema.methods.comparePassword = async function (enteredPassword) {
-    if (this.authProvider !== 'local') {
-        return false; // Firebase users don't use local password comparison
-    }
     return await bcrypt.compare(enteredPassword, this.password);
 };
 

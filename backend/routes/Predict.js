@@ -53,7 +53,7 @@ router.post('/bunga-ripeness', isAuthenticatedUser, upload.single('image'), asyn
     const result = await new Promise((resolve, reject) => {
       // Python script path - Use ensemble model (v1 + v2)
       const pythonScriptPath = path.join(__dirname, '../utils/predict_bunga_ripeness_ensemble.py');
-      const pythonExe = 'C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+      const pythonExe = process.env.PYTHON_EXE || 'python';
       
       // Use spawn without shell: true - Node.js handles paths with spaces correctly
       const python = spawn(pythonExe, [pythonScriptPath, tempImagePath], {

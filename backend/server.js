@@ -22,6 +22,33 @@ console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? '✓ Set' : 
 console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? '✓ Set' : '✗ Missing');
 console.log('DB_URI:', process.env.DB_URI ? '✓ Set' : '✗ Missing - THIS WILL CAUSE STARTUP FAILURE');
 
+const preferredMailProvider = (process.env.MAIL_PROVIDER || '').trim().toLowerCase();
+const usingResend = preferredMailProvider === 'smtp' ? false : Boolean(process.env.RESEND_API_KEY);
+const activeMailHost = usingResend ? 'api.resend.com' : process.env.GMAIL_HOST || process.env.SMTP_HOST;
+const activeMailPort = usingResend ? 'https' : process.env.GMAIL_PORT || process.env.SMTP_PORT || 587;
+const hasGmailKeys = Boolean(
+  process.env.GMAIL_HOST &&
+  process.env.GMAIL_USER &&
+  process.env.GMAIL_PASS &&
+  process.env.GMAIL_FROM_EMAIL
+);
+const hasResendKeys = Boolean(
+  process.env.RESEND_API_KEY &&
+  (process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || process.env.GMAIL_FROM_EMAIL)
+);
+
+console.log('MAIL CONFIG:', {
+  provider: usingResend ? 'resend' : process.env.GMAIL_HOST ? 'gmail-smtp' : process.env.SMTP_HOST ? 'smtp' : 'missing',
+  preferredProvider: preferredMailProvider || 'auto',
+  host: activeMailHost || 'missing',
+  port: activeMailPort,
+  resendConfigured: hasResendKeys,
+  gmailKeysDetected: hasGmailKeys,
+  gmailUserSet: Boolean(process.env.GMAIL_USER),
+  gmailPassSet: Boolean(process.env.GMAIL_PASS),
+  gmailFromEmailSet: Boolean(process.env.GMAIL_FROM_EMAIL),
+});
+
 // Now import other modules AFTER environment variables are loaded
 const app = require('./app');
 const connectDatabase = require('./config/db');

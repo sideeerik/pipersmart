@@ -4,8 +4,6 @@ const {
   registerUser,
   loginUser,
   updateProfile,
-  firebaseGoogleAuth,
-  firebaseFacebookAuth,
   forgotPassword,
   resetPassword,
   changePassword,
@@ -43,10 +41,6 @@ router.get('/me', isAuthenticatedUser, async (req, res) => {
 
 // UPDATE PROFILE
 router.put('/me/update', isAuthenticatedUser, uploadWithJson, updateProfile);
-
-// ================= FIREBASE AUTH =================
-router.post('/firebase/auth/google', firebaseGoogleAuth);
-router.post('/firebase/auth/facebook', firebaseFacebookAuth);
 
 // ================= PASSWORD RESET =================
 router.post('/forgot-password', forgotPassword);

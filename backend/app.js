@@ -37,6 +37,15 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// ========== ROOT (HEALTH) ==========
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Backend server is running',
+    health: '/api/v1/health'
+  });
+});
+
 // ========== USER ROUTES ==========
 const userRoutes = require('./routes/User');
 app.use('/api/v1/users', userRoutes);

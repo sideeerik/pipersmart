@@ -5,9 +5,7 @@ const {
   loginUser,
   updateProfile,
   forgotPassword,
-  resetPassword,
   changePassword,
-  verifyEmail,
   getAllUsers,
   sendFriendRequest,
   acceptFriendRequest,
@@ -44,14 +42,9 @@ router.put('/me/update', isAuthenticatedUser, uploadWithJson, updateProfile);
 
 // ================= PASSWORD RESET =================
 router.post('/forgot-password', forgotPassword);
-router.put('/reset-password/:token', resetPassword);
 
 // ================= CHANGE PASSWORD =================
 router.put('/change-password', isAuthenticatedUser, changePassword);
-
-// ================= EMAIL VERIFICATION =================
-// NOTE: The verification URL must include "/users" because the router is mounted at "/api/v1/users"
-router.get('/verify-email/:token', verifyEmail);
 
 // ================= FRIEND REQUESTS =================
 router.get('/all-users', isAuthenticatedUser, getAllUsers);

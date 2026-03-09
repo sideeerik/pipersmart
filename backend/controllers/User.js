@@ -1,13 +1,11 @@
 const User = require('../models/User');
-const crypto = require('crypto');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/Cloudinary');
-const Mailer = require('../utils/Mailer');
 
 // ========== REGISTER USER ========== 
 exports.registerUser = async (req, res) => {
   try {
     console.log('📝 Register user request received');
-    const { name, email, password, avatar } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -31,46 +29,13 @@ exports.registerUser = async (req, res) => {
       email,
       password,
       avatar: avatarData,
-      isVerified: false,
+      isVerified: true,
       isActive: true
     });
 
-    // Generate email verification token
-    const verificationToken = user.getEmailVerificationToken();
-    await user.save({ validateBeforeSave: false });
-
-    // ✅ FIXED: include '/users' in the URL
-    const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/users/verify-email/${verificationToken}`;
-
-    const message = `
-      <h2>Welcome to ${process.env.APP_NAME}</h2>
-      <p>Click the link below to verify your email and activate your account:</p>
-      <a href="${verificationUrl}" target="_blank" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">Verify Your Email</a>
-      <br><br>
-      <p>If you didn't request this, please ignore this email.</p>
-      <p><small>Or copy this link: ${verificationUrl}</small></p>
-    `;
-
-    console.log('📨 Sending verification email to local user:', user.email);
-    try {
-      await Mailer({
-        email: user.email,
-        subject: 'Verify your email - ' + process.env.APP_NAME,
-        message
-      });
-    } catch (mailError) {
-      console.error('Verification email failed during registration:', mailError.message);
-      await User.deleteOne({ _id: user._id });
-
-      return res.status(503).json({
-        success: false,
-        message: 'Registration could not be completed because the email service is unavailable. Please try again in a few minutes.'
-      });
-    }
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: `Registration successful! Verification email sent to ${user.email}. Please verify your email before logging in.`,
+      message: 'Registration successful! You can now log in.',
       user: {
         id: user._id,
         name: user.name,
@@ -102,7 +67,6 @@ exports.loginUser = async (req, res) => {
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
 
     if (!user.isActive) return res.status(403).json({ message: 'Your account is inactive. Please contact support.' });
-    if (!user.isVerified) return res.status(403).json({ message: 'Please verify your email first.' });
 
     const isPasswordMatched = await user.comparePassword(password);
     if (!isPasswordMatched) return res.status(401).json({ message: 'Invalid email or password' });
@@ -301,27 +265,10 @@ exports.updateProfile = async (req, res) => {
 // ========== FORGOT PASSWORD ==========
 exports.forgotPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(404).json({ message: 'User not found with this email' });
-
-    const resetToken = user.getResetPasswordToken();
-    await user.save({ validateBeforeSave: false });
-
-    const appScheme = process.env.MOBILE_APP_SCHEME || 'pipersmart';
-    const resetUrl = `${appScheme}://reset-password/${resetToken}`;
-
-    const message = `
-      <h2>Password Reset Request</h2>
-      <p>Click the link below on your mobile device to reset your password in PiperSmart:</p>
-      <a href="${resetUrl}" target="_blank" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">Reset Your Password</a>
-      <br><br>
-      <p>If you did not request this email, please ignore it.</p>
-      <p><small>Or copy this link: ${resetUrl}</small></p>
-    `;
-
-    await Mailer({ email: user.email, subject: 'Password Recovery - ' + process.env.APP_NAME, message });
-
-    res.status(200).json({ success: true, message: `Password reset email sent to: ${user.email}` });
+    return res.status(200).json({
+      success: true,
+      message: 'Change password in the web side.'
+    });
 
   } catch (error) {
     console.error('❌ FORGOT PASSWORD ERROR:', error);

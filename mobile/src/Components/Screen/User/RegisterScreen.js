@@ -307,8 +307,8 @@ export default function RegisterScreen({ navigation }) {
 
       console.log('✅ Registration successful:', res.data);
       Alert.alert(
-        'Check Your Email',
-        res.data?.message || `Registration successful. We sent a verification email to ${email}. Please open it in Gmail and verify your account before logging in.`,
+        'Registration Successful',
+        res.data?.message || 'Registration successful! You can now log in.',
         [
           {
             text: 'Go to Login',

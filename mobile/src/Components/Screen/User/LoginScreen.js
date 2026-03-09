@@ -290,7 +290,9 @@ export default function LoginScreen({ navigation }) {
                   />
 
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('ForgotPassword')}
+                    onPress={() =>
+                      Alert.alert('Forgot Password', 'Change password in the web side.')
+                    }
                     style={styles.forgotLink}
                   >
                     <Text style={styles.linkText}>Forgot Password?</Text>

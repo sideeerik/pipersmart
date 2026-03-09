@@ -10,7 +10,6 @@ import ContactScreen from '../Screen/User/ContactScreen';
 import ProfileScreen from '../Screen/User/ProfileScreen';
 import UpdateProfileScreen from '../Screen/User/UpdateProfileScreen';
 import ForgotPassword from '../Screen/User/ForgotPassword';
-import ResetPasswordScreen from '../Screen/User/ResetPasswordScreen';
 import ChangePassword from '../Screen/User/ChangePassword';
 import WeatherScreen from '../Screen/User/WeatherScreen';
 import MacromappingScreen from '../Screen/User/MacromappingScreen';
@@ -75,11 +74,6 @@ export default function UserStack() {
       <Stack.Screen 
         name="ForgotPassword" 
         component={ForgotPassword}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="ResetPassword" 
-        component={ResetPasswordScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen 

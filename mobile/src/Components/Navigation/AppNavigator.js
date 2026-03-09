@@ -89,11 +89,6 @@ export default function AppNavigator() {
 
   const linking = {
     prefixes: [Linking.createURL('/'), 'pipersmart://'],
-    config: {
-      screens: {
-        ResetPassword: 'reset-password/:token',
-      },
-    },
   };
 
   return (

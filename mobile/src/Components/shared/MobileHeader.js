@@ -293,6 +293,21 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
     }
   };
 
+  const getNotificationIcon = (notification) => {
+    const type = String(notification?.type || '').toLowerCase();
+    const severity = String(notification?.severity || '').toLowerCase();
+
+    if (severity === 'critical') return 'alert-octagon';
+    if (severity === 'warning') return 'alert-circle';
+    if (type.includes('forum')) return 'forum';
+    if (type.includes('message') || type.includes('chat')) return 'message-text';
+    if (type.includes('bunga') || type.includes('pepper')) return 'sprout';
+    if (type.includes('leaf')) return 'leaf';
+    if (type.includes('weather')) return 'weather-partly-cloudy';
+    if (type.includes('map') || type.includes('macro')) return 'map-marker-radius';
+    return 'bell-ring';
+  };
+
   const handleProtectedNavigation = async (screenName) => {
     try {
       // Check both prop 'user' and internal state 'isLoggedIn'
@@ -594,8 +609,25 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
                         backgroundColor: notification.read ? '#F9FCFA' : '#EDF8F2',
                         borderLeftColor: getSeverityColor(notification.severity),
                       },
+                      !notification.read && styles.notificationItemUnread,
                     ]}
                   >
+                    <View
+                      style={[
+                        styles.notificationIconWrap,
+                        {
+                          borderColor: getSeverityColor(notification.severity),
+                          backgroundColor: getSeverityColor(notification.severity) + '1F',
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={getNotificationIcon(notification)}
+                        size={18}
+                        color={getSeverityColor(notification.severity)}
+                      />
+                    </View>
+
                     <View style={styles.notificationDotCol}>
                       {!notification.read ? (
                         <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
@@ -608,14 +640,18 @@ export default function MobileHeader({ navigation, drawerOpen = false, openDrawe
                       style={styles.notificationBody}
                       onPress={() => handleNotificationPress(notification)}
                     >
-                      <Text style={[styles.notificationItemTitle, { color: colors.text }]} numberOfLines={2}>
-                        {notification.title}
-                      </Text>
+                      <View style={styles.notificationTitleRow}>
+                        <Text style={[styles.notificationItemTitle, { color: colors.text }]} numberOfLines={1}>
+                          {notification.title}
+                        </Text>
+                        <View style={styles.notificationTimePill}>
+                          <Text style={styles.notificationTimeText}>
+                            {new Date(notification.createdAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      </View>
                       <Text style={[styles.notificationItemMessage, { color: colors.textLight }]} numberOfLines={3}>
                         {notification.message}
-                      </Text>
-                      <Text style={[styles.notificationTime, { color: colors.textLight }]}>
-                        {new Date(notification.createdAt).toLocaleDateString()}
                       </Text>
                     </TouchableOpacity>
 
@@ -752,7 +788,7 @@ const styles = StyleSheet.create({
   },
   notificationOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.38)',
+    backgroundColor: 'rgba(9, 18, 14, 0.45)',
     justifyContent: 'flex-start',
     paddingTop: 68,
     paddingHorizontal: 10,
@@ -761,29 +797,29 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   notificationDropdown: {
-    borderRadius: 16,
-    maxHeight: '58%',
-    elevation: 8,
+    borderRadius: 18,
+    maxHeight: '62%',
+    elevation: 10,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.06)',
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
   },
   notificationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    backgroundColor: '#F7FBF9',
+    backgroundColor: '#F4FAF6',
   },
   notificationTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
   notificationSubtitle: {
@@ -801,20 +837,20 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     gap: 8,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.06)',
-    backgroundColor: '#FCFEFD',
+    backgroundColor: '#FAFDFB',
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 13,
-    paddingVertical: 6,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: '#D4E3DC',
     backgroundColor: '#FFFFFF',
@@ -834,19 +870,28 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   notificationsList: {
-    maxHeight: 340,
-    paddingVertical: 6,
+    maxHeight: 380,
+    paddingVertical: 10,
   },
   notificationItem: {
     flexDirection: 'row',
-    marginHorizontal: 10,
-    marginBottom: 8,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    marginHorizontal: 12,
+    marginBottom: 10,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     borderLeftWidth: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  notificationItemUnread: {
+    shadowOpacity: 0.12,
+    elevation: 3,
   },
   notificationDotCol: {
     width: 12,
@@ -855,13 +900,40 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     marginRight: 6,
   },
+  notificationIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    marginTop: 2,
+  },
+  notificationTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 6,
+  },
   notificationBody: {
     flex: 1,
   },
   notificationItemTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
-    marginBottom: 4,
+  },
+  notificationTimePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#EAF2EE',
+  },
+  notificationTimeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#567369',
   },
   unreadDot: {
     width: 8,
@@ -876,13 +948,7 @@ const styles = StyleSheet.create({
   },
   notificationItemMessage: {
     fontSize: 11,
-    marginBottom: 4,
     lineHeight: 16,
-  },
-  notificationTime: {
-    fontSize: 9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
   },
   deleteButton: {
     width: 28,

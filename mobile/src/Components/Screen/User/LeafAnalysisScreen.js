@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,18 +12,21 @@ import {
   Alert,
   Animated,
   Dimensions,
+  AppState,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getUser, logout } from '../../utils/helpers';
 import MobileHeader from '../../shared/MobileHeader';
 import RealtimeLeafAnalyzer from './RealtimeLeafAnalyzer';
 import { BACKEND_URL } from 'react-native-dotenv';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-export default function LeafAnalysisScreen({ navigation }) {
+export default function LeafAnalysisScreen({ navigation, route }) {
   const [analysisMode, setAnalysisMode] = useState('standard'); // 'standard' or 'realtime'
   const [image, setImage] = useState(null);
   const [imageUri, setImageUri] = useState(null);
@@ -31,9 +34,12 @@ export default function LeafAnalysisScreen({ navigation }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
   const drawerSlideAnim = useRef(new Animated.Value(-280)).current;
+  const cameraRef = useRef(null);
+  const [permission, requestPermission] = useCameraPermissions();
 
   const colors = {
     primary: '#0E3B2E',
@@ -50,6 +56,57 @@ export default function LeafAnalysisScreen({ navigation }) {
     danger: '#E2554D',
     success: '#2BB673',
   };
+  useEffect(() => {
+    const pendingImage = route?.params?.pendingImage;
+    if (pendingImage?.uri) {
+      console.log("PENDING: received from navigation", pendingImage.uri);
+      setImageUri(pendingImage.uri);
+      setImage(pendingImage);
+      setError(null);
+      setResult(null);
+      navigation.setParams({ pendingImage: null });
+    }
+  }, [route?.params?.pendingImage, navigation]);
+
+  const restorePendingImage = useCallback(async () => {
+    try {
+      console.log("PENDING: check (LeafAnalysisScreen)");
+      const pending = await ImagePicker.getPendingResultAsync();
+      console.log("PENDING: raw result", pending ? { canceled: pending.canceled, hasAssets: !!pending.assets?.length } : null);
+      if (!pending || pending.canceled) return;
+
+      const asset = pending.assets?.[0];
+      if (asset?.uri) {
+        console.log("PENDING: restored image", asset.uri);
+        setImageUri(asset.uri);
+        setImage(asset);
+        setError(null);
+        setResult(null);
+      }
+    } catch (err) {
+      console.error('Failed to restore pending image:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    restorePendingImage();
+  }, [restorePendingImage]);
+
+  useFocusEffect(
+    useCallback(() => {
+      restorePendingImage();
+    }, [restorePendingImage])
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      console.log("APPSTATE: LeafAnalysisScreen", state);
+      if (state === 'active') {
+        restorePendingImage();
+      }
+    });
+    return () => subscription.remove();
+  }, [restorePendingImage]);
 
   // Disease recommendations
   const diseaseRecommendations = {
@@ -97,6 +154,81 @@ export default function LeafAnalysisScreen({ navigation }) {
     }
   };
 
+  const leafAdvisoryGuide = {
+    Healthy: {
+      status: 'Plant is Vigorous',
+      description: 'Leaves are vibrant green with optimal chlorophyll levels and no visible pathogen interference.',
+      commonSymptoms: 'Glossy leaf surface; uniform green color; smooth margins with no lesions, curling, or distortion.',
+      prevention: 'Maintain balanced NPK levels; apply Neem oil (prophylactic) monthly to repel sap-sucking vectors from the foliage.',
+      treatment: 'No chemical treatment required.',
+      primaryAdvice: 'Focus on leaf-absorbed biostimulants like seaweed extract to boost immunity for the upcoming flowering season.',
+      advancedProTips: [
+        'Precision Feeding: Every 6 months, conduct a soil pH test (Target: 5.5-6.5). If pH is off, the leaves cannot absorb the NPK nutrients you provide.',
+        'Micro-Nutrient Boost: Apply a foliar spray of Zinc and Magnesium during spike initiation to ensure maximum berry setting and leaf health.',
+      ],
+    },
+    Footrot: {
+      status: 'CRITICAL: Immediate Action Required',
+      description: 'A lethal fungal infection (Phytophthora) detected by rapid leaf degradation and vascular blockage.',
+      commonSymptoms: 'Water-soaked dark lesions on the leaf surface; rapid yellowing; total leaf drop (defoliation) within days.',
+      prevention: 'Ensure raised-bed planting for drainage; apply Trichoderma-enriched manure to the soil before the monsoon.',
+      treatment: 'Drench the soil and spray the foliage with 1% Bordeaux mixture or Metalaxyl-Mancozeb (0.2%).',
+      primaryAdvice: 'Check the vine base for blackening; if the collar is rotten, the vine may need to be removed to save neighbors.',
+      advancedProTips: [
+        'Containment Trenching: Dig a 30cm deep isolation trench around the infected vine to cut off root-to-root spread of fungi.',
+        'The 3-Step Drench: Treat the infected vine AND the immediate 8 healthy neighbor vines; the fungus spreads underground before leaves show wilt.',
+      ],
+    },
+    Pollu_Disease: {
+      status: 'WARNING: Crop Quality Risk',
+      description: 'A fungal pathogen detected via foliar spots that eventually migrates to fruit spikes, causing "hollow berries."',
+      commonSymptoms: 'Circular brown spots with distinct yellow halos on the leaves; necrotic (dead) patches on leaf margins.',
+      prevention: 'Prune for better aeration; regulate shade to ensure at least 50% sunlight reaches the leaf canopy.',
+      treatment: 'Apply Copper Oxychloride (0.2%) or Carbendazim (0.1%) sprays twice during the monsoon cycle.',
+      primaryAdvice: 'Remove all fallen leaves and spikes from the basin, as they act as a reservoir for spores that re-infect the plant.',
+      advancedProTips: [
+        'Shade Regulation: Use a lux meter to ensure light intensity is between 2,000-3,000 foot-candles. Over-shading breeds this leaf-eating fungus.',
+        'Spike Protection: Prioritize spraying the fruit spikes specifically to prevent "hollow berries," which can reduce harvest weight by 40%.',
+      ],
+    },
+    Leaf_Blight: {
+      status: 'ATTENTION: Localized Infection',
+      description: 'A localized infection spread through leaf-to-leaf contact, usually triggered by rain splashes and high humidity.',
+      commonSymptoms: 'Large, papery brown patches that look "burnt"; visible fungal threads (mycelium) often found on the leaf underside.',
+      prevention: 'Avoid overhead irrigation; keep the area around the vine free of weeds that trap moisture near lower leaves.',
+      treatment: 'Use a foliar spray of Mancozeb (0.2%) or Propiconazole; ensure total coverage of the leaf underside.',
+      primaryAdvice: 'Sanitize pruning shears with alcohol after use to prevent spreading the blight from infected leaves to healthy ones.',
+      advancedProTips: [
+        'Mulch Management: Replace damp mulch with fresh, dry organic matter. Old mulch acts as a springboard for fungal spores to splash onto lower leaves.',
+        'Morning Watering: Irrigate before 9:00 AM. This allows the sun to dry the leaves quickly; wet leaves at night are the #1 cause of blight outbreaks.',
+      ],
+    },
+    Yellow_Mottle_Virus: {
+      status: 'ALERT: Viral Contamination',
+      description: 'A systemic virus spread by insects. The leaves act as the primary visual indicator of the plant\'s internal viral load.',
+      commonSymptoms: 'Distinct yellow mosaic patterns on the leaf; leaf curling/puckering; brittle, narrow, and distorted leaf growth.',
+      prevention: 'Use only certified disease-free cuttings; strictly control mealybugs on the foliage using Imidacloprid.',
+      treatment: 'No chemical cure. Infected vines must be uprooted and burnt to stop the spread.',
+      primaryAdvice: 'Do not take any cuttings from this vine; the virus will inhabit any new plants created from this infected foliage.',
+      advancedProTips: [
+        'Vector Scouting: Inspect leaf undersides and node joints for white, cottony masses (Mealybugs). Killing the bugs stops the virus from moving.',
+        'Tool Sterilization: If you prune an infected vine, you must flame-sterilize or soak tools in 10% bleach for 5 minutes before touching a healthy vine.',
+      ],
+    },
+    Slow_Decline: {
+      status: 'MANAGEMENT REQUIRED: Long-term Stress',
+      description: 'A root-based complex where leaf yellowing and size reduction signal that the root system is failing.',
+      commonSymptoms: 'Gradual paling/yellowing of the entire canopy; reduced leaf size over time; "die-back" of terminal twigs.',
+      prevention: 'Apply Neem cake (1-2 kg) to the base annually; avoid moving soil from "declined" leaf zones to healthy zones.',
+      treatment: 'Drench roots with bio-nematicides (Paecilomyces) or apply Phorate (10g) per vine if the decline is severe.',
+      primaryAdvice: 'This is a root issue; if the leaves are showing these symptoms, the roots are already 50% compromised. Act on the soil immediately.',
+      advancedProTips: [
+        'Root Health Check: Dig up a small feeder root. If you see tiny knots or galls (bead-like), you have a nematode infestation destroying the leaf-feeding system.',
+        'Potash Recovery: Increase Potassium (K) application by 20%. Potash helps the leaves "pump" water more effectively, compensating for nematode root damage.',
+      ],
+    },
+  };
+
   const openDrawer = () => {
     setDrawerOpen(true);
     Animated.timing(drawerSlideAnim, {
@@ -125,11 +257,12 @@ export default function LeafAnalysisScreen({ navigation }) {
 
       if (!result.canceled) {
         const asset = result.assets[0];
-        console.log('📸 NEW image from gallery - clearing previous result');
+        console.log('NEW image from gallery - clearing previous result');
         setImageUri(asset.uri);
         setImage(asset);
         setError(null);
         setResult(null);
+        setCameraOpen(false);
       }
     } catch (err) {
       setError('Failed to pick image from gallery');
@@ -137,37 +270,58 @@ export default function LeafAnalysisScreen({ navigation }) {
     }
   };
 
-  const pickImageFromCamera = async () => {
+  const openCamera = async () => {
     try {
-      // Request camera permission
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (status !== 'granted') {
-        setError('Camera permission denied. Enable it in Settings.');
+      if (permission?.granted) {
+        setCameraOpen(true);
         return;
       }
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        console.log('📷 NEW image from camera - clearing previous result');
-        setImageUri(asset.uri);
-        setImage(asset);
-        setError(null);
-        setResult(null);
+      const result = await requestPermission();
+      if (result?.granted) {
+        setCameraOpen(true);
+      } else {
+        setError('Camera permission denied. Enable it in Settings.');
       }
     } catch (err) {
-      setError('Failed to open camera');
+      setError('Failed to request camera permission');
       console.error(err);
     }
   };
 
+  const closeCamera = () => {
+    setCameraOpen(false);
+  };
+
+  const capturePhoto = async () => {
+    try {
+      if (!cameraRef.current) {
+        return;
+      }
+
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+      });
+
+      if (!photo?.uri) return;
+
+      const asset = {
+        uri: photo.uri,
+        type: 'image/jpeg',
+        name: `leaf_${Date.now()}.jpg`,
+      };
+
+      console.log('NEW image from camera - clearing previous result');
+      setImageUri(asset.uri);
+      setImage(asset);
+      setError(null);
+      setResult(null);
+      setCameraOpen(false);
+    } catch (err) {
+      setError('Failed to capture image');
+      console.error(err);
+    }
+  };
   const handleAnalyze = async () => {
     if (!image || !imageUri) {
       setError('Please select an image first');
@@ -290,6 +444,29 @@ export default function LeafAnalysisScreen({ navigation }) {
     };
   };
 
+  const getLeafAdvisory = (diseaseName) => {
+    const diseaseMapping = {
+      'healthy': 'Healthy',
+      'footrot': 'Footrot',
+      'pollu': 'Pollu_Disease',
+      'pollu_disease': 'Pollu_Disease',
+      'slow-decline': 'Slow_Decline',
+      'slow_decline': 'Slow_Decline',
+      'slowdecline': 'Slow_Decline',
+      'leaf-blight': 'Leaf_Blight',
+      'leaf_blight': 'Leaf_Blight',
+      'leafblight': 'Leaf_Blight',
+      'yellow-mottle': 'Yellow_Mottle_Virus',
+      'yellow_mottle': 'Yellow_Mottle_Virus',
+      'yellow_mottle_virus': 'Yellow_Mottle_Virus',
+      'ymv': 'Yellow_Mottle_Virus'
+    };
+
+    const lowerName = diseaseName?.toLowerCase?.() || '';
+    const normalizedName = diseaseMapping[lowerName] || diseaseName;
+    return leafAdvisoryGuide[normalizedName] || null;
+  };
+
   const handleClearImage = () => {
     setImage(null);
     setImageUri(null);
@@ -389,7 +566,24 @@ export default function LeafAnalysisScreen({ navigation }) {
 
         {/* Image Selection Section */}
         <View style={[styles.imageSection, { borderColor: colors.border }]}>
-          {imageUri ? (
+          {cameraOpen ? (
+            <>
+              <View style={styles.imageContainer}>
+                <CameraView
+                  ref={cameraRef}
+                  style={styles.cameraPreview}
+                  facing="back"
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.captureButton, { backgroundColor: colors.primaryLight }]}
+                onPress={capturePhoto}
+              >
+                <Feather name="camera" size={20} color={colors.secondary} />
+                <Text style={styles.captureButtonText}>Capture Photo</Text>
+              </TouchableOpacity>
+            </>
+          ) : imageUri ? (
             <>
               <View style={styles.imageContainer}>
                 <Image 
@@ -431,21 +625,22 @@ export default function LeafAnalysisScreen({ navigation }) {
               flex: 1,
               marginRight: 8
             }]}
-            onPress={pickImageFromCamera}
+            onPress={cameraOpen ? closeCamera : openCamera}
             disabled={analyzing}
           >
-            <Feather name="camera" size={20} color={colors.secondary} />
-            <Text style={styles.buttonText}>Camera</Text>
+            <Feather name={cameraOpen ? "x" : "camera"} size={20} color={colors.secondary} />
+            <Text style={styles.buttonText}>{cameraOpen ? "Close Camera" : "Open Camera"}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={[styles.actionButton, { 
               backgroundColor: colors.primary,
               flex: 1,
-              marginLeft: 8
+              marginLeft: 8,
+              opacity: cameraOpen ? 0.6 : 1
             }]}
             onPress={pickImageFromGallery}
-            disabled={analyzing}
+            disabled={analyzing || cameraOpen}
           >
             <Feather name="image" size={20} color={colors.secondary} />
             <Text style={styles.buttonText}>Gallery</Text>
@@ -552,6 +747,56 @@ export default function LeafAnalysisScreen({ navigation }) {
                 ))}
               </View>
             )}
+
+            {(() => {
+              const advisory = getLeafAdvisory(result?.disease);
+              if (!advisory) return null;
+              return (
+                <View style={[styles.adviceCard, { borderColor: resultInfo?.color || colors.primary }]}>
+                  <View style={styles.adviceHeader}>
+                    <Text style={styles.adviceTitle}>Advisory Guide</Text>
+                    <Text style={[styles.adviceStatus, { color: resultInfo?.color || colors.primary }]}>
+                      {advisory.status}
+                    </Text>
+                  </View>
+
+                  <View style={styles.adviceSection}>
+                    <Text style={styles.adviceLabel}>Description</Text>
+                    <Text style={styles.adviceText}>{advisory.description}</Text>
+                  </View>
+
+                  <View style={styles.adviceSection}>
+                    <Text style={styles.adviceLabel}>Common Symptoms</Text>
+                    <Text style={styles.adviceText}>{advisory.commonSymptoms}</Text>
+                  </View>
+
+                  <View style={styles.adviceSection}>
+                    <Text style={styles.adviceLabel}>Prevention</Text>
+                    <Text style={styles.adviceText}>{advisory.prevention}</Text>
+                  </View>
+
+                  <View style={styles.adviceSection}>
+                    <Text style={styles.adviceLabel}>Treatment</Text>
+                    <Text style={styles.adviceText}>{advisory.treatment}</Text>
+                  </View>
+
+                  <View style={styles.adviceSection}>
+                    <Text style={styles.adviceLabel}>Primary Advice</Text>
+                    <Text style={styles.adviceText}>{advisory.primaryAdvice}</Text>
+                  </View>
+
+                  <View style={styles.adviceSection}>
+                    <Text style={styles.adviceLabel}>Advanced Pro-Tip</Text>
+                    {advisory.advancedProTips.map((tip, idx) => (
+                      <View key={idx} style={styles.adviceBulletRow}>
+                        <View style={[styles.adviceDot, { backgroundColor: resultInfo?.color || colors.primary }]} />
+                        <Text style={styles.adviceText}>{tip}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              );
+            })()}
 
             {/* Detection Details */}
             {result.confidence && (
@@ -769,6 +1014,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDE7E1',
   },
+  cameraPreview: {
+    width: '100%',
+    height: '100%',
+  },
   clearButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -777,6 +1026,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     marginTop: 14,
+  },
+  captureButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 14,
+  },
+  captureButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 8,
   },
   clearButtonText: {
     color: '#FFFFFF',
@@ -1032,7 +1296,52 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
+  adviceCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 18,
+    backgroundColor: '#F9FBFA',
+  },
+  adviceHeader: {
+    marginBottom: 12,
+  },
+  adviceTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0E3B2E',
+    marginBottom: 4,
+  },
+  adviceStatus: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  adviceSection: {
+    marginBottom: 12,
+  },
+  adviceLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0E3B2E',
+    marginBottom: 6,
+  },
+  adviceText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#5A6B63',
+  },
+  adviceBulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 8,
+  },
+  adviceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+  },
 });
-
-
 

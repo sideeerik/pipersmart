@@ -103,6 +103,81 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
     }
   };
 
+  const leafAdvisoryGuide = {
+    Healthy: {
+      status: 'Plant is Vigorous',
+      description: 'Leaves are vibrant green with optimal chlorophyll levels and no visible pathogen interference.',
+      commonSymptoms: 'Glossy leaf surface; uniform green color; smooth margins with no lesions, curling, or distortion.',
+      prevention: 'Maintain balanced NPK levels; apply Neem oil (prophylactic) monthly to repel sap-sucking vectors from the foliage.',
+      treatment: 'No chemical treatment required.',
+      primaryAdvice: 'Focus on leaf-absorbed biostimulants like seaweed extract to boost immunity for the upcoming flowering season.',
+      advancedProTips: [
+        'Precision Feeding: Every 6 months, conduct a soil pH test (Target: 5.5-6.5). If pH is off, the leaves cannot absorb the NPK nutrients you provide.',
+        'Micro-Nutrient Boost: Apply a foliar spray of Zinc and Magnesium during spike initiation to ensure maximum berry setting and leaf health.',
+      ],
+    },
+    Footrot: {
+      status: 'CRITICAL: Immediate Action Required',
+      description: 'A lethal fungal infection (Phytophthora) detected by rapid leaf degradation and vascular blockage.',
+      commonSymptoms: 'Water-soaked dark lesions on the leaf surface; rapid yellowing; total leaf drop (defoliation) within days.',
+      prevention: 'Ensure raised-bed planting for drainage; apply Trichoderma-enriched manure to the soil before the monsoon.',
+      treatment: 'Drench the soil and spray the foliage with 1% Bordeaux mixture or Metalaxyl-Mancozeb (0.2%).',
+      primaryAdvice: 'Check the vine base for blackening; if the collar is rotten, the vine may need to be removed to save neighbors.',
+      advancedProTips: [
+        'Containment Trenching: Dig a 30cm deep isolation trench around the infected vine to cut off root-to-root spread of fungi.',
+        'The 3-Step Drench: Treat the infected vine AND the immediate 8 healthy neighbor vines; the fungus spreads underground before leaves show wilt.',
+      ],
+    },
+    Pollu_Disease: {
+      status: 'WARNING: Crop Quality Risk',
+      description: 'A fungal pathogen detected via foliar spots that eventually migrates to fruit spikes, causing "hollow berries."',
+      commonSymptoms: 'Circular brown spots with distinct yellow halos on the leaves; necrotic (dead) patches on leaf margins.',
+      prevention: 'Prune for better aeration; regulate shade to ensure at least 50% sunlight reaches the leaf canopy.',
+      treatment: 'Apply Copper Oxychloride (0.2%) or Carbendazim (0.1%) sprays twice during the monsoon cycle.',
+      primaryAdvice: 'Remove all fallen leaves and spikes from the basin, as they act as a reservoir for spores that re-infect the plant.',
+      advancedProTips: [
+        'Shade Regulation: Use a lux meter to ensure light intensity is between 2,000-3,000 foot-candles. Over-shading breeds this leaf-eating fungus.',
+        'Spike Protection: Prioritize spraying the fruit spikes specifically to prevent "hollow berries," which can reduce harvest weight by 40%.',
+      ],
+    },
+    Leaf_Blight: {
+      status: 'ATTENTION: Localized Infection',
+      description: 'A localized infection spread through leaf-to-leaf contact, usually triggered by rain splashes and high humidity.',
+      commonSymptoms: 'Large, papery brown patches that look "burnt"; visible fungal threads (mycelium) often found on the leaf underside.',
+      prevention: 'Avoid overhead irrigation; keep the area around the vine free of weeds that trap moisture near lower leaves.',
+      treatment: 'Use a foliar spray of Mancozeb (0.2%) or Propiconazole; ensure total coverage of the leaf underside.',
+      primaryAdvice: 'Sanitize pruning shears with alcohol after use to prevent spreading the blight from infected leaves to healthy ones.',
+      advancedProTips: [
+        'Mulch Management: Replace damp mulch with fresh, dry organic matter. Old mulch acts as a springboard for fungal spores to splash onto lower leaves.',
+        'Morning Watering: Irrigate before 9:00 AM. This allows the sun to dry the leaves quickly; wet leaves at night are the #1 cause of blight outbreaks.',
+      ],
+    },
+    Yellow_Mottle_Virus: {
+      status: 'ALERT: Viral Contamination',
+      description: 'A systemic virus spread by insects. The leaves act as the primary visual indicator of the plant\'s internal viral load.',
+      commonSymptoms: 'Distinct yellow mosaic patterns on the leaf; leaf curling/puckering; brittle, narrow, and distorted leaf growth.',
+      prevention: 'Use only certified disease-free cuttings; strictly control mealybugs on the foliage using Imidacloprid.',
+      treatment: 'No chemical cure. Infected vines must be uprooted and burnt to stop the spread.',
+      primaryAdvice: 'Do not take any cuttings from this vine; the virus will inhabit any new plants created from this infected foliage.',
+      advancedProTips: [
+        'Vector Scouting: Inspect leaf undersides and node joints for white, cottony masses (Mealybugs). Killing the bugs stops the virus from moving.',
+        'Tool Sterilization: If you prune an infected vine, you must flame-sterilize or soak tools in 10% bleach for 5 minutes before touching a healthy vine.',
+      ],
+    },
+    Slow_Decline: {
+      status: 'MANAGEMENT REQUIRED: Long-term Stress',
+      description: 'A root-based complex where leaf yellowing and size reduction signal that the root system is failing.',
+      commonSymptoms: 'Gradual paling/yellowing of the entire canopy; reduced leaf size over time; "die-back" of terminal twigs.',
+      prevention: 'Apply Neem cake (1-2 kg) to the base annually; avoid moving soil from "declined" leaf zones to healthy zones.',
+      treatment: 'Drench roots with bio-nematicides (Paecilomyces) or apply Phorate (10g) per vine if the decline is severe.',
+      primaryAdvice: 'This is a root issue; if the leaves are showing these symptoms, the roots are already 50% compromised. Act on the soil immediately.',
+      advancedProTips: [
+        'Root Health Check: Dig up a small feeder root. If you see tiny knots or galls (bead-like), you have a nematode infestation destroying the leaf-feeding system.',
+        'Potash Recovery: Increase Potassium (K) application by 20%. Potash helps the leaves "pump" water more effectively, compensating for nematode root damage.',
+      ],
+    },
+  };
+
   const getDiseaseInfo = (diseaseName) => {
     let normalizedName = diseaseName;
     const diseaseMapping = {
@@ -132,6 +207,29 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
       actions: ['Consult agricultural expert', 'Get professional diagnosis'],
       color: colors.textLight
     };
+  };
+
+  const getLeafAdvisory = (diseaseName) => {
+    const diseaseMapping = {
+      'healthy': 'Healthy',
+      'footrot': 'Footrot',
+      'pollu': 'Pollu_Disease',
+      'pollu_disease': 'Pollu_Disease',
+      'slow-decline': 'Slow_Decline',
+      'slow_decline': 'Slow_Decline',
+      'slowdecline': 'Slow_Decline',
+      'leaf-blight': 'Leaf_Blight',
+      'leaf_blight': 'Leaf_Blight',
+      'leafblight': 'Leaf_Blight',
+      'yellow-mottle': 'Yellow_Mottle_Virus',
+      'yellow_mottle': 'Yellow_Mottle_Virus',
+      'yellow_mottle_virus': 'Yellow_Mottle_Virus',
+      'ymv': 'Yellow_Mottle_Virus'
+    };
+
+    const lowerName = diseaseName?.toLowerCase?.() || '';
+    const normalizedName = diseaseMapping[lowerName] || diseaseName;
+    return leafAdvisoryGuide[normalizedName] || null;
   };
 
   // Check permission status on mount
@@ -555,6 +653,56 @@ export default function RealtimeLeafAnalyzer({ navigation }) {
                   ))}
                 </View>
               )}
+
+              {(() => {
+                const advisory = getLeafAdvisory(result?.disease);
+                if (!advisory) return null;
+                return (
+                  <View style={[styles.resultModalAdvice, { borderColor: diseaseInfo?.color || colors.primary }]}>
+                    <View style={styles.resultModalAdviceHeader}>
+                      <Text style={styles.resultModalAdviceTitle}>Advisory Guide</Text>
+                      <Text style={[styles.resultModalAdviceStatus, { color: diseaseInfo?.color || colors.primary }]}>
+                        {advisory.status}
+                      </Text>
+                    </View>
+
+                    <View style={styles.resultModalAdviceSection}>
+                      <Text style={styles.resultModalAdviceLabel}>Description</Text>
+                      <Text style={styles.resultModalAdviceText}>{advisory.description}</Text>
+                    </View>
+
+                    <View style={styles.resultModalAdviceSection}>
+                      <Text style={styles.resultModalAdviceLabel}>Common Symptoms</Text>
+                      <Text style={styles.resultModalAdviceText}>{advisory.commonSymptoms}</Text>
+                    </View>
+
+                    <View style={styles.resultModalAdviceSection}>
+                      <Text style={styles.resultModalAdviceLabel}>Prevention</Text>
+                      <Text style={styles.resultModalAdviceText}>{advisory.prevention}</Text>
+                    </View>
+
+                    <View style={styles.resultModalAdviceSection}>
+                      <Text style={styles.resultModalAdviceLabel}>Treatment</Text>
+                      <Text style={styles.resultModalAdviceText}>{advisory.treatment}</Text>
+                    </View>
+
+                    <View style={styles.resultModalAdviceSection}>
+                      <Text style={styles.resultModalAdviceLabel}>Primary Advice</Text>
+                      <Text style={styles.resultModalAdviceText}>{advisory.primaryAdvice}</Text>
+                    </View>
+
+                    <View style={styles.resultModalAdviceSection}>
+                      <Text style={styles.resultModalAdviceLabel}>Advanced Pro-Tip</Text>
+                      {advisory.advancedProTips.map((tip, idx) => (
+                        <View key={idx} style={styles.resultModalAdviceBullet}>
+                          <View style={[styles.resultModalAdviceDot, { backgroundColor: diseaseInfo?.color || colors.primary }]} />
+                          <Text style={styles.resultModalAdviceText}>{tip}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })()}
 
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -1029,6 +1177,54 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
     color: '#F3F7F4',
+  },
+  resultModalAdvice: {
+    backgroundColor: '#111F19',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#1E3027',
+  },
+  resultModalAdviceHeader: {
+    marginBottom: 12,
+  },
+  resultModalAdviceTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#F3F7F4',
+    marginBottom: 6,
+  },
+  resultModalAdviceStatus: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  resultModalAdviceSection: {
+    marginBottom: 12,
+  },
+  resultModalAdviceLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#F3F7F4',
+    marginBottom: 6,
+  },
+  resultModalAdviceText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#9CB3A8',
+  },
+  resultModalAdviceBullet: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 8,
+  },
+  resultModalAdviceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
   },
   resultModalButtons: {
     flexDirection: 'row',

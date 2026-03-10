@@ -12,6 +12,7 @@ import {
   Dimensions,
   ScrollView,
   Modal,
+  PanResponder,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
@@ -40,6 +41,16 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
   const analyzeIntervalRef = useRef(null);
   const isFirstLoadRef = useRef(true);
   const { width: screenWidth } = Dimensions.get('window');
+  const [showResults, setShowResults] = useState(true);
+  const resultsPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 6,
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy > 20) setShowResults(false);
+        if (gesture.dy < -20) setShowResults(true);
+      },
+    })
+  ).current;
 
   const colors = {
     primary: '#0E3B2E',
@@ -57,6 +68,186 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
     'Ripe': colors.success,
     'Unripe': colors.warning,
     'Rotten': colors.danger,
+  };
+
+  const detectionAdviceLibrary = {
+    high: {
+      classes: {
+        a: {
+          gradeKey: 'premium',
+          gradeLabel: 'PREMIUM GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Process immediately for White Pepper by soaking in clean water for 7 days to fetch the highest export price.' },
+            { label: 'Black Pepper Tip', text: 'Blanch in 80C water for 1 minute before drying to achieve a premium, glossy jet-black finish.' },
+            { label: 'Storage', text: 'Use hermetic (air-tight) bags and keep temperatures below 25C to lock in the high volatile oil content.' },
+            { label: 'Value Strategy', text: 'Label as "Single-Origin" or "Estate Grade" to target gourmet spice markets.' },
+          ],
+        },
+        b: {
+          gradeKey: 'standard',
+          gradeLabel: 'STANDARD GRADE',
+          tips: [
+            { label: 'Best Use', text: 'High-quality Whole Black Pepper for retail or wholesale distribution.' },
+            { label: 'Processing', text: 'Use a mechanical thresher at low speed to remove stalks; ripe skins are soft and bruise easily.' },
+            { label: 'Drying', text: 'Spread in a thin 3cm layer on black mats; perform a moisture test after 4 days to hit the 12% target.' },
+            { label: 'Quality Check', text: 'Ensure the batch is kept away from smoke or strong odors, as ripe oils absorb ambient smells easily.' },
+          ],
+        },
+        c: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Best suited for Ground Black Pepper; milling the berries hides surface blemishes while retaining flavor.' },
+            { label: 'Pre-treatment', text: 'Wash in a 2% citric acid solution before drying to remove surface discoloration and neutralize bacteria.' },
+            { label: 'Color Fix', text: 'Use a longer blanching time (2 mins) to force a uniform dark color across the "Fair" health spots.' },
+            { label: 'Market Strategy', text: 'Sell to industrial spice blenders who prioritize heat and aroma over visual berry "boldness."'},
+          ],
+        },
+        d: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Sell to industrial plants for Oleoresin or Oil Extraction; the inner chemistry is more valuable than the shell.' },
+            { label: 'Sanitation', text: 'Deep-clean all baskets and mats with 10% bleach after handling this batch to kill lingering fungal spores.' },
+            { label: 'Waste Control', text: 'If any berries show deep rot, bury them in a 1-meter pit with lime to protect your farm\'s soil.' },
+            { label: 'Risk Mitigation', text: 'Quarantine this batch 10 meters away from Premium stock to prevent cross-contamination.' },
+          ],
+        },
+      },
+    },
+    mid: {
+      classes: {
+        ab: {
+          gradeKey: 'standard',
+          gradeLabel: 'STANDARD GRADE',
+          tips: [
+            { label: 'Best Use', text: 'The global benchmark for Bulk Black Pepper (FAQ Grade); target high-volume commodity wholesalers.' },
+            { label: 'Logistics', text: 'Ensure high airflow with industrial fans for the first 24 hours to prevent the berries from fermenting.' },
+            { label: 'Density Goal', text: 'Aim for a liter-weight of 550g/L; use a blower to winnow out "light berries" and increase batch value.' },
+            { label: 'Specialty Idea', text: 'These are the best candidates for Freeze-Drying to produce high-value dehydrated green peppercorns.' },
+          ],
+        },
+        cd: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Local market sales or low-value spice mixes where a lower density is acceptable.' },
+            { label: 'Quality Sort', text: 'Use a water-flotation test; keep the "sinkers" for sale and discard "floaters" (hollow berries).' },
+            { label: 'Safety Alert', text: 'Monitor for "fuzzy" mold growth; if detected, incinerate that portion immediately to avoid Aflatoxins.' },
+            { label: 'Blending', text: 'Limit this batch to 10% of any final blend to ensure you do not fail the overall liter-weight export test.' },
+          ],
+        },
+      },
+    },
+    unripe: {
+      classes: {
+        ab: {
+          gradeKey: 'standard',
+          gradeLabel: 'STANDARD GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Harvest as Green Peppercorns in brine or vinegar pickles for a crisp, "pop" texture.' },
+            { label: 'Field Action', text: 'If still on the vine, apply Potash fertilizer immediately to help berries swell and reach Class C.' },
+            { label: 'Drying Note', text: 'Expect high weight loss (80%); dry very quickly at high heat to preserve the green chlorophyll color.' },
+            { label: 'Value Strategy', text: 'Sell as "Extra-Young Green Pepper" flakes to niche spice blenders for a 5x price markup.' },
+          ],
+        },
+        c: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Internal farm use or non-food applications like organic insect repellent mulch.' },
+            { label: 'Intervention', text: 'Poor health at this stage suggests vine stress; increase shade and irrigation to the parent plants.' },
+            { label: 'Disease Check', text: 'Look for "Yellow Mottle" virus or sap-sucking insects that may be stunting the young fruit.' },
+            { label: 'Resource Recovery', text: 'Do not waste expensive machine-drying time; sun-dry only if space and labor are free.' },
+          ],
+        },
+        d: {
+          gradeKey: 'reject',
+          gradeLabel: 'REJECT',
+          tips: [
+            { label: 'Action', text: 'Automatic Reject. These will dry into "Pinheads" (worthless dust) and should be culled immediately.' },
+            { label: 'Diagnosis', text: 'Inspect vines for Quick Wilt (Phytophthora); blackening at the base of the stem is a critical warning.' },
+            { label: 'System Alert', text: 'Removing this batch now saves fuel, space, and labor costs for your processing facility.' },
+          ],
+        },
+      },
+    },
+    rotten: {
+      gradeKey: 'reject',
+      gradeLabel: 'REJECT',
+      tips: [
+        { label: 'Field Audit', text: 'Check your farm\'s drainage and soil pH; rot usually signals waterlogged roots or acidic soil (pH < 5.5).' },
+        { label: 'Storage Fix', text: 'Ensure your warehouse humidity is below 60%; use a dehumidifier to stop healthy berries from turning.' },
+        { label: 'Safety', text: 'Dispose of this batch away from water sources; rot-prone berries can attract the Pepper Weevil pest.' },
+        { label: 'Hygiene', text: 'Sanitize hands and all harvesting gear before returning to the field to prevent spreading the rot.' },
+      ],
+    },
+  };
+
+  const getDetectionAdvice = (analysisResult) => {
+    if (!analysisResult) return null;
+    const ripenessText = analysisResult.ripeness?.toLowerCase();
+    const isRotten = ripenessText === 'rotten';
+    const healthRaw = String(analysisResult.health_class || '').toLowerCase();
+    const classRaw = String(analysisResult.class || '').toLowerCase();
+    const healthLetterMatch = healthRaw.match(/^[a-d]$/) || healthRaw.match(/[a-d]/);
+    const classLetterMatch = classRaw.match(/(?:-|_)([a-d])\b/);
+    const healthLetter = healthLetterMatch
+      ? healthLetterMatch[0]
+      : classLetterMatch
+        ? classLetterMatch[1]
+        : '';
+    const ripenessPct = Number(analysisResult.ripeness_percentage);
+
+    let categoryKey = null;
+    if (isRotten) {
+      categoryKey = 'rotten';
+    } else if (Number.isFinite(ripenessPct)) {
+      if (ripenessPct >= 51) categoryKey = 'high';
+      else if (ripenessPct >= 26) categoryKey = 'mid';
+      else if (ripenessPct >= 0) categoryKey = 'unripe';
+    } else if (ripenessText === 'ripe') {
+      categoryKey = 'high';
+    } else if (ripenessText === 'unripe') {
+      categoryKey = 'unripe';
+    }
+
+    if (!categoryKey) return null;
+
+    if (categoryKey === 'rotten') {
+      return detectionAdviceLibrary.rotten;
+    }
+
+    if (!healthLetter) return null;
+
+    const category = detectionAdviceLibrary[categoryKey];
+    if (!category) return null;
+
+    let advice = null;
+    if (categoryKey === 'high') {
+      advice = category.classes[healthLetter] || null;
+    } else if (categoryKey === 'mid') {
+      if (healthLetter === 'a' || healthLetter === 'b') advice = category.classes.ab;
+      if (healthLetter === 'c' || healthLetter === 'd') advice = category.classes.cd;
+    } else if (categoryKey === 'unripe') {
+      if (healthLetter === 'a' || healthLetter === 'b') advice = category.classes.ab;
+      if (healthLetter === 'c') advice = category.classes.c;
+      if (healthLetter === 'd') advice = category.classes.d;
+    }
+
+    if (!advice) return null;
+
+    return advice;
+  };
+
+  const getClassRipenessFromPercentage = (ripenessPercentage) => {
+    const pct = Number(ripenessPercentage);
+    if (!Number.isFinite(pct)) return null;
+    if (pct >= 76) return { letter: 'A', label: 'Fully ripe' };
+    if (pct >= 51) return { letter: 'B', label: 'Semi-Ripe' };
+    if (pct >= 26) return { letter: 'C', label: 'Under-ripe' };
+    if (pct >= 0) return { letter: 'D', label: 'Unripe' };
+    return null;
   };
 
   // Check permission status on mount
@@ -530,7 +721,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
           {isActive ? (
             <View style={[styles.statusBadge, { backgroundColor: colors.danger + '26' }]}>
               <View style={[styles.statusDot, { backgroundColor: colors.danger }]} />
-              <Text style={[styles.statusText, { color: colors.danger }]}>LIVE - Analyzing every 1.5s</Text>
+              <Text style={[styles.statusText, { color: colors.danger }]}>LIVE</Text>
             </View>
           ) : (
             <View style={[styles.statusBadge, { backgroundColor: colors.primaryLight + '26' }]}>
@@ -545,49 +736,113 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
 
         {/* Results Display */}
         {result && (
-          <View style={styles.resultsSection}>
-            {/* Ripeness - Always shown when detected */}
-            {result.ripeness && (
-              <View style={[styles.resultCard, { backgroundColor: colors.primaryLight + '20', borderLeftColor: colors.primaryLight }]}>
-                <View style={styles.resultCardHeader}>
-                  <Text style={[styles.resultCardTitle, { color: colors.primaryLight }]}>RIPENESS</Text>
-                </View>
-                <Text style={[styles.resultCardValue, { color: colors.primaryLight }]}>
-                  {result.ripeness}{result.ripeness_percentage ? ` (${result.ripeness_percentage}%)` : ''}
-                </Text>
-                <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
-                  Confidence: {Math.round(result.confidence)}%
-                </Text>
-              </View>
-            )}
+          <View style={styles.resultsSection} {...resultsPanResponder.panHandlers}>
+            <TouchableOpacity
+              style={styles.resultsToggle}
+              onPress={() => setShowResults((prev) => !prev)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.resultsToggleText}>Results</Text>
+              <Feather name={showResults ? 'chevron-down' : 'chevron-up'} size={18} color="#FFFFFF" />
+            </TouchableOpacity>
 
-            {/* Health Status - Show loading if not yet detected */}
-            <View style={[styles.resultCard, { backgroundColor: '#2196F3' + '20', borderLeftColor: '#2196F3' }]}>
-              <View style={styles.resultCardHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[styles.resultCardTitle, { color: '#2196F3' }]}>HEALTH CLASS</Text>
-                  {!result.health_class && isActive && (
-                    <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />
+            {showResults && (
+              <>
+                {/* Ripeness - Always shown when detected */}
+                {result.ripeness && (
+                  <View style={[styles.resultCard, { backgroundColor: colors.primaryLight + '20', borderLeftColor: colors.primaryLight }]}>
+                    <View style={styles.resultCardHeader}>
+                      <Text style={[styles.resultCardTitle, { color: colors.primaryLight }]}>RIPENESS</Text>
+                    </View>
+                    <Text style={[styles.resultCardValue, { color: colors.primaryLight }]}>
+                      {result.ripeness}{result.ripeness_percentage ? ` (${result.ripeness_percentage}%)` : ''}
+                    </Text>
+                    <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
+                      Confidence: {Math.round(result.confidence)}%
+                    </Text>
+                  </View>
+                )}
+
+                {/* Health Status - Show loading if not yet detected */}
+                <View style={[styles.resultCard, { backgroundColor: '#2196F3' + '20', borderLeftColor: '#2196F3' }]}>
+                  <View style={styles.resultCardHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={[styles.resultCardTitle, { color: '#2196F3' }]}>HEALTH CLASS</Text>
+                      {!result.health_class && isActive && (
+                        <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />
+                      )}
+                    </View>
+                  </View>
+                  {result.health_class ? (
+                    <>
+                      <Text style={[styles.resultCardValue, { color: '#2196F3' }]}>
+                        Class {result.health_class} ({result.health_percentage}%)
+                      </Text>
+                      <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
+                        Health Score: {result.health_percentage}%
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.resultCardSubText, { color: colors.textLight, fontStyle: 'italic' }]}>
+                      Analyzing health status...
+                    </Text>
                   )}
                 </View>
-              </View>
-              {result.health_class ? (
-                <>
-                  <Text style={[styles.resultCardValue, { color: '#2196F3' }]}>
-                    Class {result.health_class} ({result.health_percentage}%)
-                  </Text>
-                  <Text style={[styles.resultCardSubText, { color: colors.textLight }]}>
-                    Health Score: {result.health_percentage}%
-                  </Text>
-                </>
-              ) : (
-                <Text style={[styles.resultCardSubText, { color: colors.textLight, fontStyle: 'italic' }]}>
-                  Analyzing health status...
-                </Text>
-              )}
-            </View>
 
-
+                {(() => {
+                  const advice = getDetectionAdvice(result);
+                  if (!advice) return null;
+                  const gradeColors = {
+                    premium: colors.accent,
+                    standard: colors.success,
+                    commercial: colors.warning,
+                    reject: colors.danger,
+                  };
+                  const accent = gradeColors[advice.gradeKey] || colors.primaryLight;
+                  const isRotten = result?.ripeness?.toLowerCase() === 'rotten';
+                  const classInfo = getClassRipenessFromPercentage(result?.ripeness_percentage);
+                  return (
+                    <View style={[styles.adviceCard, { borderColor: accent, backgroundColor: accent + '12' }]}>
+                      <View style={styles.adviceHeader}>
+                        <View style={[styles.adviceBadge, { backgroundColor: accent + '26' }]}>
+                          <MaterialCommunityIcons name="clipboard-text" size={18} color={accent} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.adviceTitle, { color: '#FFFFFF' }]}>
+                            Analyzation Advice
+                          </Text>
+                          <Text style={[styles.adviceGrade, { color: accent }]}>
+                            {advice.gradeLabel}
+                          </Text>
+                          {isRotten ? (
+                            <Text style={[styles.adviceStatus, { color: colors.textLight }]}>
+                              Class: Rotten
+                            </Text>
+                          ) : classInfo ? (
+                            <Text style={[styles.adviceStatus, { color: colors.textLight }]}>
+                              {`Class ${classInfo.letter}: ${classInfo.label}`}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                      {advice.tips.map((tip, index) => (
+                        <View key={`${tip.label}-${index}`} style={styles.adviceItem}>
+                          <View style={[styles.adviceDot, { backgroundColor: accent }]} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.adviceLabel, { color: '#FFFFFF' }]}>
+                              {tip.label}
+                            </Text>
+                            <Text style={[styles.adviceText, { color: colors.textLight }]}>
+                              {tip.text}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+              </>
+            )}
           </View>
         )}
         
@@ -666,7 +921,7 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
                     {modalResult.confidence}%
                   </Text>
                 </View>
-                {modalResult.market_grade && (
+              {modalResult.market_grade && (
                   <View style={styles.detailRow}>
                     <Text style={[styles.detailLabel]}>Market Grade:</Text>
                     <Text style={[styles.detailValue]}>
@@ -675,6 +930,59 @@ export default function RealtimeBungaAnalyzer({ navigation }) {
                   </View>
                 )}
               </View>
+
+              {(() => {
+                const advice = getDetectionAdvice(modalResult);
+                if (!advice) return null;
+                const gradeColors = {
+                  premium: colors.accent,
+                  standard: colors.success,
+                  commercial: colors.warning,
+                  reject: colors.danger,
+                };
+                const accent = gradeColors[advice.gradeKey] || colors.primaryLight;
+                const isRotten = modalResult?.ripeness?.toLowerCase() === 'rotten';
+                const classInfo = getClassRipenessFromPercentage(modalResult?.ripeness_percentage);
+                return (
+                  <View style={[styles.adviceCard, { borderColor: accent, backgroundColor: accent + '12', marginHorizontal: 16, marginBottom: 20 }]}>
+                    <View style={styles.adviceHeader}>
+                      <View style={[styles.adviceBadge, { backgroundColor: accent + '26' }]}>
+                        <MaterialCommunityIcons name="clipboard-text" size={18} color={accent} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.adviceTitle, { color: '#FFFFFF' }]}>
+                          Analyzation Advice
+                        </Text>
+                        <Text style={[styles.adviceGrade, { color: accent }]}>
+                          {advice.gradeLabel}
+                        </Text>
+                        {isRotten ? (
+                          <Text style={[styles.adviceStatus, { color: colors.textLight }]}>
+                            Class: Rotten
+                          </Text>
+                        ) : classInfo ? (
+                          <Text style={[styles.adviceStatus, { color: colors.textLight }]}>
+                            {`Class ${classInfo.letter}: ${classInfo.label}`}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    {advice.tips.map((tip, index) => (
+                      <View key={`${tip.label}-${index}`} style={styles.adviceItem}>
+                        <View style={[styles.adviceDot, { backgroundColor: accent }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.adviceLabel, { color: '#FFFFFF' }]}>
+                            {tip.label}
+                          </Text>
+                          <Text style={[styles.adviceText, { color: colors.textLight }]}>
+                            {tip.text}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
 
               {/* Action Buttons */}
               <View style={styles.resultModalButtons}>
@@ -1020,9 +1328,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    maxHeight: 300,
     backgroundColor: '#0E3B2EF2',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
@@ -1034,9 +1339,20 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
+  sheetHandle: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  sheetHandleBar: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF40',
+  },
   statusSection: {
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    paddingHorizontal: 10,
   },
   instructionText: {
     color: '#FFFFFF',
@@ -1067,6 +1383,23 @@ const styles = StyleSheet.create({
   resultsSection: {
     gap: 10,
     paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  resultsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF12',
+    borderWidth: 1,
+    borderColor: '#FFFFFF1A',
+  },
+  resultsToggleText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   resultCard: {
     borderLeftWidth: 5,
@@ -1094,6 +1427,62 @@ const styles = StyleSheet.create({
   resultCardSubText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  adviceCard: {
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF12',
+  },
+  adviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
+  },
+  adviceBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adviceTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  adviceGrade: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  adviceStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  adviceItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
+  },
+  adviceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  adviceLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  adviceText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   objectsList: {
     gap: 5,
@@ -1140,8 +1529,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   buttonContainer: {
-    paddingVertical: 14,
     paddingHorizontal: 10,
+    paddingVertical: 14,
+    marginTop: 12,
   },
   controlButton: {
     flexDirection: 'row',

@@ -225,13 +225,15 @@ export default function LoginScreen({ navigation }) {
           ]}
         >
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior="height"
+            keyboardVerticalOffset={24}
             style={{ flex: 1 }}
           >
             <ScrollView
               contentContainerStyle={styles.formScrollContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
               <View style={styles.brandHeader}>
                 <Image source={logoImage} style={styles.brandLogo} resizeMode="contain" />

@@ -49,7 +49,6 @@ export default function RecentActivitiesScreen({ navigation }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalActivities, setTotalActivities] = useState(0);
   const [filterSort, setFilterSort] = useState('newest'); // newest, oldest
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
@@ -71,12 +70,16 @@ export default function RecentActivitiesScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    fetchActivities(page);
-  }, [page, filterSort]);
+    fetchActivities();
+  }, [filterSort]);
 
-  const fetchActivities = async (pageNum) => {
+  useEffect(() => {
+    setPage(1);
+  }, [activityFilter]);
+
+  const fetchActivities = async () => {
     // Prevent duplicate fetches
-    const fetchKey = `${pageNum}-${filterSort}`;
+    const fetchKey = `${filterSort}`;
     if (lastFetchRef.current === fetchKey) {
       return;
     }
@@ -85,35 +88,48 @@ export default function RecentActivitiesScreen({ navigation }) {
     try {
       setLoading(true);
       const token = await getToken();
-      
-      const response = await axios.get(
-        `${BACKEND_URL}/api/v1/activities/all?page=${pageNum}&limit=${ITEMS_PER_PAGE}`,
+
+      const firstResponse = await axios.get(
+        `${BACKEND_URL}/api/v1/activities/all?page=1&limit=${ITEMS_PER_PAGE}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      if (response.data.success) {
-        let sortedActivities = response.data.data.activities;
-        
+      if (firstResponse.data.success) {
+        let allActivities = firstResponse.data.data.activities;
+        const totalPagesFromApi = firstResponse.data.data.pagination.totalPages;
+
+        if (totalPagesFromApi > 1) {
+          for (let p = 2; p <= totalPagesFromApi; p += 1) {
+            const pageResponse = await axios.get(
+              `${BACKEND_URL}/api/v1/activities/all?page=${p}&limit=${ITEMS_PER_PAGE}`,
+              {
+                headers: { Authorization: `Bearer ${token}` }
+              }
+            );
+            if (pageResponse.data.success) {
+              allActivities = allActivities.concat(pageResponse.data.data.activities);
+            }
+          }
+        }
+
         // Apply sorting
         if (filterSort === 'oldest') {
-          sortedActivities = sortedActivities.reverse();
+          allActivities = allActivities.slice().reverse();
         }
-        
-        setActivities(sortedActivities);
-        setTotalPages(response.data.data.pagination.totalPages);
-        setTotalActivities(response.data.data.pagination.totalActivities);
-        console.log(`✅ Fetched ${sortedActivities.length} activities (Page ${pageNum})`);
+
+        setActivities(allActivities);
+        setTotalActivities(allActivities.length);
+        console.log(`Fetched ${allActivities.length} activities (All Pages)`);
       }
     } catch (error) {
-      console.error('❌ Error fetching activities:', error.message);
+      console.error('Error fetching activities:', error.message);
       Alert.alert('Error', 'Failed to load recent activities');
     } finally {
       setLoading(false);
     }
   };
-
   const closeDrawer = () => {
     Animated.timing(drawerSlideAnim, {
       toValue: -280,
@@ -242,7 +258,6 @@ export default function RecentActivitiesScreen({ navigation }) {
         return [
           { label: 'Disease', value: String(activity.results?.disease || 'Unknown'), icon: '🍃', metric: true },
           { label: 'Confidence', value: `${activity.results?.confidence || 0}%`, icon: '🎯', percentage: activity.results?.confidence || 0 },
-          { label: 'Detections', value: `${activity.results?.detections?.length || 0} found`, icon: '🔍', metric: true },
           { label: 'Scan Image', value: activity.image?.url ? 'View Image' : 'No Image', icon: '📸', isImage: true, imageUrl: activity.image?.url },
           { label: 'Processing Time', value: `${activity.processingTime || 0}ms`, icon: '⏱️', metric: true },
         ];
@@ -561,6 +576,11 @@ export default function RecentActivitiesScreen({ navigation }) {
   );
 
   const filteredActivities = getFilteredActivities();
+  const totalPages = Math.max(1, Math.ceil(filteredActivities.length / ITEMS_PER_PAGE));
+  const pagedActivities = filteredActivities.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
   const pageCounts = {
     bunga: activities.filter((item) => item.type === 'BUNGA_ANALYSIS').length,
     leaf: activities.filter((item) => item.type === 'LEAF_ANALYSIS').length,
@@ -585,6 +605,7 @@ export default function RecentActivitiesScreen({ navigation }) {
         onLogout={handleLogout}
       />
 
+      <ScrollView contentContainerStyle={styles.screenScroll} showsVerticalScrollIndicator={false}>
       {/* Hero Section */}
       <View style={styles.headerSection}>
         <LinearGradient
@@ -907,10 +928,7 @@ export default function RecentActivitiesScreen({ navigation }) {
       )}
 
       {/* Activities List */}
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.scrollContent}>
         {loading && page === 1 ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -918,7 +936,7 @@ export default function RecentActivitiesScreen({ navigation }) {
           </View>
         ) : filteredActivities.length > 0 ? (
           <>
-            {filteredActivities.map((activity, index) => (
+            {pagedActivities.map((activity, index) => (
               <ActivityCard key={index} activity={activity} />
             ))}
 
@@ -954,6 +972,7 @@ export default function RecentActivitiesScreen({ navigation }) {
         ) : (
           renderEmptyState()
         )}
+      </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1256,6 +1275,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 20,
+  },
+  screenScroll: {
+    paddingBottom: 24,
   },
   activityCard: {
     backgroundColor: colors.cardBg,
@@ -1662,5 +1684,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+
 
 

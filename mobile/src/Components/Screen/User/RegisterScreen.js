@@ -398,7 +398,8 @@ export default function RegisterScreen({ navigation }) {
           ]}
         >
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior="height"
+            keyboardVerticalOffset={24}
             style={{ flex: 1 }}
           >
             {/* Close Button at top of form */}
@@ -417,6 +418,7 @@ export default function RegisterScreen({ navigation }) {
               contentContainerStyle={styles.formScrollContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
               <BlurView intensity={25} tint="dark" style={styles.formCard}>
                 {/* Form Header */}

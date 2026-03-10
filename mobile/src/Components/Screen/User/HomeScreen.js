@@ -80,6 +80,54 @@ export default function HomeScreen({ navigation }) {
     },
   ];
 
+  const howItWorksSteps = [
+    {
+      key: 'choose',
+      number: '01',
+      title: 'Choose',
+      desc: 'Select leaf or peppercorn analysis',
+      icon: 'compass',
+      colors: ['#E3F2FD', '#FFFFFF'],
+      accent: '#1565C0',
+    },
+    {
+      key: 'capture',
+      number: '02',
+      title: 'Capture',
+      desc: 'Use the in-app camera or gallery',
+      icon: 'camera',
+      colors: ['#EAF4EF', '#FFFFFF'],
+      accent: '#2E7D32',
+    },
+    {
+      key: 'analyze',
+      number: '03',
+      title: 'Analyze',
+      desc: 'AI evaluates the image',
+      icon: 'cpu',
+      colors: ['#FFF3E0', '#FFFFFF'],
+      accent: '#EF6C00',
+    },
+    {
+      key: 'results',
+      number: '04',
+      title: 'Shows Results',
+      desc: 'Disease or ripeness results',
+      icon: 'bar-chart-2',
+      colors: ['#F3E5F5', '#FFFFFF'],
+      accent: '#7B1FA2',
+    },
+    {
+      key: 'advice',
+      number: '05',
+      title: 'Advice',
+      desc: 'Follow the recommended actions',
+      icon: 'check-circle',
+      colors: ['#E8F5E9', '#FFFFFF'],
+      accent: '#2E7D32',
+    },
+  ];
+
   useEffect(() => {
     const fetchUser = async () => {
       const userData = await getUser();
@@ -362,40 +410,46 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* How It Works - Horizontal Scroll */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How It Works</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stepsContainer}>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#E3F2FD' }]}>
-                <Text style={[styles.stepNumberText, { color: '#1565C0' }]}>1</Text>
-              </View>
-              <Text style={styles.stepTitle}>Capture</Text>
-              <Text style={styles.stepDesc}>Take a photo of the leaf</Text>
+        <View style={styles.howItWorksSection}>
+          <View style={styles.howItWorksHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>How It Works</Text>
+              <Text style={styles.howItWorksSub}>Choose - Capture - Analyze - Shows Results - Advice</Text>
             </View>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#EAF4EF' }]}>
-                <Text style={[styles.stepNumberText, { color: '#2E7D32' }]}>2</Text>
-              </View>
-              <Text style={styles.stepTitle}>Upload</Text>
-              <Text style={styles.stepDesc}>Submit to PiperSmart AI</Text>
+            <View style={styles.howItWorksBadge}>
+              <Feather name="zap" size={14} color="#FFFFFF" />
+              <Text style={styles.howItWorksBadgeText}>5 Steps</Text>
             </View>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#FFF3E0' }]}>
-                <Text style={[styles.stepNumberText, { color: '#EF6C00' }]}>3</Text>
-              </View>
-              <Text style={styles.stepTitle}>Analyze</Text>
-              <Text style={styles.stepDesc}>Get instant diagnosis</Text>
-            </View>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#F3E5F5' }]}>
-                <Text style={[styles.stepNumberText, { color: '#7B1FA2' }]}>4</Text>
-              </View>
-              <Text style={styles.stepTitle}>Act</Text>
-              <Text style={styles.stepDesc}>Follow expert advice</Text>
-            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.howItWorksScroller}
+          >
+            {howItWorksSteps.map((step, idx) => (
+              <LinearGradient
+                key={step.key}
+                colors={step.colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.howItWorksCard}
+              >
+                <View style={[styles.howItWorksAccent, { backgroundColor: step.accent }]} />
+                <Text style={styles.howItWorksNumber}>{step.number}</Text>
+                <View style={[styles.howItWorksIconWrap, { borderColor: step.accent }]}> 
+                  <Feather name={step.icon} size={20} color={step.accent} />
+                </View>
+                <Text style={styles.howItWorksTitle}>{step.title}</Text>
+                <Text style={styles.howItWorksDesc}>{step.desc}</Text>
+                <View style={styles.howItWorksFooter}>
+                  <View style={[styles.howItWorksDot, { backgroundColor: step.accent }]} />
+                  <Text style={[styles.howItWorksStepLabel, { color: step.accent }]}>Step {idx + 1}</Text>
+                </View>
+              </LinearGradient>
+            ))}
           </ScrollView>
         </View>
-
         {/* Bento Grid Layout */}
         <View style={styles.bentoGrid}>
           {/* Main Action Card - Leaf Analysis */}
@@ -559,7 +613,7 @@ export default function HomeScreen({ navigation }) {
       <Animated.View style={[styles.fabContainer, { transform: [{ scale: pulseAnim }] }]}>
         <TouchableOpacity 
           style={styles.fab}
-          onPress={() => handleNavigation('LeafAnalysis')}
+          onPress={handleStartDetection}
           activeOpacity={0.8}
         >
           <Feather name="camera" size={32} color="#FFFFFF" />
@@ -887,6 +941,103 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  howItWorksSection: {
+    marginBottom: 26,
+  },
+  howItWorksHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  howItWorksSub: {
+    fontSize: 12,
+    color: '#5A6B63',
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  howItWorksBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#1B4D3E',
+  },
+  howItWorksBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  howItWorksScroller: {
+    paddingRight: 16,
+    gap: 14,
+  },
+  howItWorksCard: {
+    width: 210,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DDE7E1',
+    shadowColor: '#0E3B2E',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  howItWorksAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 6,
+    height: '100%',
+  },
+  howItWorksNumber: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0E3B2E',
+    opacity: 0.2,
+    alignSelf: 'flex-end',
+  },
+  howItWorksIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -6,
+    backgroundColor: '#FFFFFF',
+  },
+  howItWorksTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0E3B2E',
+    marginTop: 12,
+  },
+  howItWorksDesc: {
+    fontSize: 12,
+    color: '#5A6B63',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  howItWorksFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  howItWorksDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  howItWorksStepLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1085,4 +1236,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
 });
+
+
+
+
 

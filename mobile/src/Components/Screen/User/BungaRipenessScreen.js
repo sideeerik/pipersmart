@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileHeader from '../../shared/MobileHeader';
@@ -33,12 +34,18 @@ export default function BungaRipenessScreen({ navigation }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [noBungaMessage, setNoBungaMessage] = useState(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [bungaDetections, setBungaDetections] = useState([]);
   const [otherObjects, setOtherObjects] = useState([]);
   const [imageSize, setImageSize] = useState(null);
   const drawerSlideAnim = useRef(new Animated.Value(-280)).current;
+  const cameraRef = useRef(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const scrollViewRef = useRef(null);
+  const resultSectionY = useRef(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -47,6 +54,15 @@ export default function BungaRipenessScreen({ navigation }) {
     };
     fetchUser();
   }, []);
+
+  useEffect(() => {
+    if (!result || !scrollViewRef.current || resultSectionY.current == null) return;
+    const y = Math.max(resultSectionY.current - 12, 0);
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y, animated: true });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [result]);
 
   const colors = {
     primary: '#0E3B2E',
@@ -201,6 +217,181 @@ export default function BungaRipenessScreen({ navigation }) {
     };
   };
 
+  const detectionAdviceLibrary = {
+    high: {
+      classes: {
+        a: {
+          gradeKey: 'premium',
+          gradeLabel: 'PREMIUM GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Process immediately for White Pepper by soaking in clean water for 7 days to fetch the highest export price.' },
+            { label: 'Black Pepper Tip', text: 'Blanch in 80C water for 1 minute before drying to achieve a premium, glossy jet-black finish.' },
+            { label: 'Storage', text: 'Use hermetic (air-tight) bags and keep temperatures below 25C to lock in the high volatile oil content.' },
+            { label: 'Value Strategy', text: 'Label as "Single-Origin" or "Estate Grade" to target gourmet spice markets.' },
+          ],
+        },
+        b: {
+          gradeKey: 'standard',
+          gradeLabel: 'STANDARD GRADE',
+          tips: [
+            { label: 'Best Use', text: 'High-quality Whole Black Pepper for retail or wholesale distribution.' },
+            { label: 'Processing', text: 'Use a mechanical thresher at low speed to remove stalks; ripe skins are soft and bruise easily.' },
+            { label: 'Drying', text: 'Spread in a thin 3cm layer on black mats; perform a moisture test after 4 days to hit the 12% target.' },
+            { label: 'Quality Check', text: 'Ensure the batch is kept away from smoke or strong odors, as ripe oils absorb ambient smells easily.' },
+          ],
+        },
+        c: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Best suited for Ground Black Pepper; milling the berries hides surface blemishes while retaining flavor.' },
+            { label: 'Pre-treatment', text: 'Wash in a 2% citric acid solution before drying to remove surface discoloration and neutralize bacteria.' },
+            { label: 'Color Fix', text: 'Use a longer blanching time (2 mins) to force a uniform dark color across the "Fair" health spots.' },
+            { label: 'Market Strategy', text: 'Sell to industrial spice blenders who prioritize heat and aroma over visual berry "boldness."'},
+          ],
+        },
+        d: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Sell to industrial plants for Oleoresin or Oil Extraction; the inner chemistry is more valuable than the shell.' },
+            { label: 'Sanitation', text: 'Deep-clean all baskets and mats with 10% bleach after handling this batch to kill lingering fungal spores.' },
+            { label: 'Waste Control', text: 'If any berries show deep rot, bury them in a 1-meter pit with lime to protect your farm\'s soil.' },
+            { label: 'Risk Mitigation', text: 'Quarantine this batch 10 meters away from Premium stock to prevent cross-contamination.' },
+          ],
+        },
+      },
+    },
+    mid: {
+      classes: {
+        ab: {
+          gradeKey: 'standard',
+          gradeLabel: 'STANDARD GRADE',
+          tips: [
+            { label: 'Best Use', text: 'The global benchmark for Bulk Black Pepper (FAQ Grade); target high-volume commodity wholesalers.' },
+            { label: 'Logistics', text: 'Ensure high airflow with industrial fans for the first 24 hours to prevent the berries from fermenting.' },
+            { label: 'Density Goal', text: 'Aim for a liter-weight of 550g/L; use a blower to winnow out "light berries" and increase batch value.' },
+            { label: 'Specialty Idea', text: 'These are the best candidates for Freeze-Drying to produce high-value dehydrated green peppercorns.' },
+          ],
+        },
+        cd: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Local market sales or low-value spice mixes where a lower density is acceptable.' },
+            { label: 'Quality Sort', text: 'Use a water-flotation test; keep the "sinkers" for sale and discard "floaters" (hollow berries).' },
+            { label: 'Safety Alert', text: 'Monitor for "fuzzy" mold growth; if detected, incinerate that portion immediately to avoid Aflatoxins.' },
+            { label: 'Blending', text: 'Limit this batch to 10% of any final blend to ensure you do not fail the overall liter-weight export test.' },
+          ],
+        },
+      },
+    },
+    unripe: {
+      classes: {
+        ab: {
+          gradeKey: 'standard',
+          gradeLabel: 'STANDARD GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Harvest as Green Peppercorns in brine or vinegar pickles for a crisp, "pop" texture.' },
+            { label: 'Field Action', text: 'If still on the vine, apply Potash fertilizer immediately to help berries swell and reach Class C.' },
+            { label: 'Drying Note', text: 'Expect high weight loss (80%); dry very quickly at high heat to preserve the green chlorophyll color.' },
+            { label: 'Value Strategy', text: 'Sell as "Extra-Young Green Pepper" flakes to niche spice blenders for a 5x price markup.' },
+          ],
+        },
+        c: {
+          gradeKey: 'commercial',
+          gradeLabel: 'COMMERCIAL GRADE',
+          tips: [
+            { label: 'Best Use', text: 'Internal farm use or non-food applications like organic insect repellent mulch.' },
+            { label: 'Intervention', text: 'Poor health at this stage suggests vine stress; increase shade and irrigation to the parent plants.' },
+            { label: 'Disease Check', text: 'Look for "Yellow Mottle" virus or sap-sucking insects that may be stunting the young fruit.' },
+            { label: 'Resource Recovery', text: 'Do not waste expensive machine-drying time; sun-dry only if space and labor are free.' },
+          ],
+        },
+        d: {
+          gradeKey: 'reject',
+          gradeLabel: 'REJECT',
+          tips: [
+            { label: 'Action', text: 'Automatic Reject. These will dry into "Pinheads" (worthless dust) and should be culled immediately.' },
+            { label: 'Diagnosis', text: 'Inspect vines for Quick Wilt (Phytophthora); blackening at the base of the stem is a critical warning.' },
+            { label: 'System Alert', text: 'Removing this batch now saves fuel, space, and labor costs for your processing facility.' },
+          ],
+        },
+      },
+    },
+    rotten: {
+      gradeKey: 'reject',
+      gradeLabel: 'REJECT',
+      tips: [
+        { label: 'Field Audit', text: 'Check your farm\'s drainage and soil pH; rot usually signals waterlogged roots or acidic soil (pH < 5.5).' },
+        { label: 'Storage Fix', text: 'Ensure your warehouse humidity is below 60%; use a dehumidifier to stop healthy berries from turning.' },
+        { label: 'Safety', text: 'Dispose of this batch away from water sources; rot-prone berries can attract the Pepper Weevil pest.' },
+        { label: 'Hygiene', text: 'Sanitize hands and all harvesting gear before returning to the field to prevent spreading the rot.' },
+      ],
+    },
+  };
+
+  const getDetectionAdvice = (analysisResult) => {
+    if (!analysisResult) return null;
+    const ripenessText = analysisResult.ripeness?.toLowerCase();
+    const isRotten = ripenessText === 'rotten';
+    const healthLetterMatch = String(analysisResult.health_class || '')
+      .toLowerCase()
+      .match(/[a-d]/);
+    const healthLetter = healthLetterMatch ? healthLetterMatch[0] : '';
+    const ripenessPct = Number(analysisResult.ripeness_percentage);
+
+    let categoryKey = null;
+    if (isRotten) {
+      categoryKey = 'rotten';
+    } else if (Number.isFinite(ripenessPct)) {
+      if (ripenessPct >= 51) categoryKey = 'high';
+      else if (ripenessPct >= 26) categoryKey = 'mid';
+      else if (ripenessPct >= 0) categoryKey = 'unripe';
+    } else if (ripenessText === 'ripe') {
+      categoryKey = 'high';
+    } else if (ripenessText === 'unripe') {
+      categoryKey = 'unripe';
+    }
+
+    if (!categoryKey) return null;
+
+    if (categoryKey === 'rotten') {
+      return detectionAdviceLibrary.rotten;
+    }
+
+    if (!healthLetter) return null;
+
+    const category = detectionAdviceLibrary[categoryKey];
+    if (!category) return null;
+
+    let advice = null;
+    if (categoryKey === 'high') {
+      advice = category.classes[healthLetter] || null;
+    } else if (categoryKey === 'mid') {
+      if (healthLetter === 'a' || healthLetter === 'b') advice = category.classes.ab;
+      if (healthLetter === 'c' || healthLetter === 'd') advice = category.classes.cd;
+    } else if (categoryKey === 'unripe') {
+      if (healthLetter === 'a' || healthLetter === 'b') advice = category.classes.ab;
+      if (healthLetter === 'c') advice = category.classes.c;
+      if (healthLetter === 'd') advice = category.classes.d;
+    }
+
+    if (!advice) return null;
+
+    return advice;
+  };
+
+  const getClassRipenessFromPercentage = (ripenessPercentage) => {
+    const pct = Number(ripenessPercentage);
+    if (!Number.isFinite(pct)) return null;
+    if (pct >= 76) return { letter: 'A', label: 'Fully ripe' };
+    if (pct >= 51) return { letter: 'B', label: 'Semi-Ripe' };
+    if (pct >= 26) return { letter: 'C', label: 'Under-ripe' };
+    if (pct >= 0) return { letter: 'D', label: 'Unripe' };
+    return null;
+  };
+
   const gradeIconMap = {
     Reject: 'close-octagon',
     Premium: 'star-circle',
@@ -267,6 +458,7 @@ export default function BungaRipenessScreen({ navigation }) {
           setImage(asset);
           setError(null);
           setResult(null);
+          setNoBungaMessage(null);
           console.log('✅ Gallery selection successful:', asset.uri);
         }
       } else {
@@ -292,76 +484,58 @@ export default function BungaRipenessScreen({ navigation }) {
     }
   };
 
-  const pickImageFromCamera = async () => {
+  const openCamera = async () => {
     try {
-      // Request camera permission
-      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-      const platformName = Platform.OS === 'ios' ? 'iOS' : 'Android';
-      console.log(`📱 Device Info - ${platformName}`);
-      console.log('🔐 Camera permission status:', cameraPermission.status);
-      console.log('🔐 Permission details:', cameraPermission);
-      
-      if (cameraPermission.status !== 'granted') {
-        setError('❌ Camera permission required.\n\nGo to Settings > PiperSmart > Camera and enable it.');
-        console.warn('Camera permission denied:', cameraPermission.status);
+      if (permission?.granted) {
+        setCameraOpen(true);
         return;
       }
 
-      console.log(`📸 Launching camera on ${platformName}...`);
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-        exif: false,  // Disable EXIF to prevent date issues
-      });
-
-      console.log('📸 Camera result:', result);
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        const platformName = Platform.OS === 'ios' ? 'iOS' : 'Android';
-        console.log(`📸 [${platformName}] Asset:`, {
-          uri: asset.uri?.substring(0, 50),
-          width: asset.width,
-          height: asset.height,
-          type: asset.type,
-        });
-        
-        if (asset.uri) {
-          setImageUri(asset.uri);
-          setImage(asset);
-          setError(null);
-          setResult(null);
-          console.log(`✅ [${platformName}] Camera capture successful`);
-        }
+      const result = await requestPermission();
+      if (result?.granted) {
+        setCameraOpen(true);
       } else {
-        console.log('⚠️ Camera canceled by user');
+        setError('Camera permission denied. Enable it in Settings.');
       }
     } catch (err) {
-      console.error('❌ Full camera error:', err);
-      console.error('❌ Error code:', err?.code);
-      console.error('❌ Error message:', err?.message);
-      console.error('❌ Error name:', err?.name);
-      
-      // Handle specific date-related errors
-      if (err?.message?.includes('Date') || err?.message?.includes('date') || err?.name === 'RangeError') {
-        console.warn('⚠️ Image metadata date issue');
-        setError('❌ Camera error with image metadata.\n\nTry restarting the app or device.');
-      } else if (err?.code === 'E_PICKER_CANCELLED') {
-        console.log('⚠️ User cancelled camera');
-      } else if (err?.code === 'E_CAMERA_UNAVAILABLE') {
-        setError('❌ Camera not available.\n\nCheck if another app is using the camera.');
-      } else if (err?.code === 'E_PERMISSION_MISSING' || err?.message?.includes('permission')) {
-        setError('❌ Camera permission denied.\n\nGo to Settings > PiperSmart > Camera');
-      } else if (err?.message?.includes('Camera')) {
-        setError('❌ Camera error.\n\nTry restarting the app or device.');
-      } else {
-        setError('❌ Failed to open camera.\n\nError: ' + (err?.message || 'Unknown error'));
-      }
+      setError('Failed to request camera permission');
+      console.error(err);
     }
   };
 
+  const closeCamera = () => {
+    setCameraOpen(false);
+  };
+
+  const capturePhoto = async () => {
+    try {
+      if (!cameraRef.current) {
+        return;
+      }
+
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+      });
+
+      if (!photo?.uri) return;
+
+      const asset = {
+        uri: photo.uri,
+        type: 'image/jpeg',
+        name: `bunga_${Date.now()}.jpg`,
+      };
+
+      setImageUri(asset.uri);
+      setImage(asset);
+      setError(null);
+      setResult(null);
+      setNoBungaMessage(null);
+      setCameraOpen(false);
+    } catch (err) {
+      setError('Failed to capture image');
+      console.error(err);
+    }
+  };
   const handleAnalyze = async () => {
     if (!image || !imageUri) {
       setError('Please select an image first');
@@ -371,6 +545,7 @@ export default function BungaRipenessScreen({ navigation }) {
     setAnalyzing(true);
     setError(null);
     setResult(null);
+    setNoBungaMessage(null);
 
     try {
       const token = axios.defaults.headers.common['Authorization'];
@@ -432,8 +607,19 @@ export default function BungaRipenessScreen({ navigation }) {
       
       // Check if backend returned a failure response
       if (response.data.error || response.data.success === false) {
-        console.error('❌ Backend returned error:', response.data.error);
-        setError(response.data.error || 'Analysis failed');
+        const backendError = response.data.error || 'Analysis failed';
+        console.error('Backend returned error:', backendError);
+        if (backendError.toLowerCase().includes('no black pepper bunga')) {
+          setNoBungaMessage('No black pepper bunga detected in the image.');
+          setError(null);
+          setResult(null);
+          setBungaDetections([]);
+          setOtherObjects([]);
+          setImageSize(null);
+          setAnalyzing(false);
+          return;
+        }
+        setError(backendError);
         setAnalyzing(false);
         return;
       }
@@ -474,7 +660,17 @@ export default function BungaRipenessScreen({ navigation }) {
       // Check response error first (higher priority)
       if (err.response?.data?.error) {
         console.error('Setting error from response.data.error:', err.response.data.error);
-        setError(err.response.data.error);
+        const backendError = err.response.data.error;
+        if (backendError.toLowerCase().includes('no black pepper bunga')) {
+          setNoBungaMessage('No black pepper bunga detected in the image.');
+          setError(null);
+          setResult(null);
+          setBungaDetections([]);
+          setOtherObjects([]);
+          setImageSize(null);
+          return;
+        }
+        setError(backendError);
       } else if (err.response?.status === 401) {
         setError('Authentication failed');
       } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
@@ -494,9 +690,11 @@ export default function BungaRipenessScreen({ navigation }) {
     setImageUri(null);
     setResult(null);
     setError(null);
+    setNoBungaMessage(null);
     setBungaDetections([]);
     // setOtherObjects([]);
     setImageSize(null);
+    setCameraOpen(false);
   };
 
   const handleLogout = async () => {
@@ -568,6 +766,7 @@ export default function BungaRipenessScreen({ navigation }) {
       </View>
 
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
@@ -594,33 +793,52 @@ export default function BungaRipenessScreen({ navigation }) {
 
         {/* Image Selection Section */}
         <View style={[styles.imageSection, { borderColor: colors.border }]}>
-          {imageUri && imageUri !== '' ? (
+          {cameraOpen ? (
+            <>
+              <View style={styles.imageContainer}>
+                <CameraView
+                  ref={cameraRef}
+                  style={styles.cameraPreview}
+                  facing="back"
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.captureButton, { backgroundColor: colors.primaryLight }]}
+                onPress={capturePhoto}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Feather name="camera" size={20} color={colors.secondary} />
+                  <Text style={styles.captureButtonText}>Capture Photo</Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : imageUri && imageUri !== '' ? (
             <View style={{ width: '100%' }}>
               <View style={styles.imageContainer}>
-                <Image 
-                  source={{ uri: imageUri }} 
+                <Image
+                  source={{ uri: imageUri }}
                   style={styles.selectedImage}
                   onError={(e) => {
-                    console.error('❌ Image load error:', e.nativeEvent?.error);
+                    console.error('Image load error:', e.nativeEvent?.error);
                     setError('Failed to load image. Try selecting again.');
                   }}
-                  onLoadStart={() => console.log('📸 Image loading...')}
-                  onLoadEnd={() => console.log('✅ Image loaded successfully')}
+                  onLoadStart={() => console.log('Image loading...')}
+                  onLoadEnd={() => console.log('Image loaded successfully')}
                 />
                 {/* Bounding Box Overlay */}
                 {bungaDetections.length > 0 && (
                   <BoundingBoxOverlay
                     imageSize={imageSize}
                     bungaDetections={bungaDetections}
-                    containerSize={{ 
-                      width: width - 32, 
-                      height: 260 
+                    containerSize={{
+                      width: width - 32,
+                      height: 260
                     }}
                     colors={colors}
                   />
                 )}
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.clearButton, { backgroundColor: colors.danger }]}
                 onPress={handleClearImage}
               >
@@ -632,10 +850,10 @@ export default function BungaRipenessScreen({ navigation }) {
             </View>
           ) : (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <MaterialCommunityIcons 
-                name="image-plus" 
-                size={48} 
-                color={colors.textLight} 
+              <MaterialCommunityIcons
+                name="image-plus"
+                size={48}
+                color={colors.textLight}
               />
               <Text style={[styles.placeholderText, { color: colors.textLight }]}>
                 No image selected
@@ -646,7 +864,6 @@ export default function BungaRipenessScreen({ navigation }) {
             </View>
           )}
         </View>
-
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionKicker}>Step 2</Text>
           <Text style={styles.sectionTitle}>Run Analysis</Text>
@@ -660,12 +877,12 @@ export default function BungaRipenessScreen({ navigation }) {
               flex: 1,
               marginRight: 8
             }]}
-            onPress={pickImageFromCamera}
+            onPress={cameraOpen ? closeCamera : openCamera}
             disabled={analyzing}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <Feather name="camera" size={20} color={colors.secondary} />
-              <Text style={styles.actionButtonText}>Camera</Text>
+              <Feather name={cameraOpen ? "x" : "camera"} size={20} color={colors.secondary} />
+              <Text style={styles.actionButtonText}>{cameraOpen ? "Close Camera" : "Open Camera"}</Text>
             </View>
           </TouchableOpacity>
 
@@ -673,10 +890,11 @@ export default function BungaRipenessScreen({ navigation }) {
             style={[styles.actionButton, { 
               backgroundColor: colors.primary,
               flex: 1,
-              marginLeft: 8
+              marginLeft: 8,
+              opacity: cameraOpen ? 0.6 : 1
             }]}
             onPress={pickImageFromGallery}
-            disabled={analyzing}
+            disabled={analyzing || cameraOpen}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
               <Feather name="image" size={20} color={colors.secondary} />
@@ -684,7 +902,6 @@ export default function BungaRipenessScreen({ navigation }) {
             </View>
           </TouchableOpacity>
         </View>
-
         {/* Analyze Button */}
         <TouchableOpacity 
           style={[styles.analyzeButton, { 
@@ -707,6 +924,17 @@ export default function BungaRipenessScreen({ navigation }) {
           )}
         </TouchableOpacity>
 
+        {noBungaMessage && !error && (
+          <View style={[styles.infoBox, { backgroundColor: colors.accentSoft, borderColor: colors.accent }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Feather name="info" size={20} color={colors.accent} />
+              <Text style={[styles.infoText, { color: colors.text }]}>
+                {noBungaMessage}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Error Display */}
         {error && (
           <View style={[styles.errorBox, { backgroundColor: colors.danger + '15', borderColor: colors.danger }]}>
@@ -721,7 +949,13 @@ export default function BungaRipenessScreen({ navigation }) {
 
         {/* Results Section */}
         {result && (
-          <View style={[styles.resultSection, { borderColor: colors.border }]}>
+          <View
+            style={[styles.resultSection, { borderColor: colors.border }]}
+            onLayout={(event) => {
+              resultSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
+            <View style={[styles.resultAccent, { backgroundColor: colors.accent }]} />
             {/* Not a Black Pepper Warning */}
             {result.is_black_pepper === false && (
               <View style={[styles.warningBox, { backgroundColor: colors.danger + '20', borderColor: colors.danger }]}>
@@ -872,6 +1106,66 @@ export default function BungaRipenessScreen({ navigation }) {
                     ))}
                   </View>
                 )}
+
+                {/* Detection Advice */}
+                {(() => {
+                  const advice = getDetectionAdvice(result);
+                  if (!advice) return null;
+                  const gradeColors = {
+                    premium: colors.accent,
+                    standard: colors.success,
+                    commercial: colors.warning,
+                    reject: colors.danger,
+                  };
+                  const accent = gradeColors[advice.gradeKey] || colors.primary;
+                  return (
+                    <View style={[styles.adviceCard, { borderColor: accent, backgroundColor: accent + '10' }]}>
+                      <View style={styles.adviceHeader}>
+                        <View style={[styles.adviceBadge, { backgroundColor: accent + '22' }]}>
+                          <MaterialCommunityIcons name="clipboard-text" size={18} color={accent} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.adviceTitle, { color: colors.text }]}>
+                            Analyzation Advice
+                          </Text>
+                          <Text style={[styles.adviceGrade, { color: accent }]}>
+                            {advice.gradeLabel}
+                          </Text>
+                          {(() => {
+                            const isRotten = result?.ripeness?.toLowerCase() === 'rotten';
+                            if (isRotten) {
+                              return (
+                                <Text style={[styles.adviceStatus, { color: colors.textLight }]}>
+                                  Class: Rotten
+                                </Text>
+                              );
+                            }
+                            const classInfo = getClassRipenessFromPercentage(result?.ripeness_percentage);
+                            if (!classInfo) return null;
+                            return (
+                              <Text style={[styles.adviceStatus, { color: colors.textLight }]}>
+                                {`Class ${classInfo.letter}: ${classInfo.label}`}
+                              </Text>
+                            );
+                          })()}
+                        </View>
+                      </View>
+                      {advice.tips.map((tip, index) => (
+                        <View key={`${tip.label}-${index}`} style={styles.adviceItem}>
+                          <View style={[styles.adviceDot, { backgroundColor: accent }]} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.adviceLabel, { color: colors.text }]}>
+                              {tip.label}
+                            </Text>
+                            <Text style={[styles.adviceText, { color: colors.textLight }]}>
+                              {tip.text}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
 
                 {/* Additional Info */}
                 {result.additional_info && (
@@ -1112,6 +1406,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDE7E1',
   },
+  cameraPreview: {
+    width: '100%',
+    height: '100%',
+  },
   placeholderText: {
     fontSize: 16,
     fontWeight: '700',
@@ -1131,7 +1429,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 14,
   },
+  captureButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 14,
+  },
   clearButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  captureButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
@@ -1187,7 +1500,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
+  infoBox: {
+    flexDirection: 'row',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 18,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
   errorText: {
+    fontSize: 14,
+    marginLeft: 10,
+    flex: 1,
+    fontWeight: '500',
+  },
+  infoText: {
     fontSize: 14,
     marginLeft: 10,
     flex: 1,
@@ -1236,6 +1564,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 3,
+    overflow: 'hidden',
+  },
+  resultAccent: {
+    height: 6,
+    borderRadius: 6,
+    marginBottom: 14,
   },
   resultHeader: {
     paddingBottom: 12,
@@ -1323,6 +1657,62 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#DDE7E1',
+  },
+  adviceCard: {
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  adviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
+  },
+  adviceBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adviceTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  adviceGrade: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  adviceStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  adviceItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
+  },
+  adviceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  adviceLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  adviceText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   recommendationTitle: {
     fontSize: 17,
@@ -1433,5 +1823,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+
+
+
+
 
 

@@ -114,7 +114,7 @@ const ChangePassword = () => {
         <div style={styles.card}>
           <div style={styles.header}>
             <div style={styles.logoTop}>
-              <div style={styles.logoIcon}>🔐</div>
+              <div style={styles.logoIcon}><span style={{color: '#fff', fontSize: '24px'}}>P</span></div>
               <span style={styles.logoText}>PiperSmart</span>
             </div>
             <h1 style={styles.title}>Change Password</h1>
@@ -150,7 +150,7 @@ const ChangePassword = () => {
                   style={styles.passwordToggle}
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                 >
-                  {showCurrentPassword ? '🙈' : '👁️'}
+                  {showCurrentPassword ? <span style={{color: '#1B4332'}}>🙈</span> : <span style={{color: '#1B4332'}}>👁</span>}
                 </button>
               </div>
             </div>
@@ -172,7 +172,7 @@ const ChangePassword = () => {
                   style={styles.passwordToggle}
                   onClick={() => setShowNewPassword(!showNewPassword)}
                 >
-                  {showNewPassword ? '🙈' : '👁️'}
+                  {showNewPassword ? <span style={{color: '#1B4332'}}>🙈</span> : <span style={{color: '#1B4332'}}>👁</span>}
                 </button>
               </div>
             </div>
@@ -194,7 +194,7 @@ const ChangePassword = () => {
                   style={styles.passwordToggle}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? '🙈' : '👁️'}
+                  {showConfirmPassword ? <span style={{color: '#1B4332'}}>🙈</span> : <span style={{color: '#1B4332'}}>👁</span>}
                 </button>
               </div>
             </div>

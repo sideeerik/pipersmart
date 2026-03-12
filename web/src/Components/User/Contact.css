@@ -7,7 +7,7 @@
   margin-left: calc(-50vw + 50%);
   min-height: 100vh;
   padding: 0;
-  background: #0a0a0a;
+  background: transparent;
   overflow-x: hidden;
 }
 
@@ -20,11 +20,14 @@
   width: 100%;
   height: 100%;
   z-index: 0;
-  background: 
-    linear-gradient(135deg, rgba(10, 10, 10, 0.97) 0%, rgba(20, 20, 20, 0.95) 100%),
-    url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwMCIgaGVpZ2h0PSI4MDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idHJhbnNwYXJlbnQiLz48cGF0aCBkPSJNMCAwIEwxNjAwIEwwIDgwMCBaIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMCwgMjU1LCAxMzYsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3N2Zz4=');
+  background:
+    radial-gradient(ellipse at 18% 25%, rgba(28, 74, 50, 0.78) 0%, transparent 54%),
+    radial-gradient(ellipse at 82% 76%, rgba(95, 60, 30, 0.52) 0%, transparent 56%),
+    linear-gradient(180deg, rgba(8, 18, 12, 0.74) 0%, rgba(18, 38, 27, 0.68) 50%, rgba(20, 18, 12, 0.74) 100%),
+    url('../../media/Main BG.jpg');
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* ============ HEADER SECTION ============ */
@@ -90,9 +93,9 @@
 
 /* Section Styles */
 .contact-section {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(9, 30, 20, 0.45);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(104, 170, 132, 0.2);
   border-radius: 24px;
   padding: 45px;
   margin-bottom: 30px;
@@ -100,8 +103,8 @@
 }
 
 .contact-section:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(0, 255, 136, 0.15);
+  background: rgba(10, 37, 24, 0.55);
+  border-color: rgba(125, 214, 165, 0.28);
 }
 
 .contact-section h2 {
@@ -139,9 +142,9 @@
 }
 
 .contact-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(10, 33, 22, 0.46);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(108, 180, 138, 0.22);
   border-radius: 16px;
   padding: 30px 25px;
   text-align: center;
@@ -150,8 +153,8 @@
 }
 
 .contact-card:hover {
-  background: rgba(0, 255, 136, 0.08);
-  border-color: rgba(0, 255, 136, 0.25);
+  background: rgba(13, 45, 29, 0.58);
+  border-color: rgba(134, 223, 173, 0.35);
   transform: translateY(-8px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
@@ -196,9 +199,9 @@
 }
 
 .team-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(10, 33, 22, 0.46);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(108, 180, 138, 0.22);
   border-radius: 16px;
   padding: 35px 25px;
   text-align: center;
@@ -206,8 +209,8 @@
 }
 
 .team-card:hover {
-  background: rgba(0, 255, 136, 0.08);
-  border-color: rgba(0, 255, 136, 0.25);
+  background: rgba(13, 45, 29, 0.58);
+  border-color: rgba(134, 223, 173, 0.35);
   transform: translateY(-5px);
 }
 

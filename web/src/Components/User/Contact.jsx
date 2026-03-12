@@ -1,10 +1,10 @@
 import './Contact.css';
 import Header from '../shared/Header';
 import { FaFacebook, FaEnvelope, FaPhone } from 'react-icons/fa';
-import EL from '../../../../EL.jpg';
-import YA from '../../../../YA.jpg';
-import JD from '../../../../JD.jpg';
-import LC from '../../../../LC.jpg';
+import EL from '../../../media/EL.jpg';
+import YA from '../../../media/YA.jpg';
+import JD from '../../../media/JD.jpg';
+import LC from '../../../media/LC.jpg';
 
 export default function Contact() {
   const teamMembers = [

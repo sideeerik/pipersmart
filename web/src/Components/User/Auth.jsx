@@ -238,7 +238,7 @@ const colors = {
                     <div className="password-input-wrapper">
                       <input type={showPassword ? 'text' : 'password'} name="password" value={loginData.password} onChange={handleLoginChange} placeholder="Enter your password" required disabled={loginLoading || isGoogleLoading || isFacebookLoading} />
                       <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? '🙈' : '👁️'}
+                        {showPassword ? <span style={{color: '#1B4D3E'}}>🙈</span> : <span style={{color: '#1B4D3E'}}>👁</span>}
                       </button>
                     </div>
                   </div>
@@ -290,7 +290,7 @@ const colors = {
                     <label>Password <span className="required">*</span></label>
                     <div className="password-input-wrapper">
                       <input type={showRegisterPassword ? 'text' : 'password'} name="password" value={registerData.password} onChange={handleRegisterChange} placeholder="Create a password" required disabled={registerLoading} />
-                      <button type="button" className="password-toggle" onClick={() => setShowRegisterPassword(!showRegisterPassword)}>{showRegisterPassword ? '🙈' : '👁️'}</button>
+                      <button type="button" className="password-toggle" onClick={() => setShowRegisterPassword(!showRegisterPassword)}>{showRegisterPassword ? <span style={{color: '#1B4D3E'}}>🙈</span> : <span style={{color: '#1B4D3E'}}>👁</span>}</button>
                     </div>
                     <small className="input-hint">Minimum 6 characters</small>
                   </div>
@@ -298,7 +298,7 @@ const colors = {
                     <label>Confirm Password <span className="required">*</span></label>
                     <div className="password-input-wrapper">
                       <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={registerData.confirmPassword} onChange={handleRegisterChange} placeholder="Confirm your password" required disabled={registerLoading} />
-                      <button type="button" className="password-toggle" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>{showConfirmPassword ? '🙈' : '👁️'}</button>
+                      <button type="button" className="password-toggle" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>{showConfirmPassword ? <span style={{color: '#1B4D3E'}}>🙈</span> : <span style={{color: '#1B4D3E'}}>👁</span>}</button>
                     </div>
                   </div>
 

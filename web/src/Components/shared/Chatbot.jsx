@@ -4,7 +4,7 @@ import './Chatbot.css';
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { id: 1, type: 'bot', text: '🌿 Hello! I\'m PiperSmart Assistant. How can I help with your pepper farming today?' }
+    { id: 1, type: 'bot', text: 'Hello! I\'m PiperSmart Assistant. How can I help with your pepper farming today?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -113,7 +113,7 @@ const Chatbot = () => {
         {/* Chat Header */}
         <div className="chatbot-header">
           <div className="chatbot-title">
-            <span className="chatbot-icon">🤖</span>
+            <span className="chatbot-icon" style={{color: '#27AE60', fontWeight: 'bold'}}>P</span>
             <h3>PiperSmart Assistant</h3>
           </div>
           <button 
@@ -182,7 +182,7 @@ const Chatbot = () => {
             disabled={isLoading || !input.trim()}
             aria-label="Send message"
           >
-            📤
+            <span style={{color: '#e8f3ec', fontSize: '18px'}}>➤</span>
           </button>
         </form>
       </div>
@@ -195,7 +195,7 @@ const Chatbot = () => {
           aria-label="Open chat"
           title="Chat with PiperSmart Assistant"
         >
-          🌱
+          <span style={{color: '#27AE60', fontSize: '24px', fontWeight: 'bold'}}>🌱</span>
         </button>
       )}
     </>

@@ -145,6 +145,9 @@ export default function UserProfileCard({
           </div>
         )}
       </div>
+
+      {/* Recent Activities Section - Only shown on own profile */}
+      {!viewingOther && <RecentActivities userId={user._id} currentUser={user} />}
     </div>
   );
 }

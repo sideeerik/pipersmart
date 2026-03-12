@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { validateContent } from '../utils/contentValidation';
 import './Forum.css';
 import Header from '../shared/Header';
 import Chat from '../Chat/Chat';
@@ -9,12 +10,72 @@ import UserProfileCard from './UserProfileCard';
 
 const CATEGORIES = [
   { name: 'All', icon: '💬' },
-  { name: 'Disease Identification', icon: '🍃' },
+  { name: 'Disease ID', icon: '🍃' },
   { name: 'Best Practices', icon: '✅' },
   { name: 'Regional Tips', icon: '🌍' },
-  { name: 'Equipment & Tools', icon: '🔧' },
+  { name: 'Equipment', icon: '🔧' },
   { name: 'Success Stories', icon: '🏆' }
 ];
+
+// Helper function to determine if user is online based on lastOnline
+const getOnlineStatus = (lastOnline) => {
+  if (!lastOnline) return { isOnline: false, text: 'Offline' };
+  
+  const lastOnlineDate = new Date(lastOnline);
+  const now = new Date();
+  const diffMinutes = (now - lastOnlineDate) / (1000 * 60);
+  
+  // User is online if they were active in the last 5 minutes
+  const isOnline = diffMinutes < 5;
+  
+  if (isOnline) {
+    return { isOnline: true, text: 'Active' };
+  } else if (diffMinutes < 60) {
+    return { isOnline: false, text: `${Math.floor(diffMinutes)}m ago` };
+  } else if (diffMinutes < 1440) {
+    return { isOnline: false, text: `${Math.floor(diffMinutes / 60)}h ago` };
+  } else {
+    return { isOnline: false, text: `${Math.floor(diffMinutes / 1440)}d ago` };
+  }
+};
+
+const formatTimeAgo = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes < 60) {
+    return diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) {
+    return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+  }
+
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 4) {
+    return diffWeeks === 1 ? '1 week ago' : `${diffWeeks} weeks ago`;
+  }
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) {
+    return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
+  }
+
+  const diffYears = Math.floor(diffDays / 365);
+  return diffYears === 1 ? '1 year ago' : `${diffYears} years ago`;
+};
 
 export default function Forum() {
   const [threads, setThreads] = useState([]);
@@ -31,12 +92,33 @@ export default function Forum() {
   const [reportReason, setReportReason] = useState('');
   const [reportingThreadId, setReportingThreadId] = useState(null);
   const [submittingReport, setSubmittingReport] = useState(false);
+  const [openMenuThreadId, setOpenMenuThreadId] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [friends, setFriends] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState([]); // Track sent friend requests
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeSearch, setActiveSearch] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(() => {
+    // Read dark mode preference from localStorage on initial load
+    const savedTheme = localStorage.getItem('forumDarkTheme');
+    return savedTheme === 'true';
+  });
+
+  // Save dark mode preference to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('forumDarkTheme', isDarkTheme.toString());
+  }, [isDarkTheme]);
+
+  // Create Post popup state
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [newPostTitle, setNewPostTitle] = useState('');
+  const [newPostDescription, setNewPostDescription] = useState('');
+  const [newPostCategory, setNewPostCategory] = useState('Disease ID');
+  const [newPostImages, setNewPostImages] = useState([]);
+  const [submittingPost, setSubmittingPost] = useState(false);
 
   // suggestion modal state
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
@@ -89,13 +171,17 @@ export default function Forum() {
     fetchSentFriendRequests();
   }, [activeCategory, activeTab, filterType, isLoggedIn]);
 
+  useEffect(() => {
+    setActiveSearch(searchQuery.trim().length > 0);
+  }, [searchQuery]);
+
   const fetchFriends = async () => {
     try {
       setLoadingFriends(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/v1/users/friends`,
-        { headers: { Authorization: `Bearer ${token}` } }
+         { headers: { Authorization: `Bearer ${token}` } }
       );
       setFriends(response.data?.data || []);
     } catch (error) {
@@ -332,15 +418,37 @@ export default function Forum() {
 
   const handleLikeThread = async (threadId) => {
     try {
+      // Optimistic UI update: keep user on the same post without reloading
+      setThreads(prev =>
+        prev.map(thread => {
+          if (thread._id !== threadId) return thread;
+          const isLiked =
+            thread.isLiked ??
+            thread.hasLiked ??
+            thread.userHasLiked ??
+            thread.likedByCurrentUser ??
+            thread.currentUserLiked ??
+            false;
+          const nextLiked = !isLiked;
+          const safeLikes = Number(thread.likesCount) || 0;
+          return {
+            ...thread,
+            likesCount: nextLiked ? safeLikes + 1 : Math.max(0, safeLikes - 1),
+            isLiked: nextLiked,
+          };
+        })
+      );
+
       const token = localStorage.getItem('token');
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/v1/forum/threads/${threadId}/like`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchThreads(1, true);
     } catch (error) {
       console.error('Error liking thread:', error);
+      // If the request fails, revert by refetching the first page
+      fetchThreads(1, true);
     }
   };
 
@@ -422,6 +530,128 @@ export default function Forum() {
     setPage(1);
   };
 
+  // Filter threads based on search query (name and title) - only when search is active
+  const filteredThreads = (() => {
+    const currentUserId = currentUser?._id || currentUser?.id;
+    const base = filterType === 'mine' && currentUserId
+      ? threads.filter(thread => {
+          const author = thread.createdBy;
+          return (
+            author?._id === currentUserId ||
+            author?.id === currentUserId ||
+            thread.userId === currentUserId ||
+            thread.createdBy === currentUserId
+          );
+        })
+      : threads;
+
+    if (!activeSearch) return base;
+
+    const searchLower = searchQuery.toLowerCase();
+    return base.filter(thread => {
+      const titleMatch = thread.title?.toLowerCase().includes(searchLower) || false;
+      const nameMatch = thread.createdBy?.name?.toLowerCase().includes(searchLower) || false;
+      const contentMatch = thread.description?.toLowerCase().includes(searchLower) || false;
+      return titleMatch || nameMatch || contentMatch;
+    });
+  })();
+
+  // Handle create post from popup
+  const handleCreatePostSubmit = async () => {
+    if (!newPostTitle.trim() || !newPostDescription.trim()) {
+      alert('Please fill in title and description');
+      return;
+    }
+
+    // Validate content - must be related to black pepper
+    const combinedContent = `${newPostTitle} ${newPostDescription}`;
+    const validationResult = validateContent(combinedContent);
+    
+    if (!validationResult.isValid) {
+      if (validationResult.severity === 'BLOCK') {
+        alert(`❌ ${validationResult.message}`);
+        return;
+      } else if (validationResult.severity === 'WARNING') {
+        const confirm = window.confirm(
+          `${validationResult.message}\n\nDo you want to continue anyway?`
+        );
+        if (!confirm) return;
+      }
+    }
+
+    try {
+      setSubmittingPost(true);
+      const token = localStorage.getItem('token');
+      
+      // Upload images to Cloudinary first
+      let uploadedImages = [];
+      if (newPostImages.length > 0) {
+        try {
+          for (const image of newPostImages) {
+            const formDataImg = new FormData();
+            formDataImg.append('file', image);
+            formDataImg.append('upload_preset', 'pipersmart');
+
+            const uploadRes = await axios.post(
+              `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+              formDataImg
+            );
+
+            if (uploadRes.data?.secure_url) {
+              uploadedImages.push({ 
+                url: uploadRes.data.secure_url,
+                publicId: uploadRes.data.public_id
+              });
+            }
+          }
+        } catch (uploadError) {
+          console.log('Image upload failed, continuing without images:', uploadError.message);
+        }
+      }
+
+      // Get user ID
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const userId = user?.id || user?._id;
+
+      // Create the thread with uploaded images
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/v1/forum/threads`,
+        {
+          title: newPostTitle,
+          description: newPostDescription,
+          category: newPostCategory,
+          images: uploadedImages,
+          status: 'published',
+          userId: userId
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert('✅ Post created successfully!');
+      setShowCreatePostModal(false);
+      setNewPostTitle('');
+      setNewPostDescription('');
+      setNewPostCategory('Disease ID');
+      setNewPostImages([]);
+      fetchThreads(1, true);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      alert(error.response?.data?.message || 'Failed to create post');
+    } finally {
+      setSubmittingPost(false);
+    }
+  };
+
+  const handleNewPostImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    setNewPostImages(prev => [...prev, ...files]);
+  };
+
+  const removeNewPostImage = (index) => {
+    setNewPostImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleComposerImageUpload = (e) => {
     const files = Array.from(e.target.files);
     const newImages = files.map(file => ({
@@ -455,9 +685,7 @@ export default function Forum() {
             animate={{ y: [0, -15, 0], rotate: [0, 15, -15, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           >
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/>
-            </svg>
+            <img src="/search-icon.svg" alt="Search" />
           </motion.div>
           <motion.div 
             className="forum-floating-icon icon-2"
@@ -529,7 +757,15 @@ export default function Forum() {
   return (
     <>
       <Header />
-      <div className="forum-container fb-layout">
+      <div className={`forum-container fb-layout ${isDarkTheme ? 'dark-theme' : ''}`}>
+        <div className="forum-header">
+          <div className="forum-header-text">
+            <h1 className="forum-header-title">Welcome to the Piper Community</h1>
+            <p className="forum-header-subtitle">
+              Share experiences, ask questions, and grow with fellow pepper farmers.
+            </p>
+          </div>
+        </div>
         <div className="fb-main-wrapper">
           <div className="fb-sidebar-left">
             <div className="filter-section">
@@ -546,6 +782,12 @@ export default function Forum() {
                   onClick={() => setFilterType('friends')}
                 >
                   Friends Only
+                </button>
+                <button
+                  className={`filter-btn ${filterType === 'mine' ? 'active' : ''}`}
+                  onClick={() => setFilterType('mine')}
+                >
+                  My Posts
                 </button>
               </div>
             </div>
@@ -598,15 +840,48 @@ export default function Forum() {
                 </Link>
               </div>
             )}
+
+            {/* Settings Section */}
+            <div className="settings-section">
+              <button
+                className="theme-toggle-btn"
+                onClick={() => setIsDarkTheme(!isDarkTheme)}
+                title={isDarkTheme ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDarkTheme ? '☀️ Light Mode' : '🌙 Dark Mode'}
+              </button>
+            </div>
           </div>
 
           <div className="fb-feed-center">
-            <button
-              className="create-post-btn"
-              onClick={() => navigate('/forum/create')}
-            >
-              ✏️ Create New Post
-            </button>
+            <div className="feed-top-bar">
+              <button
+                className="create-post-btn-circular"
+                onClick={() => setShowCreatePostModal(true)}
+                title="Create New Post"
+                aria-label="Create New Post"
+              >
+                <span className="create-post-plus-icon" aria-hidden="true">+</span>
+              </button>
+              <div className="feed-search-wrapper">
+                <input
+                  type="text"
+                  className="search-input feed-search-input"
+                  placeholder="Search by name or title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <button
+                  className="search-button"
+                  onClick={() => setSearchQuery('')}
+                  title={activeSearch ? "Clear search" : "Search"}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15.5 14h-.79l-.28-.27a6 6 0 1 0-.71.71l.27.28v.79L20 20.5 21.5 19 15.5 14zM10 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
             <div className="threads-feed">
               {loading && page === 1 ? (
@@ -615,8 +890,12 @@ export default function Forum() {
                 <div className="no-threads-message">
                   <p>No discussions yet. Be the first to start one!</p>
                 </div>
+              ) : filteredThreads.length === 0 && activeSearch && searchQuery ? (
+                <div className="no-threads-message">
+                  <p>No discussions match your search.</p>
+                </div>
               ) : (
-                threads.map((thread) => (
+                filteredThreads.map((thread) => (
                   <div key={thread._id} className="thread-card fb-post">
                     <div className="post-header">
                       <div className="author-section">
@@ -637,13 +916,68 @@ export default function Forum() {
                           </p>
                           <div className="post-meta">
                             <span className="post-time">
-                              {new Date(thread.createdAt).toLocaleDateString()}
+                              {formatTimeAgo(thread.createdAt)}
                             </span>
                             <span className="category-badge-inline">
                               {thread.category}
                             </span>
                           </div>
                         </div>
+                      </div>
+                      <div className="post-menu">
+                        <button
+                          className="post-menu-btn"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOpenMenuThreadId((prev) => (prev === thread._id ? null : thread._id));
+                          }}
+                          title="Post options"
+                          aria-label="Post options"
+                        >
+                          ⋯
+                        </button>
+                        {openMenuThreadId === thread._id && (
+                          <div className="post-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="post-menu-item"
+                              onClick={() => {
+                                handleMarkInterested(thread._id);
+                                setOpenMenuThreadId(null);
+                              }}
+                            >
+                              ❤️ Interested
+                            </button>
+                            <button
+                              className="post-menu-item"
+                              onClick={() => {
+                                handleMarkUninterested(thread._id);
+                                setOpenMenuThreadId(null);
+                              }}
+                            >
+                              👎 Not Interested
+                            </button>
+                            <button
+                              className="post-menu-item"
+                              onClick={() => {
+                                handleSaveThread(thread._id);
+                                setOpenMenuThreadId(null);
+                              }}
+                            >
+                              🔖 Save
+                            </button>
+                            <button
+                              className="post-menu-item danger"
+                              onClick={() => {
+                                setReportingThreadId(thread._id);
+                                setReportModalOpen(true);
+                                setOpenMenuThreadId(null);
+                              }}
+                            >
+                              🚩 Report
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -654,24 +988,25 @@ export default function Forum() {
                       <p className="post-body">{thread.description}</p>
 
                       {thread.images && thread.images.length > 0 && (
-                        <div className="post-images-fb">
-                          {thread.images.slice(0, 4).map((image, index) => (
+                        <div className={`post-images-fb ${thread.images.length >= 5 ? 'images-5plus' : `images-${thread.images.length}`}`}>
+                          {thread.images
+                            .slice(0, thread.images.length >= 5 ? 5 : thread.images.length)
+                            .map((image, index) => (
                             <Link
                               key={index}
                               to={`/forum/thread/${thread._id}`}
                               className="post-image-wrapper"
                             >
                               <img src={image.url} alt={`Image ${index + 1}`} />
+                              {thread.images.length > 5 && index === 4 && (
+                                <div className="image-more-overlay">
+                                  <span>+{thread.images.length - 5}</span>
+                                </div>
+                              )}
                             </Link>
                           ))}
                         </div>
                       )}
-                    </div>
-
-                    <div className="post-stats-fb">
-                      <span>👍 {thread.likesCount}</span>
-                      <span>💬 {thread.repliesCount}</span>
-                      <span>👁️ {thread.views}</span>
                     </div>
 
                     <div className="post-actions-fb">
@@ -679,45 +1014,14 @@ export default function Forum() {
                         className="post-action-link"
                         onClick={() => handleLikeThread(thread._id)}
                       >
-                        👍 Like
-                      </button>
-                      <button
-                        className="post-action-link"
-                        onClick={() => handleMarkInterested(thread._id)}
-                        title="Mark as interested"
-                      >
-                        ❤️ Interested
-                      </button>
-                      <button
-                        className="post-action-link"
-                        onClick={() => handleMarkUninterested(thread._id)}
-                        title="Mark as not interested"
-                      >
-                        👎 Not Interested
+                        👍 {thread.likesCount} {thread.likesCount === 1 ? 'Like' : 'Likes'}
                       </button>
                       <Link
                         to={`/forum/thread/${thread._id}`}
                         className="post-action-link"
                       >
-                        💬 Reply
+                        💬 {thread.repliesCount} {thread.repliesCount === 1 ? 'Reply' : 'Replies'}
                       </Link>
-                      <button
-                        className="post-action-link"
-                        onClick={() => handleSaveThread(thread._id)}
-                        title="Save thread"
-                      >
-                        🔖 Save
-                      </button>
-                      <button
-                        className="post-action-link"
-                        onClick={() => {
-                          setReportingThreadId(thread._id);
-                          setReportModalOpen(true);
-                        }}
-                        title="Report thread"
-                      >
-                        🚩 Report
-                      </button>
                     </div>
                   </div>
                 ))
@@ -756,7 +1060,14 @@ export default function Forum() {
                       </div>
                       <div className="friend-info">
                         <p className="friend-name">{friend.name}</p>
-                        <p className="friend-status">{friend.status || 'Online'}</p>
+                        {(() => {
+                          const status = getOnlineStatus(friend.lastOnline);
+                          return (
+                            <p className={`friend-status ${status.isOnline ? 'status-active' : 'status-offline'}`}>
+                              {status.isOnline ? '🟢 Active' : `⚫ ${status.text}`}
+                            </p>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -781,7 +1092,6 @@ export default function Forum() {
                       <div
                         className="friend-item"
                         onClick={() => {
-                          // don't preview yourself; go to profile page instead
                           if (currentUser && user._id === currentUser._id) {
                             navigate('/profile');
                             return;
@@ -917,5 +1227,125 @@ export default function Forum() {
           </div>
         </div>
       )}
+
+      {/* Create Post Modal */}
+      {showCreatePostModal && (
+        <motion.div 
+          className="modal-overlay" 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={() => setShowCreatePostModal(false)}
+        >
+          <motion.div 
+            className="modal-content create-post-modal" 
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.8, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: -20 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 300,
+              damping: 25,
+              duration: 0.3
+            }}
+          >
+            <button
+              className="modal-close"
+              onClick={() => setShowCreatePostModal(false)}
+            >
+              ✕
+            </button>
+            <div className="modal-header">
+              <h3>+ Create New Post</h3>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Title</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={newPostTitle}
+                  onChange={(e) => setNewPostTitle(e.target.value)}
+                  placeholder="Enter post title..."
+                />
+              </div>
+              <div className="form-group">
+                <label>Category</label>
+                <select
+                  className="form-select"
+                  value={newPostCategory}
+                  onChange={(e) => setNewPostCategory(e.target.value)}
+                >
+                  {CATEGORIES.filter(cat => cat.name !== 'All').map((cat) => (
+                    <option key={cat.name} value={cat.name}>
+                      {cat.icon} {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  className="form-textarea"
+                  value={newPostDescription}
+                  onChange={(e) => setNewPostDescription(e.target.value)}
+                  placeholder="What's on your mind?"
+                  rows={5}
+                />
+              </div>
+              <div className="form-group">
+                <label>Images (optional)</label>
+                <input
+                  type="file"
+                  className="form-file"
+                  onChange={handleNewPostImageUpload}
+                  accept="image/*"
+                  multiple
+                />
+                {newPostImages.length > 0 && (
+                  <div className="image-previews">
+                    {newPostImages.map((image, index) => (
+                      <div key={index} className="image-preview-item">
+                        <img 
+                          src={URL.createObjectURL(image)} 
+                          alt={`Preview ${index + 1}`} 
+                        />
+                        <button
+                          type="button"
+                          className="remove-image-btn"
+                          onClick={() => removeNewPostImage(index)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn-cancel"
+                onClick={() => setShowCreatePostModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-confirm"
+                onClick={handleCreatePostSubmit}
+                disabled={submittingPost}
+              >
+                {submittingPost ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </>  );
 }
+
+
+
+

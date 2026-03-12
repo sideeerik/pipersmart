@@ -56,26 +56,26 @@ leftColumn: {
     welcomeTitle: { fontSize: '42px', fontWeight: '700', color: '#ffffff', marginBottom: '20px', fontFamily: "'Playfair Display', serif", lineHeight: '1.2', textShadow: '0 0 30px rgba(82, 183, 136, 0.3)' },
     welcomeSubtitle: { fontSize: '17px', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '36px', lineHeight: '1.6', fontFamily: "'Inter', sans-serif" },
     signinButton: { display: 'inline-block', padding: '16px 40px', background: 'transparent', color: '#52B788', border: '2px solid #52B788', borderRadius: '50px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s ease', textDecoration: 'none', fontFamily: "'Inter', sans-serif" },
-rightColumn: { flex: '0 0 40%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eee6e6ce', padding: '40px', minHeight: '100vh' },
+    rightColumn: { flex: '0 0 40%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg, #f7faf6 0%, #edf5ee 100%)', padding: '40px', minHeight: '100vh' },
     authCard: { width: '100%', maxWidth: '440px' },
-    logoTop: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' },
-    logoImg: { width: '90px', height: '90px', objectFit: 'contain', borderRadius: '16px' },
-    logoText: { fontSize: '22px', fontWeight: '700', color: '#52B788', fontFamily: "'Playfair Display', serif", textShadow: '0 0 20px rgba(82, 183, 136, 0.3)' },
-    authTitle: { fontSize: '32px', fontWeight: '700', color: '#0f7048', marginBottom: '8px', fontFamily: "'Playfair Display', serif" },
-    authSubtitle: { fontSize: '15px', color: '#4e4e4e', marginBottom: '32px' },
+    logoTop: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', marginBottom: '40px' },
+    logoImg: { width: '150px', height: '150px', objectFit: 'contain', borderRadius: '20px' },
+    logoText: { fontSize: '30px', fontWeight: '800', color: '#1e5a46', fontFamily: "'Playfair Display', serif", letterSpacing: '0.3px', textShadow: '0 6px 20px rgba(27, 67, 50, 0.18)', textAlign: 'center' },
+    authTitle: { fontSize: '32px', fontWeight: '700', color: '#133a2e', marginBottom: '8px', fontFamily: "'Playfair Display', serif" },
+    authSubtitle: { fontSize: '15px', color: '#46524d', marginBottom: '32px' },
     alert: { padding: '14px 16px', borderRadius: '10px', marginBottom: '24px', display: 'flex', alignItems: 'center', fontSize: '14px' },
     alertError: { backgroundColor: 'rgba(220, 53, 69, 0.1)', border: `1px solid ${colors.error}`, color: colors.error },
     alertSuccess: { backgroundColor: 'rgba(82, 183, 136, 0.1)', border: `1px solid ${colors.success}`, color: colors.success },
     formGroup: { marginBottom: '20px' },
-    requiredLabel: { display: 'block', color: '#5e5959', fontWeight: '600', marginBottom: '8px', fontSize: '14px', fontFamily: "'Inter', sans-serif" },
+    requiredLabel: { display: 'block', color: '#2f3a37', fontWeight: '600', marginBottom: '8px', fontSize: '14px', fontFamily: "'Inter', sans-serif" },
     requiredStar: { color: colors.error },
-    input: { width: '100%', padding: '14px 16px', border: `2px solid #1B4332`, borderRadius: '12px', fontSize: '15px', transition: 'all 0.3s ease', background: 'rgba(0, 0, 0, 0.5)', boxSizing: 'border-box', color: '#FFFFFF', fontFamily: "'Inter', sans-serif" },
+    input: { width: '100%', padding: '14px 16px', border: '2px solid #b7c9bf', borderRadius: '12px', fontSize: '15px', transition: 'all 0.3s ease', background: '#ffffff', boxSizing: 'border-box', color: '#1f2a24', fontFamily: "'Inter', sans-serif" },
     passwordContainer: { position: 'relative' },
-    passwordToggle: { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', color: '#ADB5BD', zIndex: '2' },
-    smallText: { display: 'block', color: '#4e4e4e', fontSize: '12px', marginTop: '6px', fontFamily: "'Inter', sans-serif" },
+    passwordToggle: { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', color: '#5e6c66', zIndex: '2' },
+    smallText: { display: 'block', color: '#5f6b66', fontSize: '12px', marginTop: '6px', fontFamily: "'Inter', sans-serif" },
     submitButton: { width: '100%', padding: '16px', background: 'linear-gradient(135deg, #52B788 0%, #1B4332 50%, #000000 100%)', color: '#FFFFFF', border: '1px solid rgba(82, 183, 136, 0.3)', borderRadius: '50px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '12px', fontFamily: "'Inter', sans-serif", boxShadow: '0 4px 15px rgba(82, 183, 136, 0.3)' },
     spinner: { width: '18px', height: '18px', border: '2px solid rgba(255, 255, 255, 0.3)', borderRadius: '50%', borderTopColor: 'white', animation: 'spin 1s ease-in-out infinite' },
-    footer: { textAlign: 'center', marginTop: '32px', color: '#4c4e50', fontSize: '15px', fontFamily: "'Inter', sans-serif" },
+    footer: { textAlign: 'center', marginTop: '32px', color: '#4b5752', fontSize: '15px', fontFamily: "'Inter', sans-serif" },
     link: { color: '#52B788', textDecoration: 'none', fontWeight: '600' },
   };
 
@@ -142,9 +142,23 @@ rightColumn: { flex: '0 0 40%', display: 'flex', alignItems: 'center', justifyCo
     }, 300);
   };
 
+  const leftColumnStyle = {
+    ...styles.leftColumn,
+    transition: 'transform 0.85s cubic-bezier(0.16, 0.84, 0.44, 1), opacity 0.85s ease',
+    transform: isTransitioning ? 'translateX(-18px)' : 'translateX(0)',
+    opacity: isTransitioning ? 0 : 1,
+  };
+
+  const rightColumnStyle = {
+    ...styles.rightColumn,
+    transition: 'transform 0.85s cubic-bezier(0.16, 0.84, 0.44, 1), opacity 0.85s ease',
+    transform: isTransitioning ? 'translateX(18px)' : 'translateX(0)',
+    opacity: isTransitioning ? 0 : 1,
+  };
+
   return (
-    <div style={{...styles.splitContainer, opacity: isTransitioning ? 0 : 1, transition: 'opacity 0.3s ease'}}>
-      <div style={styles.leftColumn}>
+    <div style={{...styles.splitContainer}}>
+      <div style={leftColumnStyle}>
         <div style={styles.geometricOverlay}>
           <svg width="100%" height="100%" viewBox="0 0 400 400" preserveAspectRatio="none">
             <circle cx="350" cy="50" r="200" fill="rgba(255,255,255,0.05)" />
@@ -160,7 +174,7 @@ rightColumn: { flex: '0 0 40%', display: 'flex', alignItems: 'center', justifyCo
         </div>
       </div>
 
-      <div style={styles.rightColumn}>
+      <div style={rightColumnStyle}>
         <div style={styles.authCard}>
           <div style={styles.logoTop}>
             <img src={logo} alt="PiperSmart Logo" style={styles.logoImg} />
@@ -206,9 +220,10 @@ rightColumn: { flex: '0 0 40%', display: 'flex', alignItems: 'center', justifyCo
       </div>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        input:focus { outline: none; border-color: ${colors.borderFocus} !important; box-shadow: 0 0 0 3px rgba(27, 67, 50, 0.1) !important; }
+        input:focus { outline: none; border-color: ${colors.borderFocus} !important; box-shadow: 0 0 0 3px rgba(27, 67, 50, 0.15) !important; }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
-        input:disabled { background-color: #f8f9fa; cursor: not-allowed; }
+        input:disabled { background-color: #f2f4f3; cursor: not-allowed; color: #6b7370; }
+        input::placeholder { color: #7b8a83; }
         a:hover { text-decoration: underline; }
         button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(27, 67, 50, 0.4); }
         .signinButton:hover { background: rgba(255,255,255,0.15) !important; transform: translateY(-2px) scale(1.02); }

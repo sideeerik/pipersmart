@@ -31,9 +31,16 @@
 
 /* Hero Section */
 .how-it-works-hero {
+  position: relative;
+  overflow: hidden;
   text-align: center;
   padding: 4rem 2rem;
-  background: linear-gradient(135deg, rgba(27, 77, 62, 0.9) 0%, rgba(39, 174, 96, 0.9) 100%);
+  background:
+    linear-gradient(135deg, rgba(16, 53, 36, 0.54) 0%, rgba(30, 120, 77, 0.54) 100%),
+    url('../../media/HIWbg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: 1rem;
   margin-bottom: 3rem;
   color: white;
@@ -41,13 +48,25 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
+.how-it-works-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 18, 12, 0.3) 0%, rgba(8, 28, 18, 0.3) 100%);
+  pointer-events: none;
+}
+
 .how-it-works-hero h1 {
+  position: relative;
+  z-index: 1;
   font-size: 3rem;
   font-weight: bold;
   margin-bottom: 1rem;
 }
 
 .how-it-works-hero p {
+  position: relative;
+  z-index: 1;
   font-size: 1.25rem;
   opacity: 0.9;
 }
@@ -86,8 +105,17 @@
 }
 
 .step-icon {
-  font-size: 3rem;
+  width: 56px;
+  height: 56px;
   margin-bottom: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+  color: #dcfce7;
+}
+
+.step-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .step-number {
@@ -159,14 +187,15 @@
   margin-bottom: 1rem;
 }
 
-.feature-card h3 {
-  color: #1B4D3E;
+.how-it-works-features .feature-card h3 {
+  color: #ffffff;
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
-.feature-card p {
-  color: #666;
+.how-it-works-features .feature-card p {
+  color: rgba(240, 248, 244, 0.95);
   font-size: 0.85rem;
   line-height: 1.5;
 }
@@ -174,20 +203,32 @@
 /* CTA Section - Glassy Style */
 .how-it-works-cta {
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 0;
   margin-top: 3rem;
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 255, 136, 0.1);
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
   transition: all 0.3s ease;
 }
 
 .how-it-works-cta:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(0, 255, 136, 0.3);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 255, 136, 0.15);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.how-it-works-cta .cta-content {
+  max-width: 42rem;
+  margin: 0 auto;
+  text-align: center;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(210, 250, 225, 0.24);
+  border-radius: 24px;
+  padding: 2.4rem 2rem;
+  backdrop-filter: blur(8px);
 }
 
 .how-it-works-cta h2 {
@@ -198,7 +239,7 @@
 }
 
 .how-it-works-cta p {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.95);
   font-size: 1.1rem;
   margin-bottom: 2rem;
   line-height: 1.6;

@@ -1,0 +1,307 @@
+/* ============================================
+   ADMIN SIDEBAR STYLING
+   ============================================ */
+
+.admin-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 280px;
+  background: linear-gradient(180deg, #0f3d2e 0%, #1a5f52 100%);
+  border-right: 1px solid rgba(15, 180, 130, 0.3);
+  box-shadow: 10px 0px 30px rgba(15, 180, 130, 0.1);
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.admin-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-sidebar::-webkit-scrollbar-track {
+  background: rgba(15, 180, 130, 0.1);
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(15, 180, 130, 0.3);
+  border-radius: 3px;
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 180, 130, 0.5);
+}
+
+.admin-sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px 0;
+}
+
+/* Brand Section */
+.admin-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.admin-sidebar-brand:hover {
+  opacity: 0.9;
+}
+
+.admin-sidebar-brand img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: brightness(1.5) drop-shadow(0 2px 4px rgba(255, 255, 255, 0.3));
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.admin-sidebar-brand-text {
+  flex: 1;
+  overflow: hidden;
+}
+
+.admin-sidebar-brand-title {
+  color: #f8fafc;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-sidebar-brand-subtitle {
+  color: #94a3b8;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Navigation */
+.admin-sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 8px;
+  overflow-y: auto;
+}
+
+.admin-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: #cbd5e1;
+  padding: 12px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.admin-sidebar-link svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.admin-sidebar-link:hover {
+  color: #f8fafc;
+  background: rgba(30, 41, 59, 0.62);
+  transform: translateX(4px);
+}
+
+.admin-sidebar-link.active {
+  color: #e0f2fe;
+  background: rgba(8, 47, 73, 0.5);
+  border-left: 3px solid #38bdf8;
+  padding-left: 9px;
+}
+
+.admin-sidebar-link.active svg {
+  color: #38bdf8;
+}
+
+/* User Section */
+.admin-sidebar-user {
+  padding: 16px 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  position: relative;
+}
+
+.admin-sidebar-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.45);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.admin-sidebar-user-btn:hover {
+  background: rgba(30, 41, 59, 0.72);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.admin-sidebar-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(203, 213, 225, 0.55);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.admin-sidebar-user-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.admin-sidebar-user-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-sidebar-user-email {
+  font-size: 10px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.admin-sidebar-user-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 8px;
+  right: 8px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.25);
+  z-index: 1001;
+}
+
+.admin-sidebar-user-menu-head {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-sidebar-user-menu-name {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-sidebar-user-menu-email {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.admin-sidebar-user-menu-role {
+  margin-top: 6px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-sidebar-user-menu-btn {
+  width: 100%;
+  border: 0;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-sidebar-user-menu-btn:hover {
+  background: #f8fafc;
+}
+
+.admin-sidebar-user-menu-btn.danger {
+  color: #dc2626;
+}
+
+/* Scrollbar Styling for Navigation */
+.admin-sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(15, 180, 130, 0.25);
+  border-radius: 2px;
+}
+
+.admin-sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 180, 130, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-sidebar {
+    width: 240px;
+  }
+
+  .admin-sidebar-brand-title {
+    font-size: 14px;
+  }
+
+  .admin-sidebar-link {
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  .admin-sidebar-link svg {
+    width: 16px;
+    height: 16px;
+  }
+}

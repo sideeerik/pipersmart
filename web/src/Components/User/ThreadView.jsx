@@ -1,4 +1,4 @@
-
+﻿
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -6,6 +6,44 @@ import { validateContent } from '../utils/contentValidation';
 import Header from '../shared/Header';
 import './Forum.css';
 import Chat from '../Chat/Chat';
+
+const formatTimeAgo = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes < 60) {
+    return diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) {
+    return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+  }
+
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 4) {
+    return diffWeeks === 1 ? '1 week ago' : `${diffWeeks} weeks ago`;
+  }
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) {
+    return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
+  }
+
+  const diffYears = Math.floor(diffDays / 365);
+  return diffYears === 1 ? '1 year ago' : `${diffYears} years ago`;
+};
 
 export default function ThreadView() {
   const { threadId } = useParams();
@@ -29,6 +67,10 @@ export default function ThreadView() {
   const [reportReason, setReportReason] = useState('');
   const [reportingId, setReportingId] = useState(null);
   const [submittingReport, setSubmittingReport] = useState(false);
+  const [threadMenuOpen, setThreadMenuOpen] = useState(false);
+  
+  // Read dark mode preference from localStorage
+  const isDarkTheme = localStorage.getItem('forumDarkTheme') === 'true';
 
   useEffect(() => {
     fetchThreadData();
@@ -71,18 +113,60 @@ export default function ThreadView() {
 
   const handleLikeThread = async () => {
     try {
+      setThread((prev) => {
+        if (!prev) return prev;
+        const isLiked =
+          prev.isLiked ??
+          prev.hasLiked ??
+          prev.userHasLiked ??
+          prev.likedByCurrentUser ??
+          prev.currentUserLiked ??
+          false;
+        const nextLiked = !isLiked;
+        const safeLikes = Number(prev.likesCount) || 0;
+        return {
+          ...prev,
+          likesCount: nextLiked ? safeLikes + 1 : Math.max(0, safeLikes - 1),
+          isLiked: nextLiked,
+        };
+      });
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/v1/forum/threads/${threadId}/like`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setThread((prev) => ({
-        ...prev,
-        likesCount: response.data.data.likesCount
-      }));
+      const serverData = response?.data?.data ?? {};
+      const serverLikes =
+        serverData.likesCount ??
+        serverData.thread?.likesCount ??
+        serverData.likes ??
+        null;
+      const serverLiked =
+        serverData.isLiked ??
+        serverData.hasLiked ??
+        serverData.userHasLiked ??
+        serverData.likedByCurrentUser ??
+        serverData.currentUserLiked ??
+        serverData.thread?.isLiked ??
+        null;
+
+      if (serverLikes != null || serverLiked != null) {
+        setThread((prev) =>
+          prev
+            ? {
+                ...prev,
+                likesCount: serverLikes != null ? serverLikes : prev.likesCount,
+                isLiked: serverLiked != null ? serverLiked : prev.isLiked,
+              }
+            : prev
+        );
+      } else {
+        fetchThreadData();
+      }
     } catch (error) {
       console.error('Error liking thread:', error);
+      fetchThreadData();
     }
   };
 
@@ -320,10 +404,18 @@ export default function ThreadView() {
     return <div className="thread-view-container">Discussion not found</div>;
   }
 
+  const isThreadLiked =
+    thread.isLiked ??
+    thread.hasLiked ??
+    thread.userHasLiked ??
+    thread.likedByCurrentUser ??
+    thread.currentUserLiked ??
+    false;
+
   return (
     <>
       <Header />
-      <div className="thread-view-container">
+      <div className={`thread-view-container ${isDarkTheme ? 'dark-theme' : ''}`}>
         {/* Original Thread */}
         <div className="thread-detail-card">
           <div className="thread-detail-header">
@@ -334,12 +426,67 @@ export default function ThreadView() {
               <div className="author-info">
                 <p className="author-name">{thread.createdBy?.name || 'Unknown'}</p>
                 <p className="thread-meta">
-                  {new Date(thread.createdAt).toLocaleDateString()} •{' '}
+                  {formatTimeAgo(thread.createdAt)} •{' '}
                   <span className="category-badge-detail">{thread.category}</span>
                 </p>
               </div>
             </div>
-          </div>
+            <div className="post-menu">
+              <button
+                className="post-menu-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setThreadMenuOpen((prev) => !prev);
+                }}
+                title="Post options"
+                aria-label="Post options"
+              >
+                ⋯
+              </button>
+              {threadMenuOpen && (
+                <div className="post-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="post-menu-item"
+                    onClick={() => {
+                      handleMarkThreadInterested();
+                      setThreadMenuOpen(false);
+                    }}
+                  >
+                    ❤️ Interested
+                  </button>
+                  <button
+                    className="post-menu-item"
+                    onClick={() => {
+                      handleMarkThreadUninterested();
+                      setThreadMenuOpen(false);
+                    }}
+                  >
+                    👎 Not Interested
+                  </button>
+                  <button
+                    className="post-menu-item"
+                    onClick={() => {
+                      handleSaveThread();
+                      setThreadMenuOpen(false);
+                    }}
+                  >
+                    🔖 Save
+                  </button>
+                  <button
+                    className="post-menu-item danger"
+                    onClick={() => {
+                      setReportType('thread');
+                      setReportingId(threadId);
+                      setReportModalOpen(true);
+                      setThreadMenuOpen(false);
+                    }}
+                  >
+                    🚩 Report
+                  </button>
+                </div>
+              )}
+            </div>          </div>
 
           <div className="thread-detail-content">
             <h1 className="thread-detail-title">{thread.title}</h1>
@@ -358,16 +505,15 @@ export default function ThreadView() {
 
           <div className="thread-detail-actions">
             <div className="stats">
-              <span>👍 {thread.likesCount} Likes</span>
+              <button
+                type="button"
+                className="stats-btn"
+                onClick={handleLikeThread}
+                aria-label={isThreadLiked ? 'Liked' : 'Like'}
+              >
+                👍 {thread.likesCount} {isThreadLiked ? 'Liked' : 'Like'}
+              </button>
               <span>💬 {thread.repliesCount} Replies</span>
-              <span>👁️ {thread.views} Views</span>
-            </div>
-            <div className="actions">
-              <button className="action-btn" onClick={handleLikeThread}>👍 Like</button>
-              <button className="action-btn" onClick={handleMarkThreadInterested}>❤️ Interested</button>
-              <button className="action-btn" onClick={handleMarkThreadUninterested}>👎 Not Interested</button>
-              <button className="action-btn" onClick={handleSaveThread}>🔖 Save</button>
-              <button className="action-btn" onClick={() => { setReportType('thread'); setReportingId(threadId); setReportModalOpen(true); }}>🚩 Report</button>
             </div>
           </div>
         </div>
@@ -388,7 +534,7 @@ export default function ThreadView() {
                     <div className="author-avatar-small">{post.createdBy?.name?.charAt(0).toUpperCase() || 'U'}</div>
                     <div className="reply-author-info">
                       <p className="reply-author-name">{post.createdBy?.name || 'Unknown'}</p>
-                      <p className="reply-time">{new Date(post.createdAt).toLocaleDateString()}{post.isEdited && <span className="edited-badge"> (edited)</span>}</p>
+                      <p className="reply-time">{formatTimeAgo(post.createdAt)}{post.isEdited && <span className="edited-badge"> (edited)</span>}</p>
                     </div>
                   </div>
                 </div>
@@ -433,7 +579,7 @@ export default function ThreadView() {
                 {replyPreviews.map((preview, index) => (
                   <div key={index} className="preview-item-small">
                     <img src={preview} alt={`Preview ${index + 1}`} />
-                    <button type="button" onClick={() => handleRemoveReplyImage(index)} className="remove-btn-small">✕</button>
+                    <button type="button" onClick={() => handleRemoveReplyImage(index)} className="remove-btn-small">✖</button>
                   </div>
                 ))}
               </div>
@@ -450,7 +596,7 @@ export default function ThreadView() {
         {showWarningModal && (
           <div className="modal-overlay" onClick={handleWarningModalCancel}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <button className="modal-close" onClick={handleWarningModalCancel}>✕</button>
+              <button className="modal-close" onClick={handleWarningModalCancel}>✖</button>
               <div className="modal-header"><h3>⚠️ Community Safety Check</h3></div>
               <div className="modal-body">
                 <p className="warning-message">{warningMessage}</p>
@@ -473,7 +619,7 @@ export default function ThreadView() {
         {expandedImage && (
           <div className="lightbox" onClick={closeImageLightbox}>
             <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-              <button className="lightbox-close" onClick={closeImageLightbox}>✕</button>
+              <button className="lightbox-close" onClick={closeImageLightbox}>✖</button>
               <img src={expandedImage[currentImageIndex].url} alt="Expanded view" className="lightbox-image" />
               {expandedImage.length > 1 && (
                 <div className="lightbox-nav">
@@ -490,7 +636,7 @@ export default function ThreadView() {
         {reportModalOpen && (
           <div className="modal-overlay" onClick={() => setReportModalOpen(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <button className="modal-close" onClick={() => setReportModalOpen(false)}>✕</button>
+              <button className="modal-close" onClick={() => setReportModalOpen(false)}>✖</button>
               <div className="modal-header"><h3>🚩 Report {reportType === 'thread' ? 'Thread' : 'Post'}</h3></div>
               <div className="modal-body">
                 <p>Help us keep our community safe. Please describe why you're reporting this {reportType}.</p>
@@ -509,4 +655,5 @@ export default function ThreadView() {
     </>
   );
 }
+
 

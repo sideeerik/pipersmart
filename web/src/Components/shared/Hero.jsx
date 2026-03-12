@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import './Hero.css';
+import './Hero.css'; 
+import EApic from '../../../media/EApic.jpg';
 
 // Carousel media items
 const carouselMedia = [
   { type: 'video', src: '/newbg.mp4', duration: null }, // Will auto-advance when video ends
-  { type: 'video', src: '/watermarked_preview.mp4', duration: null },
-  { type: 'image', src: '/paminta.webp', duration: 2000 }, // 2 seconds
-  { type: 'image', src: '/plant.jpg', duration: 2000 }, // 2 seconds
+  { type: 'image', src: EApic, duration: 7000 },
+  { type: 'image', src: '/paminta.webp', duration: 7000 }, // 7 seconds
+  { type: 'image', src: '/plant.jpg', duration: 7000 }, // 7 seconds
 ];
 
 export default function Hero() {
@@ -51,14 +52,6 @@ export default function Hero() {
       return () => clearTimeout(timer);
     }
   }, [currentIndex, currentMedia.type, currentMedia.duration]);
-
-  // Auto-slide carousel every 2 seconds
-  useEffect(() => {
-    const autoSlideTimer = setInterval(() => {
-      goToNext();
-    }, 2000);
-    return () => clearInterval(autoSlideTimer);
-  }, [isTransitioning]);
 
   // Handle video events
   useEffect(() => {
@@ -150,6 +143,42 @@ export default function Hero() {
         >
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12c0 1.33.26 2.61.74 3.77l-1.89.66c-.6-1.41-.85-2.93-.85-4.43 0-4.97 4.03-9 9-9s9 4.03 9 9c0 1.5-.25 3.02-.85 4.43l-1.89-.66c.48-1.16.74-2.44.74-3.77 0-5.52-4.48-10-10-10z"/>
+          </svg>
+        </motion.div>
+        <motion.div 
+          className="floating-icon icon-9"
+          animate={{ y: [0, -10, 0], rotate: [0, 9, -9, 0] }}
+          transition={{ duration: 4.9, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/>
+          </svg>
+        </motion.div>
+        <motion.div 
+          className="floating-icon icon-10"
+          animate={{ y: [0, 13, 0], rotate: [0, -8, 8, 0] }}
+          transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 1.1 }}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 22c4-4 8-7.5 8-12 0-3.5-2.5-6-6-6s-6 2.5-6 6c0 4.5 4 8 8 12z"/>
+          </svg>
+        </motion.div>
+        <motion.div 
+          className="floating-icon icon-11"
+          animate={{ y: [0, -16, 0], rotate: [0, 12, -12, 0] }}
+          transition={{ duration: 4.3, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12c0 1.33.26 2.61.74 3.77l-1.89.66c-.6-1.41-.85-2.93-.85-4.43 0-4.97 4.03-9 9-9s9 4.03 9 9c0 1.5-.25 3.02-.85 4.43l-1.89-.66c.48-1.16.74-2.44.74-3.77 0-5.52-4.48-10-10-10z"/>
+          </svg>
+        </motion.div>
+        <motion.div 
+          className="floating-icon icon-12"
+          animate={{ y: [0, 11, 0], rotate: [0, -10, 10, 0] }}
+          transition={{ duration: 5.6, repeat: Infinity, ease: "easeInOut", delay: 1.4 }}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/>
           </svg>
         </motion.div>
       </div>

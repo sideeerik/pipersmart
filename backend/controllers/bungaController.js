@@ -4,40 +4,35 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const { uploadToCloudinary } = require('../utils/Cloudinary');
 
-// Helper to determine Market Grade
-const getMarketGrade = (classStr) => {
-  if (!classStr) return 'Unknown';
-  
-  // Check for Reject - Rotten, C-d, D-d
-  if (classStr.toLowerCase() === 'rotten') {
-    return 'Reject';
+// Helper to normalize health_class input to a, b, c, d
+const normalizeHealthClass = (rawHealthClass, rawClassStr) => {
+  if (rawHealthClass !== undefined && rawHealthClass !== null && rawHealthClass !== '') {
+    const directMatch = String(rawHealthClass).toLowerCase().match(/[a-d]/);
+    return directMatch ? directMatch[0] : null;
   }
-  
-  const match = classStr.match(/Class\s*([A-D])-([a-d])/);
-  if (!match) return 'Unknown';
-  
-  const ripenessLetter = match[1]; // A, B, C, or D
-  const healthLetter = match[2];   // a, b, c, or d
-  
-  // Reject: C-d, D-d
-  if ((ripenessLetter === 'C' && healthLetter === 'd') ||
-      (ripenessLetter === 'D' && healthLetter === 'd')) {
-    return 'Reject';
+  if (rawClassStr) {
+    const match = String(rawClassStr).match(/class\s*[A-D]\s*[-_ ]\s*([a-d])/i);
+    if (match) return match[1].toLowerCase();
   }
-  
-  // Premium: A-a
-  if (ripenessLetter === 'A' && healthLetter === 'a') {
-    return 'Premium';
+  return null;
+};
+
+// Helper to normalize ripeness to Ripe / Unripe / Rotten
+const normalizeRipeness = (rawRipeness, rawClassStr) => {
+  if (rawRipeness !== undefined && rawRipeness !== null && rawRipeness !== '') {
+    const norm = String(rawRipeness).toLowerCase().trim();
+    if (norm === 'ripe') return 'Ripe';
+    if (norm === 'unripe') return 'Unripe';
+    if (norm === 'rotten') return 'Rotten';
   }
-  
-  // Standard: A-b, B-a, B-b
-  if ((ripenessLetter === 'A' && healthLetter === 'b') ||
-      (ripenessLetter === 'B' && (healthLetter === 'a' || healthLetter === 'b'))) {
-    return 'Standard';
+  if (rawClassStr) {
+    const match = String(rawClassStr).match(/class\s*([A-D])\s*[-_ ]\s*[a-d]/i);
+    if (match) {
+      const letter = match[1].toUpperCase();
+      return (letter === 'A' || letter === 'B') ? 'Ripe' : 'Unripe';
+    }
   }
-  
-  // Commercial: All others
-  return 'Commercial';
+  return null;
 };
 
 const shouldSaveResult = (req) => {
@@ -47,12 +42,24 @@ const shouldSaveResult = (req) => {
   return !['false', '0', 'no', 'off'].includes(normalized);
 };
 
-const computeMarketGrade = (ripeness, healthClass) => {
+const computeMarketGrade = (ripenessRaw, healthClassRaw) => {
+  const ripeness = ripenessRaw ? String(ripenessRaw).toLowerCase() : '';
+  const health = healthClassRaw ? String(healthClassRaw).toLowerCase().match(/[a-d]/)?.[0] : '';
+
   if (!ripeness) return 'Unknown';
-  if (ripeness === 'Rotten') return 'Reject';
-  if (ripeness === 'Ripe' && healthClass === 'a') return 'Premium';
-  if (ripeness === 'Ripe' && (healthClass === 'b' || healthClass === 'a')) return 'Standard';
-  if (ripeness === 'Unripe' || ripeness === 'Ripe') return 'Commercial';
+  if (ripeness === 'rotten') return 'Reject';
+  if (!health) return 'Unknown';
+
+  // Frontend-aligned rules
+  if (ripeness === 'ripe') {
+    if (health === 'a') return 'Premium';
+    if (health === 'b') return 'Standard';
+    return 'Commercial';
+  }
+  if (ripeness === 'unripe') {
+    if (health === 'a' || health === 'b') return 'Standard';
+    return 'Commercial';
+  }
   return 'Unknown';
 };
 
@@ -174,8 +181,11 @@ exports.analyzeBunga = async (req, res) => {
 
     const duration = Date.now() - startTime;
 
-    const computedMarketGrade = (result.success && result.ripeness)
-      ? computeMarketGrade(result.ripeness, result.health_class)
+    const normalizedRipeness = normalizeRipeness(result.ripeness, result.class);
+    const normalizedHealthClass = normalizeHealthClass(result.health_class, result.class);
+
+    const computedMarketGrade = (result.success && normalizedRipeness)
+      ? computeMarketGrade(normalizedRipeness, normalizedHealthClass)
       : null;
 
     // 3. If Valid Detection, Upload to Cloudinary & Save to DB
@@ -205,11 +215,11 @@ exports.analyzeBunga = async (req, res) => {
             url: uploadResult.url
           },
           results: {
-            ripeness: result.ripeness,                    // "Ripe", "Unripe", "Rotten"
+            ripeness: normalizedRipeness || result.ripeness, // "Ripe", "Unripe", "Rotten"
             ripeness_percentage: result.ripeness_percentage,
-            health_class: result.health_class,            // "a", "b", "c", "d"
+            health_class: normalizedHealthClass,            // "a", "b", "c", "d"
             health_percentage: result.health_percentage,
-            confidence: result.confidence,                // 0-100
+            confidence: result.confidence,                  // 0-100
             market_grade: marketGrade
           },
           processingTime: duration
@@ -270,11 +280,11 @@ exports.saveBungaAnalysis = async (req, res) => {
       });
     }
 
-    const ripeness = req.body?.ripeness;
+    const ripeness = normalizeRipeness(req.body?.ripeness, req.body?.class);
     const rawHealthClass = req.body?.health_class;
-    const healthClass = rawHealthClass === '' ? null : (rawHealthClass ?? null);
-    const ripenessPercentage = Number(req.body?.ripeness_percentage) || 0;
-    const healthPercentage = Number(req.body?.health_percentage) || 0;
+    let healthClass = normalizeHealthClass(rawHealthClass, req.body?.class);
+    let ripenessPercentage = Number(req.body?.ripeness_percentage) || 0;
+    let healthPercentage = Number(req.body?.health_percentage) || 0;
     const confidence = Number(req.body?.confidence) || 0;
     const processingTime = Number(req.body?.processingTime) || 0;
 
@@ -291,6 +301,12 @@ exports.saveBungaAnalysis = async (req, res) => {
     const b64 = Buffer.from(req.file.buffer).toString('base64');
     const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
     const uploadResult = await uploadToCloudinary(dataURI, 'pipersmart/bunga_scans');
+
+    if (ripeness === 'Rotten') {
+      healthClass = null;
+      healthPercentage = 0;
+      ripenessPercentage = 0;
+    }
 
     const marketGrade = computeMarketGrade(ripeness, healthClass);
 

@@ -9,9 +9,13 @@ const {
   editMessage,
   searchUsers,
   getUnreadCount,
-  markAllMessagesRead
+  markAllMessagesRead,
+  uploadChatImage,
+  updateChatSettings,
+  getChatSettings
 } = require('../controllers/Chat');
 const { isAuthenticatedUser } = require('../middlewares/auth');
+const { upload } = require('../utils/Multer');
 
 const router = express.Router();
 
@@ -26,6 +30,13 @@ router.get('/chat/chats/:chatId/messages', getMessages);
 router.put('/chat/messages/:messageId/read', markMessageAsRead);
 router.delete('/chat/messages/:messageId', deleteMessage);
 router.put('/chat/messages/:messageId', editMessage);
+
+// Image upload for chat
+router.post('/chat/upload-image', upload.single('image'), uploadChatImage);
+
+// Chat settings
+router.put('/chat/:chatId/settings', updateChatSettings);
+router.get('/chat/:chatId/settings', getChatSettings);
 
 // User search for starting chat
 router.get('/chat/search/users', searchUsers);

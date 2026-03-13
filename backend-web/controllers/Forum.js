@@ -150,16 +150,30 @@ exports.createThread = async (req, res) => {
     }
 
     let uploadedImages = [];
+    
+    // Handle multipart file uploads (from frontend using FormData)
     if (Array.isArray(req.files) && req.files.length > 0) {
       for (const file of req.files) {
         const result = await uploadToCloudinary(file.path, 'rubbersense/forum/threads');
         uploadedImages.push({ url: result.url, publicId: result.public_id });
         fs.unlink(file.path, () => {});
       }
-    } else if (Array.isArray(images) && images.length > 0) {
+    } 
+    // Handle images sent as JSON objects from frontend (already uploaded to Cloudinary)
+    else if (Array.isArray(images) && images.length > 0) {
       for (const item of images) {
-        const result = await uploadToCloudinary(item, 'rubbersense/forum/threads');
-        uploadedImages.push({ url: result.url, publicId: result.public_id });
+        // Check if it's already a completed image object with url
+        if (item && typeof item === 'object' && item.url) {
+          uploadedImages.push({ 
+            url: item.url, 
+            publicId: item.publicId || item.public_id || '' 
+          });
+        } 
+        // If it's a base64 string, upload it
+        else if (typeof item === 'string' && (item.startsWith('data:') || item.startsWith('http'))) {
+          // Skip base64 upload for now - could add if needed
+          console.log('⚠️ Skipping base64 image upload');
+        }
       }
     }
 
@@ -180,7 +194,7 @@ exports.createThread = async (req, res) => {
         if (user && user.friends && user.friends.length > 0) {
           const notifications = user.friends.map(friendId => ({
             userId: friendId,
-            type: 'friend_post',
+            type: 'forum_reply',
             title: 'New Post from Friend',
             message: `${user.name} posted: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"`,
             actionUrl: `/forum/thread/${newThread._id}`,
@@ -499,16 +513,28 @@ exports.createPost = async (req, res) => {
 
     let uploadedImages = [];
 
+    // Handle multipart file uploads (from frontend using FormData)
     if (Array.isArray(req.files) && req.files.length > 0) {
       for (const file of req.files) {
         const result = await uploadToCloudinary(file.path, 'rubbersense/forum/posts');
         uploadedImages.push({ url: result.url, publicId: result.public_id });
         fs.unlink(file.path, () => {});
       }
-    } else if (Array.isArray(images) && images.length > 0) {
+    }
+    // Handle images sent as JSON objects from frontend (already uploaded to Cloudinary)
+    else if (Array.isArray(images) && images.length > 0) {
       for (const item of images) {
-        const result = await uploadToCloudinary(item, 'rubbersense/forum/posts');
-        uploadedImages.push({ url: result.url, publicId: result.public_id });
+        // Check if it's already a completed image object with url
+        if (item && typeof item === 'object' && item.url) {
+          uploadedImages.push({ 
+            url: item.url, 
+            publicId: item.publicId || item.public_id || '' 
+          });
+        }
+        // If it's a base64 string, skip for now
+        else if (typeof item === 'string' && (item.startsWith('data:') || item.startsWith('http'))) {
+          console.log('⚠️ Skipping base64 image upload');
+        }
       }
     }
 

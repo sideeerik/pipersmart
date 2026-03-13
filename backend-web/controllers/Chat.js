@@ -103,8 +103,8 @@ exports.getAllChats = async (req, res) => {
       chats.push({
           _id: chatKey,
           participants: [
-            { _id: userId, name: currentUser.name, email: currentUser.email, avatar: currentUser.avatar },
-            { _id: otherUserId, name: otherUser.name, email: otherUser.email, avatar: otherUser.avatar }
+            { _id: userId, name: currentUser.name, email: currentUser.email, avatar: currentUser.avatar?.url || currentUser.avatar },
+            { _id: otherUserId, name: otherUser.name, email: otherUser.email, avatar: otherUser.avatar?.url || otherUser.avatar }
           ],
           lastMessage: lastMsg.content,
           lastMessageBy: lastMsg.sender,
@@ -126,15 +126,16 @@ exports.getAllChats = async (req, res) => {
   }
 };
 
-// Send message
+// Send message with optional image
 exports.sendMessage = async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { content } = req.body;
+    const { content, imageUrl, replyTo } = req.body;
     const senderId = req.user._id;
 
-    if (!content || !content.trim()) {
-      return res.status(400).json({ success: false, message: 'Message content is required' });
+    // Allow message with either content or imageUrl (or both)
+    if ((!content || !content.trim()) && !imageUrl) {
+      return res.status(400).json({ success: false, message: 'Message content or image is required' });
     }
 
     // chatId is in format: userId1-userId2
@@ -160,21 +161,42 @@ exports.sendMessage = async (req, res) => {
     // Create normalized chatKey (should match the passed chatId)
     const chatKey = [senderIdStr, recipientId].sort().join('-');
 
-    const message = await Message.create({
+    const messageData = {
       chatId: chatKey,
       sender: senderId,
-      content: content,
-    });
+      content: content || '',
+    };
 
-    const populatedMessage = await message.populate('sender', 'name email avatar');
+    // Add imageUrl if provided
+    if (imageUrl) {
+      messageData.imageUrl = imageUrl;
+    }
 
-    console.log('✅ Message sent:', message._id);
+    // Add replyTo if provided
+    if (replyTo) {
+      messageData.replyTo = replyTo;
+    }
+
+    const message = await Message.create(messageData);
+
+    const populatedMessage = await Message.findById(message._id)
+      .populate('sender', 'name email avatar')
+      .populate({
+        path: 'replyTo',
+        select: 'content imageUrl sender isDeleted',
+        populate: {
+          path: 'sender',
+          select: 'name email avatar'
+        }
+      });
+
+    console.log('[SUCCESS] Message sent:', message._id);
     res.status(201).json({
       success: true,
       data: populatedMessage,
     });
   } catch (error) {
-    console.error('❌ Error sending message:', error);
+    console.error('[ERROR] Error sending message:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -187,6 +209,14 @@ exports.getMessages = async (req, res) => {
     // chatId is already in normalized format: userId1-userId2
     const messages = await Message.find({ chatId: chatId })
       .populate('sender', 'name email avatar')
+      .populate({
+        path: 'replyTo',
+        select: 'content sender isDeleted',
+        populate: {
+          path: 'sender',
+          select: 'name email avatar'
+        }
+      })
       .sort({ createdAt: 1 });
 
     console.log(`✅ Fetched ${messages.length} messages from chatId: ${chatId}`);
@@ -244,9 +274,10 @@ exports.deleteMessage = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this message' });
     }
 
-    await Message.findByIdAndDelete(messageId);
+    // Mark message as deleted instead of physically deleting
+    await Message.findByIdAndUpdate(messageId, { isDeleted: true });
 
-    console.log('✅ Message deleted:', messageId);
+    console.log('✅ Message marked as deleted:', messageId);
     res.status(200).json({
       success: true,
       message: 'Message deleted successfully',
@@ -371,6 +402,91 @@ exports.markAllMessagesRead = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error marking all messages read:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Upload image for chat
+exports.uploadChatImage = async (req, res) => {
+  try {
+    const { uploadToCloudinary } = require('../utils/Cloudinary');
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image provided' });
+    }
+
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(req.file.path, 'pipersmart_chat');
+    const imageUrl = result.url || result.secure_url;
+    
+    // Delete temp file
+    const fs = require('fs');
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { imageUrl }
+    });
+  } catch (error) {
+    console.error('[ERROR] Image upload failed:', error);
+    res.status(500).json({ success: false, message: 'Image upload failed: ' + error.message });
+  }
+};
+
+// Update chat settings (background color, image, nickname)
+exports.updateChatSettings = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { bgColor, bgImage, nickname } = req.body;
+    const Chat = require('../models/Chat');
+
+    const chat = await Chat.findByIdAndUpdate(
+      chatId,
+      {
+        settings: {
+          bgColor: bgColor || null,
+          bgImage: bgImage || null,
+          nickname: nickname || null
+        }
+      },
+      { new: true }
+    );
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: 'Chat not found' });
+    }
+
+    console.log('✅ Chat settings updated for:', chatId);
+    res.status(200).json({
+      success: true,
+      data: chat.settings
+    });
+  } catch (error) {
+    console.error('❌ Error updating chat settings:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get chat settings
+exports.getChatSettings = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const Chat = require('../models/Chat');
+
+    const chat = await Chat.findById(chatId);
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: 'Chat not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: chat.settings || {}
+    });
+  } catch (error) {
+    console.error('❌ Error fetching chat settings:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

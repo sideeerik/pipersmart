@@ -25,6 +25,20 @@ const chatSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    settings: {
+      bgColor: {
+        type: String,
+        default: null,
+      },
+      bgImage: {
+        type: String,
+        default: null,
+      },
+      nickname: {
+        type: String,
+        default: null,
+      },
+    },
   },
   { timestamps: true }
 );

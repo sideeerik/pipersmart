@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+*.log
+.env
+config/.env
+temp
+uploads
+.DS_Store
+ml_models/**/*.pt
+ml_models/**/*.png
+ml_models/**/*.jpg
+ml_models/**/*.jpeg
+ml_models/**/*.webp
+!ml_models/**/weights/best.pt

@@ -13,6 +13,13 @@ exports.isAuthenticatedUser = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = await User.findById(decoded.id);
+        
+        // Update lastOnline timestamp
+        if (req.user) {
+            req.user.lastOnline = new Date();
+            await req.user.save({ validateBeforeSave: false });
+        }
+        
         next();
     } catch (error) {
         return res.status(401).json({ message: 'Invalid token' });

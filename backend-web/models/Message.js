@@ -13,7 +13,10 @@ const messageSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
+    },
+    imageUrl: {
+      type: String,
+      default: null,
     },
     isRead: {
       type: Boolean,
@@ -28,6 +31,15 @@ const messageSchema = new mongoose.Schema(
     },
     editedAt: {
       type: Date,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Message',
+      default: null,
     },
   },
   { timestamps: true }

@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+*.log
+.env
+config/.env
+temp
+uploads
+.git
+.github
+.vscode
+*.pth
+*.onnx

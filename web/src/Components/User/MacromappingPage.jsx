@@ -1169,6 +1169,12 @@ export default function MacromappingPage() {
         showToast('Run the analysis first before saving this location');
         return;
       }
+      const latValue = Number(item?.latitude);
+      const lngValue = Number(item?.longitude);
+      if (!Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
+        showToast('Location coordinates are missing');
+        return;
+      }
 
       const locationName = item?.name || item?.displayName || item?.farmName || item?.title || item?.address || 'Selected Location';
 
@@ -1187,8 +1193,8 @@ export default function MacromappingPage() {
             country: '',
             postalcode: ''
           },
-          latitude: item.latitude,
-          longitude: item.longitude,
+          latitude: latValue,
+          longitude: lngValue,
           weather: weatherData || {},
           elevation: suitabilityData?.elevation,
           annualRainfall: undefined,

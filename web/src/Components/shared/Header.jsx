@@ -251,7 +251,7 @@ export default function Header() {
               <div className="nav-dropdown">
                 <Link to="/knowledge" onClick={handleProtectedNavClick}>Knowledge</Link>
                 <Link to="/leaf-analysis" onClick={handleProtectedNavClick}>Leaf Analysis</Link>
-                <Link to="/bunga-analysis" onClick={handleProtectedNavClick}>Bunga Analysis</Link>
+                <Link to="/bunga-analysis" onClick={handleProtectedNavClick}>Peppercorn Analysis</Link>
                 <Link to="/forum" onClick={handleProtectedNavClick}>Community Forum</Link>
                 <Link to="/macro-mapping" onClick={handleProtectedNavClick}>Macromapping</Link>
                 <Link to="/recent-activities" onClick={handleProtectedNavClick}>Recent Activities</Link>

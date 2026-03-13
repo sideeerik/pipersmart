@@ -358,48 +358,48 @@ const BungaAnalysis = () => {
   const ripenessRecommendations = {
     'Ripe': {
       icon: '',
-      title: 'Bunga is Ripe',
-      description: 'Your black pepper bunga has reached optimal ripeness for harvesting.',
+      title: 'Peppercorn is Ripe',
+      description: 'Your black pepper peppercorn has reached optimal ripeness for harvesting.',
       actions: ['Harvest immediately for best flavor', 'Use sharp pruning shears to avoid damage', 'Store in cool, dry place', 'Process or dry within 24 hours'],
       color: colors.success,
       gradient: 'linear-gradient(135deg, #2BB673 0%, #27AE60 100%)'
     },
     'Unripe': {
       icon: '',
-      title: 'Bunga Not Yet Ripe',
-      description: 'The bunga requires more time to reach full ripeness.',
+      title: 'Peppercorn Not Yet Ripe',
+      description: 'The peppercorn requires more time to reach full ripeness.',
       actions: ['Wait 5-7 more days before harvesting', 'Ensure adequate water and nutrients', 'Protect from birds and pests', 'Check daily for color change'],
       color: colors.warning,
       gradient: 'linear-gradient(135deg, #F2A93B 0%, #E67E22 100%)'
     },
     'Rotten': {
       icon: '',
-      title: 'Bunga is Rotten',
-      description: 'The bunga has deteriorated and is no longer usable.',
+      title: 'Peppercorn is Rotten',
+      description: 'The peppercorn has deteriorated and is no longer usable.',
       actions: ['Remove immediately to prevent disease spread', 'Do not attempt to process or dry', 'Inspect nearby bunches for signs of rot', 'Improve ventilation to prevent future rot'],
       color: colors.danger,
       gradient: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)'
     },
     'ripe': {
       icon: '',
-      title: 'Bunga is Ripe',
-      description: 'Your black pepper bunga has reached optimal ripeness for harvesting.',
+      title: 'Peppercorn is Ripe',
+      description: 'Your black pepper peppercorn has reached optimal ripeness for harvesting.',
       actions: ['Harvest immediately for best flavor', 'Use sharp pruning shears to avoid damage', 'Store in cool, dry place', 'Process or dry within 24 hours'],
       color: colors.success,
       gradient: 'linear-gradient(135deg, #2BB673 0%, #27AE60 100%)'
     },
     'unripe': {
       icon: '',
-      title: 'Bunga Not Yet Ripe',
-      description: 'The bunga requires more time to reach full ripeness.',
+      title: 'Peppercorn Not Yet Ripe',
+      description: 'The peppercorn requires more time to reach full ripeness.',
       actions: ['Wait 5-7 more days before harvesting', 'Ensure adequate water and nutrients', 'Protect from birds and pests', 'Check daily for color change'],
       color: colors.warning,
       gradient: 'linear-gradient(135deg, #F2A93B 0%, #E67E22 100%)'
     },
     'rotten': {
       icon: '',
-      title: 'Bunga is Rotten',
-      description: 'The bunga has deteriorated and is no longer usable.',
+      title: 'Peppercorn is Rotten',
+      description: 'The peppercorn has deteriorated and is no longer usable.',
       actions: ['Remove immediately to prevent disease spread', 'Do not attempt to process or dry', 'Inspect nearby bunches for signs of rot', 'Improve ventilation to prevent future rot'],
       color: colors.danger,
       gradient: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)'
@@ -417,20 +417,20 @@ const BungaAnalysis = () => {
   const getMarketGrade = (classStr) => {
     if (!classStr) return null;
     if (classStr.toLowerCase() === 'rotten') {
-      return { grade: 'Reject', color: '#E74C3C', title: 'Reject Grade', description: 'This bunga is rotten and should not be processed or sold.', actions: ['Remove from harvest immediately', 'Do not process or dry', 'Prevent spread to other bunches'] };
+      return { grade: 'Reject', color: '#E74C3C', title: 'Reject Grade', description: 'This peppercorn is rotten and should not be processed or sold.', actions: ['Remove from harvest immediately', 'Do not process or dry', 'Prevent spread to other bunches'] };
     }
     const match = classStr.match(/Class\s*([A-D])-([a-d])/);
     if (!match) return null;
     const ripenessLetter = match[1];
     const healthLetter = match[2];
     if ((ripenessLetter === 'C' && healthLetter === 'd') || (ripenessLetter === 'D' && healthLetter === 'd')) {
-      return { grade: 'Reject', color: '#E74C3C', title: 'Reject Grade', description: 'This bunga is not suitable for processing.', actions: ['Do not harvest or process', 'Wait for better development'] };
+      return { grade: 'Reject', color: '#E74C3C', title: 'Reject Grade', description: 'This peppercorn is not suitable for processing.', actions: ['Do not harvest or process', 'Wait for better development'] };
     }
     if (ripenessLetter === 'A' && healthLetter === 'a') {
-      return { grade: 'Premium', color: '#D4AF37', title: 'Premium Grade', description: 'Excellent quality bunga suitable for export.', actions: ['Harvest and dry immediately', 'Use specialized drying equipment', 'Store in airtight containers'] };
+      return { grade: 'Premium', color: '#D4AF37', title: 'Premium Grade', description: 'Excellent quality peppercorn suitable for export.', actions: ['Harvest and dry immediately', 'Use specialized drying equipment', 'Store in airtight containers'] };
     }
     if ((ripenessLetter === 'A' && healthLetter === 'b') || (ripenessLetter === 'B' && (healthLetter === 'a' || healthLetter === 'b'))) {
-      return { grade: 'Standard', color: '#27AE60', title: 'Standard Grade', description: 'Good quality bunga for domestic markets.', actions: ['Harvest and dry using standard methods', 'Store in cool, dry conditions'] };
+      return { grade: 'Standard', color: '#27AE60', title: 'Standard Grade', description: 'Good quality peppercorn for domestic markets.', actions: ['Harvest and dry using standard methods', 'Store in cool, dry conditions'] };
     }
     return { grade: 'Commercial', color: '#F39C12', title: 'Commercial Grade', description: 'Acceptable for commercial use.', actions: ['Harvest and dry with care', 'Sort and remove defective portions'] };
   };
@@ -686,7 +686,7 @@ const BungaAnalysis = () => {
   const adviceAccent = advice?.gradeKey ? (gradeColors[advice.gradeKey] || colors.primaryLight) : (resultInfo?.color || colors.primaryLight);
   const displayInfo = resultInfo || (result ? {
     title: result?.ripeness || result?.class || 'Analysis Complete',
-    description: 'Your bunga has been analyzed successfully.',
+    description: 'Your peppercorn has been analyzed successfully.',
     actions: [],
     color: colors.primaryLight,
     gradient: 'linear-gradient(135deg, #27AE60 0%, #1B4D3E 100%)',
@@ -728,10 +728,10 @@ const BungaAnalysis = () => {
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text'
             }}>
-              Bunga Ripeness Analysis
+              Peppercorn Ripeness Analysis
             </h1>
             <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '16px', margin: 0 }}>
-              Upload a bunga image for AI-powered ripeness analysis
+              Upload a peppercorn image for AI-powered ripeness analysis
             </p>
           </div>
 
@@ -759,7 +759,7 @@ const BungaAnalysis = () => {
                   BR
                 </div>
                 <div>
-                  <h2 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Bunga Ripeness Analyzer</h2>
+                  <h2 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Peppercorn Ripeness Analyzer</h2>
                   <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.6)', fontSize: '13px' }}>Select an image to analyze</p>
                 </div>
               </div>
@@ -768,7 +768,7 @@ const BungaAnalysis = () => {
                 <div className={`image-frame ${preview ? '' : 'is-empty'}`}>
                   {preview ? (
                     <div style={{ position: 'relative' }}>
-                      <img src={preview} alt="Bunga preview" style={{
+                      <img src={preview} alt="Peppercorn preview" style={{
                         width: '100%',
                         height: result ? '520px' : '420px',
                         objectFit: 'contain',
@@ -782,7 +782,7 @@ const BungaAnalysis = () => {
                           textAlign: 'center', color: 'white', textShadow: '0 2px 4px black',
                           fontWeight: '600'
                         }}>
-                          Detecting ripeness...<br />Analyzing bunga...
+                          Detecting ripeness...<br />Analyzing peppercorn...
                         </div>
                       )}
                       <button
@@ -878,7 +878,7 @@ const BungaAnalysis = () => {
                   transition: 'all 0.3s ease'
                 }}
               >
-                {loading ? 'Analyzing...' : 'Analyze Bunga'}
+                {loading ? 'Analyzing...' : 'Analyze Peppercorn'}
               </button>
             </div>
 
@@ -948,7 +948,7 @@ const BungaAnalysis = () => {
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      Analyze Another Bunga
+                      Analyze Another Peppercorn
                     </button>
                   </div>
                 </div>
@@ -1011,7 +1011,12 @@ const BungaAnalysis = () => {
                           : (classInfo ? `Class ${classInfo.letter}: ${classInfo.label}` : (result?.class ? `Class ${result.class}` : 'Class information pending.'))}
                       </p>
                       {result?.health_class && (
-                        <p>Health: {String(result.health_class).toUpperCase()}</p>
+                        <p>
+                          Health: {String(result.health_class).toUpperCase()}
+                          {Number.isFinite(Number(result.health_percentage))
+                            ? ` (${Number(result.health_percentage)}%)`
+                            : ''}
+                        </p>
                       )}
                     </div>
 
@@ -1062,7 +1067,7 @@ const BungaAnalysis = () => {
                     BR
                   </div>
                   <h2>Results will appear here</h2>
-                  <p>Upload a bunga image and run analysis to see ripeness, class, and next steps.</p>
+                  <p>Upload a peppercorn image and run analysis to see ripeness, class, and next steps.</p>
                   <div className="result-placeholder-card">
                     <h4>What you will see</h4>
                     <ul>

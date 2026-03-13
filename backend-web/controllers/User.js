@@ -1,7 +1,6 @@
 const User = require('../models/User');
 const crypto = require('crypto');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/Cloudinary');
-const Mailer = require('../utils/Mailer');
 const admin = require('../utils/firebaseAdmin');
 
 // ========== REGISTER USER ========== 
@@ -32,41 +31,14 @@ exports.registerUser = async (req, res) => {
       email,
       password,
       avatar: avatarData,
-      isVerified: false,
+      isVerified: true,
       isActive: true,
       authProvider: 'local'
     });
 
-    // Generate email verification token
-    const verificationToken = user.getEmailVerificationToken();
-    await user.save({ validateBeforeSave: false });
-
-    // ✅ FIXED: include '/users' in the URL
-    const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/users/verify-email/${verificationToken}`;
-
-    const message = `
-      <h2>Welcome to ${process.env.APP_NAME}</h2>
-      <p>Click the link below to verify your email and activate your account:</p>
-      <a href="${verificationUrl}" target="_blank" style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">Verify Your Email</a>
-      <br><br>
-      <p>If you didn't request this, please ignore this email.</p>
-      <p><small>Or copy this link: ${verificationUrl}</small></p>
-    `;
-
-    console.log('📨 Sending verification email to local user:', user.email);
-    
-    // Send email asynchronously without blocking the response
-    Mailer({
-      email: user.email,
-      subject: 'Verify your email - ' + process.env.APP_NAME,
-      message
-    }).catch(err => {
-      console.warn('⚠️ Email sending failed (non-blocking):', err.message);
-    });
-
     res.status(201).json({
       success: true,
-      message: `Registration successful! Please check your email to verify your account.`,
+      message: `Registration successful! Your account is verified.`,
       user: {
         id: user._id,
         name: user.name,
@@ -828,7 +800,7 @@ exports.getFriends = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id)
-      .populate('friends', '_id name email avatar');
+      .populate('friends', '_id name email avatar isActive lastOnline');
 
     res.status(200).json({
       success: true,
@@ -1019,3 +991,4 @@ exports.getSuggestions = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

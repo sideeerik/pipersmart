@@ -1400,10 +1400,11 @@ export default function MacromappingPage() {
   };
 
   const handleLocationClick = async (item) => {
-    const farm = item.farm;
+    const farm = item.farm || item;
+    const farmName = farm.name || farm.displayName || 'Saved location';
     const proceed = await openDialog({
       title: 'Go to location?',
-      message: `Navigate to ${farm.name}?`,
+      message: `Navigate to ${farmName}?`,
       actions: [
         { label: 'Cancel', value: false, variant: 'ghost' },
         { label: 'Navigate', value: true, variant: 'primary' },
@@ -1417,7 +1418,7 @@ export default function MacromappingPage() {
     }
 
     setSelectedItem(farm);
-    fetchLocationWeather(farm.latitude, farm.longitude, farm.name, {
+    fetchLocationWeather(farm.latitude, farm.longitude, farmName, {
       ...farm,
       kind: 'farm',
     });
@@ -1988,16 +1989,16 @@ export default function MacromappingPage() {
                         <FiMapPin size={16} />
                       </div>
                       <div>
-                        <h4>{item.farm.name}</h4>
-                        <p>{item.farm.location}</p>
-                        <span>{item.farm.address || 'No address available'}</span>
+                        <h4>{item.name || item.displayName || 'Saved location'}</h4>
+                        <p>{item.locationDetails?.city || item.locationDetails?.town || item.locationDetails?.village || 'Location details unavailable'}</p>
+                        <span>{item.locationDetails?.street || 'No address available'}</span>
                         {userLocation && (
                           <em>
                             {calculateDistance(
                               userLocation.latitude,
                               userLocation.longitude,
-                              item.farm.latitude,
-                              item.farm.longitude
+                              item.latitude,
+                              item.longitude
                             )}{' '}
                             km away
                           </em>
@@ -2010,7 +2011,7 @@ export default function MacromappingPage() {
                       onClick={async () => {
                         const remove = await openDialog({
                           title: 'Remove',
-                          message: `Remove ${item.farm.name}?`,
+                          message: `Remove ${item.name || item.displayName || 'this location'}?`,
                           actions: [
                             { label: 'Cancel', value: false, variant: 'ghost' },
                             { label: 'Remove', value: true, variant: 'danger' },

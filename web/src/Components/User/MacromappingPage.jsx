@@ -1,4 +1,4 @@
-﻿
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
@@ -1146,10 +1146,14 @@ export default function MacromappingPage() {
     collapseBottomSheet();
   };
 
-  const isLocationSaved = (itemId) => savedLocations.some((loc) => loc.farm.id === itemId);
+  const isLocationSaved = (item) => savedLocations.some((loc) =>
+    Number(loc.latitude) === Number(item.latitude) && Number(loc.longitude) === Number(item.longitude)
+  );
 
-  const getSavedLocationId = (itemId) => {
-    const saved = savedLocations.find((loc) => loc.farm.id === itemId);
+  const getSavedLocationId = (item) => {
+    const saved = savedLocations.find((loc) =>
+      Number(loc.latitude) === Number(item.latitude) && Number(loc.longitude) === Number(item.longitude)
+    );
     return saved?._id;
   };
 
@@ -1160,17 +1164,36 @@ export default function MacromappingPage() {
         showToast('Please login to save locations');
         return;
       }
+      if (!suitabilityData?.score || !suitabilityData?.rating) {
+        showToast('Run the analysis first before saving this location');
+        return;
+      }
 
       const response = await axios.post(
-        `${API_BASE_URL}/api/v1/macromapping/save`,
+        `${API_BASE_URL}/api/v1/macromap/save`,
         {
-          farmId: item.id,
-          farmName: item.name,
+          name: item.name,
+          displayName: item.name,
+          locationDetails: {
+            street: item.address || '',
+            village: item.location || '',
+            town: '',
+            city: '',
+            county: '',
+            state: '',
+            country: '',
+            postalcode: ''
+          },
           latitude: item.latitude,
           longitude: item.longitude,
-          address: item.address,
-          location: item.location,
-          specialty: item.specialty,
+          weather: weatherData || {},
+          elevation: suitabilityData?.elevation,
+          annualRainfall: undefined,
+          soilPH: undefined,
+          score: suitabilityData?.score,
+          scoreFactors: suitabilityData?.breakdown || {},
+          rating: suitabilityData?.rating || 'Fair',
+          recommendations: recommendations || []
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -1193,7 +1216,7 @@ export default function MacromappingPage() {
   const unsaveLocation = async (locationId) => {
     try {
       const token = getAuthToken();
-      await axios.delete(`${API_BASE_URL}/api/v1/macromapping/saved/${locationId}`, {
+      await axios.delete(`${API_BASE_URL}/api/v1/macromap/analyses/${locationId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       showToast('Location removed from favorites');
@@ -1210,12 +1233,12 @@ export default function MacromappingPage() {
       const token = getAuthToken();
       if (!token) return;
 
-      const response = await axios.get(`${API_BASE_URL}/api/v1/macromapping/saved`, {
+      const response = await axios.get(`${API_BASE_URL}/api/v1/macromap/analyses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.data.savedLocations) {
-        setSavedLocations(response.data.savedLocations);
+      if (response.data.data) {
+        setSavedLocations(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching saved locations:', error);
@@ -1229,7 +1252,7 @@ export default function MacromappingPage() {
     if (lastClickTimes.current.itemPress && now - lastClickTimes.current.itemPress < 500) return;
     lastClickTimes.current.itemPress = now;
 
-    const isSaved = isLocationSaved(item.id);
+    const isSaved = isLocationSaved(item);
     const proceed = await openDialog({
       title: 'Proceed to location?',
       message: `Navigate to ${item.name}?`,
@@ -1245,7 +1268,7 @@ export default function MacromappingPage() {
 
     setTimeout(async () => {
       if (isSaved) {
-        const savedId = getSavedLocationId(item.id);
+        const savedId = getSavedLocationId(item);
         const remove = await openDialog({
           title: 'Already Saved',
           message: `${item.name} is in your favorites`,
@@ -2038,11 +2061,11 @@ export default function MacromappingPage() {
                 <div className="macromap-action-buttons">
                   {!isNavigating ? (
                     <>
-                      {isLocationSaved(selectedItem.id) ? (
+                      {isLocationSaved(selectedItem) ? (
                         <button
                           type="button"
                           className="macromap-action-btn danger"
-                          onClick={() => unsaveLocation(getSavedLocationId(selectedItem.id))}
+                          onClick={() => unsaveLocation(getSavedLocationId(selectedItem))}
                         >
                           <MdDelete size={16} />
                           Remove

@@ -1164,16 +1164,19 @@ export default function MacromappingPage() {
         showToast('Please login to save locations');
         return;
       }
-      if (!suitabilityData?.score || !suitabilityData?.rating) {
+      const scoreValue = Number(suitabilityData?.score);
+      if (!Number.isFinite(scoreValue) || !suitabilityData?.rating) {
         showToast('Run the analysis first before saving this location');
         return;
       }
 
+      const locationName = item?.name || item?.displayName || item?.farmName || item?.title || item?.address || 'Selected Location';
+
       const response = await axios.post(
         `${API_BASE_URL}/api/v1/macromap/save`,
         {
-          name: item.name,
-          displayName: item.name,
+          name: locationName,
+          displayName: item?.name || item?.displayName || '',
           locationDetails: {
             street: item.address || '',
             village: item.location || '',
@@ -1190,7 +1193,7 @@ export default function MacromappingPage() {
           elevation: suitabilityData?.elevation,
           annualRainfall: undefined,
           soilPH: undefined,
-          score: suitabilityData?.score,
+          score: scoreValue,
           scoreFactors: suitabilityData?.breakdown || {},
           rating: suitabilityData?.rating || 'Fair',
           recommendations: recommendations || []

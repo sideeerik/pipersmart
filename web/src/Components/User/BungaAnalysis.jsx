@@ -603,9 +603,9 @@ const BungaAnalysis = () => {
   const getClassRipenessFromPercentage = (ripenessPercentage) => {
     const pct = Number(ripenessPercentage);
     if (!Number.isFinite(pct)) return null;
-    if (pct >= 76) return { letter: 'A', label: 'Fully ripe' };
+    if (pct >= 76) return { letter: 'A', label: 'Fully Ripe' };
     if (pct >= 51) return { letter: 'B', label: 'Semi-ripe' };
-    if (pct >= 26) return { letter: 'C', label: 'Under-ripe' };
+    if (pct >= 26) return { letter: 'C', label: 'Under-Ripe' };
     if (pct >= 0) return { letter: 'D', label: 'Unripe' };
     return null;
   };
@@ -675,8 +675,12 @@ const BungaAnalysis = () => {
 
   const resultInfo = getResultInfo(result);
   const marketGrade = result && result.class ? getMarketGrade(result.class) : null;
+  const marketGradeText = result?.market_grade || marketGrade?.grade || 'Unknown';
   const advice = getDetectionAdvice(result);
   const classInfo = getClassRipenessFromPercentage(result?.ripeness_percentage);
+  const ripenessClassText = result?.ripeness?.toLowerCase() === 'rotten'
+    ? 'Rotten'
+    : (classInfo ? `Class ${classInfo.letter} - ${classInfo.label}` : 'Pending');
   const gradeColors = {
     premium: colors.accent,
     standard: colors.success,
@@ -918,13 +922,14 @@ const BungaAnalysis = () => {
 
                       <div className="result-section" style={{ marginBottom: '16px' }}>
                         <span className="result-section-label">Quality Snapshot</span>
-                        <p className="result-section-text">Class: {result?.class || 'Pending'}</p>
-                        {result?.ripeness_percentage !== undefined && (
-                          <p className="result-section-text">Ripeness: {result.ripeness_percentage}%</p>
-                        )}
-                        {result?.confidence !== undefined && (
-                          <p className="result-section-text">Model Confidence: {result.confidence}%</p>
-                        )}
+                        <p className="result-section-text">Ripeness Class: {ripenessClassText}</p>
+                        <p className="result-section-text">
+                          Ripeness Percentage: {Number.isFinite(Number(result?.ripeness_percentage)) ? `${Number(result.ripeness_percentage)}%` : 'N/A'}
+                        </p>
+                        <p className="result-section-text">
+                          Health Percentage: {Number.isFinite(Number(result?.health_percentage)) ? `${Number(result.health_percentage)}%` : 'N/A'}
+                        </p>
+                        <p className="result-section-text">Market Grade: {marketGradeText}</p>
                       </div>
 
                       <p className="result-section-text" style={{ textAlign: 'center' }}>
@@ -1003,23 +1008,6 @@ const BungaAnalysis = () => {
                       </div>
                     )}
 
-                    <div className="advice-block">
-                      <h5>Class Insight</h5>
-                      <p>
-                        {result?.ripeness?.toLowerCase() === 'rotten'
-                          ? 'Class: Rotten'
-                          : (classInfo ? `Class ${classInfo.letter}: ${classInfo.label}` : (result?.class ? `Class ${result.class}` : 'Class information pending.'))}
-                      </p>
-                      {result?.health_class && (
-                        <p>
-                          Health: {String(result.health_class).toUpperCase()}
-                          {Number.isFinite(Number(result.health_percentage))
-                            ? ` (${Number(result.health_percentage)}%)`
-                            : ''}
-                        </p>
-                      )}
-                    </div>
-
                     {advice && advice.tips && advice.tips.length > 0 && (
                       <div className="advice-block">
                         <h5>Analyzation Advice</h5>
@@ -1067,13 +1055,14 @@ const BungaAnalysis = () => {
                     BR
                   </div>
                   <h2>Results will appear here</h2>
-                  <p>Upload a peppercorn image and run analysis to see ripeness, class, and next steps.</p>
+                  <p>Upload a peppercorn image and run analysis to see ripeness, health, and market grade.</p>
                   <div className="result-placeholder-card">
                     <h4>What you will see</h4>
                     <ul>
-                      <li>Ripeness status and class</li>
-                      <li>Market grade details</li>
-                      <li>Recommended action checklist</li>
+                      <li>Fully Ripe / Semi-ripe / Under-Ripe / Unripe</li>
+                      <li>Ripeness Percentage</li>
+                      <li>Health Percentage</li>
+                      <li>Market Grade</li>
                     </ul>
                   </div>
                 </div>
